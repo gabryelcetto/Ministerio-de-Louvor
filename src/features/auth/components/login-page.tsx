@@ -10,20 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signIn } from '../api';
 import { useSession } from '../session-context';
+import { friendlyError } from '@/lib/errors';
 
 const schema = z.object({
   email: z.string().trim().min(1, 'Informe o e-mail.').email('E-mail inválido.'),
   password: z.string().min(1, 'Informe a senha.'),
 });
 type FormValues = z.infer<typeof schema>;
-
-function friendlyAuthError(error: unknown): string {
-  const message = error instanceof Error ? error.message : '';
-  if (/invalid login credentials/i.test(message)) return 'E-mail ou senha incorretos.';
-  if (/email not confirmed/i.test(message)) return 'E-mail ainda não confirmado.';
-  if (/fetch|network/i.test(message)) return 'Sem conexão com o servidor. Tente de novo.';
-  return 'Não foi possível entrar. Tente novamente.';
-}
 
 export function LoginPage() {
   const { session, loading } = useSession();
@@ -46,7 +39,7 @@ export function LoginPage() {
       await signIn(email, password);
       void navigate(from, { replace: true });
     } catch (error) {
-      setFormError(friendlyAuthError(error));
+      setFormError(friendlyError(error, 'Não foi possível entrar. Tente novamente.'));
     }
   });
 
