@@ -163,3 +163,36 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
   palavras como "Amazing" ou "Do".
 - **Celular**: em vez de `<pre>` com rolagem horizontal (comum em sites de cifra), cada palavra é
   um bloco que pode descer de linha; o acorde vai junto da sua sílaba.
+
+---
+
+## Fase D — Login e layout (19/11/2026)
+
+### Arquivos criados/alterados
+
+- `src/features/auth/session-context.ts` — contexto React da sessão + hook `useSession()`.
+- `src/features/auth/session-provider.tsx` — lê a sessão salva, escuta login/logout/refresh do
+  Supabase Auth e **limpa o cache** do TanStack Query ao trocar de usuário (evita mostrar dados do
+  usuário anterior).
+- `src/features/auth/api.ts` — `fetchMyProfile` (lista as colunas: `phone` não é legível),
+  `fetchMyPermissions` (RPC `my_permissions`), `signIn`, `signOut`.
+- `src/features/auth/hooks/use-me.ts` — `useMyProfile()` e `useMyPermissions()` (TanStack Query).
+- `src/features/auth/components/login-page.tsx` — tela de login com React Hook Form + Zod, labels
+  associados, mensagens de erro com `aria-describedby` e erros do Supabase traduzidos.
+- `src/lib/permissions.ts` — `usePermission('chave')`: **só para a interface**.
+- `src/app/protected-route.tsx` — guarda de rota: sem sessão → `/login` (lembra a página de
+  origem); perfil inativo → tela "Acesso desativado".
+- `src/app/app-shell.tsx` — layout: barra lateral no computador, barra inferior (5 itens) no
+  celular, link "Pular para o conteúdo", `Configurações` só para quem tem `members.manage` ou
+  `permissions.manage`.
+- `src/app/router.tsx` — rotas `/login` (pública) e as rotas protegidas dentro do `AppShell`.
+- `src/app/placeholder-page.tsx`, `src/app/home-page.tsx` — telas provisórias até a fase E.
+- `src/components/ui/input.tsx`, `label.tsx` — componentes shadcn/ui.
+- `src/main.tsx` — registra o service worker com aviso "nova versão disponível".
+
+### Decisões
+
+- **Permissões vêm do banco** (`my_permissions()` roda `has_permission` para cada chave), então a
+  UI e o RLS usam exatamente a mesma regra — não há uma cópia da lógica no frontend.
+- **Esconder item de menu não é segurança**: as rotas administrativas continuam protegidas pelo RLS.
+- **Navegação mobile-first**: alvos de toque de 56px, `safe-area-inset-bottom` para iPhone.

@@ -1,28 +1,16 @@
-import { Music } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMyProfile } from '@/features/auth/hooks/use-me';
 
-/** Página provisória da fase A — será substituída pelo login/Dashboard na fase D. */
+/** Início provisório (o Dashboard via get_dashboard chega na fase E). */
 export function HomePage() {
+  const { data: profile } = useMyProfile();
+  const name = profile?.display_name || profile?.full_name;
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 p-4">
-      <Card>
-        <CardHeader>
-          <div className="flex size-12 items-center justify-center rounded-full bg-primary text-accent">
-            <Music aria-hidden="true" className="size-6" />
-          </div>
-          <h1 className="sr-only">Ministério de Louvor</h1>
-          <CardTitle className="text-xl">Ministério de Louvor</CardTitle>
-          <CardDescription>
-            Escalas, repertório, cifras e agenda do ministério em um só lugar.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button>Entrar</Button>
-          <Button variant="secondary">Repertório</Button>
-          <Button variant="accent">Escalas</Button>
-        </CardContent>
-      </Card>
-    </main>
+    <section className="flex flex-col gap-2">
+      <h1 className="text-2xl font-semibold">{name ? `Olá, ${name}!` : 'Olá!'}</h1>
+      <p className="text-muted-foreground">
+        Bem-vindo(a) ao Ministério de Louvor. O painel com próximas escalas e repertório chega na
+        próxima fase.
+      </p>
+    </section>
   );
 }
