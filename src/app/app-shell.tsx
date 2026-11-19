@@ -40,7 +40,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/notificacoes', label: 'Notificações', icon: Bell, mobile: 'more' },
   { to: '/comunicados', label: 'Comunicados', icon: Megaphone, mobile: 'more' },
   { to: '/integrantes', label: 'Integrantes', icon: Users, mobile: 'more' },
-  { to: '/configuracoes', label: 'Configurações', icon: Settings, mobile: 'more', adminOnly: true },
+  // Configurações pessoais (perfil, tema, instalar, sair): para todos.
+  { to: '/configuracoes', label: 'Configurações', icon: Settings, mobile: 'more' },
 ];
 
 function useVisibleItems() {

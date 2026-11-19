@@ -13,6 +13,13 @@
       content="Escalas, repertório, cifras e agenda do ministério de louvor."
     />
     <title>Ministério de Louvor</title>
+    <!-- Aplica o tema escolhido em Configurações antes da primeira pintura (evita piscar). -->
+    <script>
+      try {
+        var tema = localStorage.getItem('tema');
+        if (tema === 'light' || tema === 'dark') document.documentElement.dataset.theme = tema;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

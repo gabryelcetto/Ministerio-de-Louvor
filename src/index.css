@@ -37,8 +37,12 @@
   --overlay: oklch(0.15 0.03 264 / 0.5);
 }
 
+/*
+ * Tema escuro. A escolha da pessoa (Configurações) fica em <html data-theme="light|dark">;
+ * sem escolha ("sistema"), vale o tema do aparelho. Os dois blocos têm AS MESMAS cores.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --background: oklch(0.18 0.03 264);
     --foreground: oklch(0.96 0.01 264);
     --card: oklch(0.22 0.04 264);
@@ -60,7 +64,37 @@
     --event-evento: oklch(0.84 0.13 85);
     --event-evento-soft: oklch(0.3 0.05 85);
     --chord: oklch(0.84 0.14 85);
+    color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --background: oklch(0.18 0.03 264);
+  --foreground: oklch(0.96 0.01 264);
+  --card: oklch(0.22 0.04 264);
+  --card-foreground: oklch(0.96 0.01 264);
+  --primary: oklch(0.82 0.08 264);
+  --primary-foreground: oklch(0.2 0.05 264);
+  --secondary: oklch(0.3 0.06 300);
+  --secondary-foreground: oklch(0.92 0.03 300);
+  --accent: oklch(0.82 0.13 85);
+  --accent-foreground: oklch(0.2 0.05 264);
+  --muted: oklch(0.26 0.03 264);
+  --muted-foreground: oklch(0.72 0.03 264);
+  --border: oklch(0.32 0.04 264);
+  --input: oklch(0.32 0.04 264);
+  --event-culto: oklch(0.8 0.1 264);
+  --event-culto-soft: oklch(0.28 0.06 264);
+  --event-ensaio: oklch(0.8 0.11 300);
+  --event-ensaio-soft: oklch(0.28 0.06 300);
+  --event-evento: oklch(0.84 0.13 85);
+  --event-evento-soft: oklch(0.3 0.05 85);
+  --chord: oklch(0.84 0.14 85);
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 @theme inline {
