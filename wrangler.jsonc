@@ -1,0 +1,12 @@
+// Cloudflare Workers com static assets: serve a pasta dist/ gerada pelo `npm run build`.
+// Docs: https://developers.cloudflare.com/workers/static-assets/
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ministerio-de-louvor",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // Qualquer rota desconhecida devolve index.html → o React Router resolve no navegador.
+    "not_found_handling": "single-page-application",
+  },
+}

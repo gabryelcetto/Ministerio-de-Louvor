@@ -1,0 +1,24 @@
+# dependências e build
+node_modules
+dist
+dev-dist
+*.tsbuildinfo
+
+# variáveis de ambiente (NUNCA commitar)
+.env
+.env.local
+.env.*.local
+
+# Cloudflare / Supabase locais
+.wrangler
+.dev.vars
+supabase/.temp
+supabase/.branches
+
+# editores e SO
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.log
