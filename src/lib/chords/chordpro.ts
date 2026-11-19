@@ -2,7 +2,7 @@
  * Parser e transposição de ChordPro: "[G]Amazing [G7]grace" + diretivas "{key: G}".
  */
 import { transposeChord } from './chord';
-import { keyPrefersFlats, parseKey, semitonesBetween, transposeKey } from './notes';
+import { parseKey, semitonesBetween, transposeKey } from './notes';
 
 export interface Segment {
   /** Acorde que fica sobre o início de `text` (null = só texto). */
@@ -75,7 +75,7 @@ export function extractChords(content: string): string[] {
 export interface TransposeOptions {
   /** Tom atual da música; se omitido, usa {key: X} do conteúdo. */
   fromKey?: string | null;
-  /** Força sustenido/bemol; se omitido, decide pelo tom de destino. */
+  /** Força sustenido/bemol em todas as notas; se omitido, escreve cada nota pelo grau no tom de destino. */
   preferFlats?: boolean;
 }
 
@@ -87,11 +87,13 @@ export function transposeChordPro(
 ): string {
   const fromKey = options.fromKey ?? getDeclaredKey(content);
   const targetKey = fromKey && parseKey(fromKey) ? transposeKey(fromKey, semitones) : null;
-  const preferFlats = options.preferFlats ?? (targetKey ? keyPrefersFlats(targetKey) : false);
+  // Com tom de destino conhecido, cada nota é escrita pelo grau nesse tom (tônica e baixo
+  // seguem a mesma regra). Sem tom, ou com preferFlats forçado, vale a escolha global.
+  const spelling: boolean | string = options.preferFlats ?? targetKey ?? false;
 
   return content
     .replace(CHORD_TOKEN_RE, (_, chord: string) => {
-      return `[${transposeChord(chord.trim(), semitones, preferFlats)}]`;
+      return `[${transposeChord(chord.trim(), semitones, spelling)}]`;
     })
     .replace(/\{\s*key\s*:\s*([^}]*?)\s*\}/gi, (whole, key: string) =>
       parseKey(key) ? `{key: ${transposeKey(key, semitones)}}` : whole,
@@ -100,8 +102,5 @@ export function transposeChordPro(
 
 /** Transpõe para um tom alvo (ex.: G → A). */
 export function transposeChordProToKey(content: string, fromKey: string, toKey: string): string {
-  return transposeChordPro(content, semitonesBetween(fromKey, toKey), {
-    fromKey,
-    preferFlats: keyPrefersFlats(toKey),
-  });
+  return transposeChordPro(content, semitonesBetween(fromKey, toKey), { fromKey });
 }
