@@ -26,7 +26,7 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#ffffff',
+        background_color: '#fbf7ee', // creme do ícone (tela de abertura do app instalado)
         theme_color: '#1b2a4a',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
