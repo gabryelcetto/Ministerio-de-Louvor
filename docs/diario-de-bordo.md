@@ -401,3 +401,49 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
 - **Montar escala respeita as duas permissões do banco**: criar evento é `events.manage`, incluir
   pessoas é `schedules.manage`. Sem a primeira, a tela só oferece eventos já existentes.
 - **Horário digitado é de Brasília**, não do aparelho (mesmo critério de exibição desde a fase E).
+
+---
+
+## Configurações, instalação do app, ícone e README (19/11/2026)
+
+### Arquivos criados/alterados
+
+- `src/features/configuracoes/components/settings-page.tsx` — `/configuracoes` para **todos**
+  (antes era item só de admin e tela provisória): meu perfil (nome, como aparece, e-mail, papel,
+  funções — só leitura), aparência (claro / escuro / sistema), aplicativo (instalar) e sair.
+- `src/lib/theme.ts` (+ teste) — preferência de tema no `localStorage` (`tema`) e
+  `<html data-theme>`; o `index.html` aplica antes da primeira pintura.
+- `src/index.css` — o bloco de cores escuras vale para "sistema escuro, a menos que a pessoa
+  escolheu claro" (`:root:not([data-theme='light'])` dentro do `@media`) e para "escolheu escuro"
+  (`:root[data-theme='dark']`); `color-scheme` acompanha (campos nativos no tema certo). Um teste
+  garante que os dois blocos têm as mesmas cores.
+- `src/lib/install.ts` (+ teste) — captura `beforeinstallprompt`/`appinstalled` desde o
+  `main.tsx`, detecta iPhone/iPad (inclusive iPad que se apresenta como Mac) e app já instalado
+  (`display-mode: standalone`).
+- `src/features/instalar/components/` — botão "Instalar app", página `/instalar` (passo a passo do
+  iPhone: Compartilhar → Adicionar à Tela de Início; instruções genéricas para outros navegadores)
+  e o aviso dispensável no Início.
+- `scripts/generate-icons.mjs` — ícone novo: colcheia azul-marinho com bandeirola dourada sobre
+  fundo creme, desenhada por formas geométricas com antialiasing (supersampling 4×4), em PNG RGBA
+  e o mesmo desenho em SVG (favicon). `public/*.png` e `public/favicon.svg` regerados.
+- `vite.config.ts` — `background_color` do manifesto no creme do ícone (tela de abertura).
+- `README.md` — o que é, stack, como rodar, Supabase (`link`, `db push --include-seed`,
+  `demo-users.sql`), publicar e licença proprietária.
+- `src/app/placeholder-page.tsx` — removido (não há mais tela provisória).
+
+### Decisões
+
+- **Tema só no navegador**: é preferência de tela, não dado do ministério; não precisa de banco
+  nem de migration. "Sistema" é o padrão e não grava nada.
+- **Script de tema inline no `index.html`**: sem ele, quem escolheu "escuro" veria a tela clara
+  piscar até o React carregar.
+- **`beforeinstallprompt` capturado no `main.tsx`**, antes do React: o Chrome dispara cedo, e uma
+  tela que montasse depois perderia o evento. O app chama `preventDefault()` para não mostrar a
+  faixa automática e oferece no Início/Configurações.
+- **Aviso no Início só quando dá para instalar** (Chrome oferecendo, ou iPhone) e ainda não
+  instalado; dispensado, não volta (`localStorage`). No Firefox do computador não aparece, porque
+  não há como instalar.
+- **Ícone "any" com cantos arredondados e transparência; maskable e apple-touch de borda a
+  borda**, com o desenho reduzido para a zona segura (o sistema recorta em círculo/squircle).
+- **README sem segredos**: só a chave pública vai para o `.env.local`; o passo a passo reforça que
+  a `service_role` nunca entra no frontend.

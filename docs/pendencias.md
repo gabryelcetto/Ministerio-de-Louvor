@@ -132,10 +132,22 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **O que fazer (se incomodar):** uma RPC `create_event_with_team(...)` no banco faria tudo numa
   transação.
 
-### 18. Configurações ainda é tela provisória
+### 19. Instalação do app só testada em navegador simulado
 
-- **O quê:** a tela de Configurações (perfis, permissões, funções do ministério) não foi pedida
-  até a fase F.
+- **O quê:** o botão "Instalar app" (Android/Chrome, via `beforeinstallprompt`), o passo a passo
+  do iPhone e o aviso no Início foram conferidos no Chromium simulando Pixel e iPhone, com o
+  evento de instalação **disparado à mão**. Não houve teste em aparelho de verdade.
+- **O que fazer:** publicar (HTTPS é obrigatório para instalar) e conferir:
+  - Android/Chrome: aviso no Início → "Instalar" abre a janela do Chrome; depois de instalado, o
+    aviso some e Configurações mostra "App instalado neste aparelho";
+  - iPhone/Safari: "Ver como instalar" → seguir os passos; abrir pelo ícone (tela cheia);
+  - ícone e tela de abertura (fundo creme) no Android e no iPhone.
+
+### 20. Ícone feito por script
+
+- **O quê:** o ícone (colcheia azul-marinho com bandeirola dourada, fundo creme) é desenhado por
+  `scripts/generate-icons.mjs`. É original e simples; se o ministério tiver um logo, trocar o
+  desenho no script (ou os arquivos em `public/`).
 
 ## Resolvidas recentemente
 
@@ -143,10 +155,10 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **10. Fase E incompleta** — Repertório, Notificações, Comunicados e Integrantes entregues.
 - **12. Grafia do baixo na transposição** — fase F: cada nota (tônica e baixo) é escrita pelo
   grau no tom de destino; `A/G` de E para G sai `C/Bb`.
+- **18. Configurações provisória** — tela de Configurações com perfil, tema, instalar e sair.
 
-## Situação em 19/11/2026 (fase F)
+## Situação em 19/11/2026
 
-- **Na `main`:** fases A a E e os dados de demonstração em português (PR #6).
-- **Fase F (este PR):** editar letra, cifra (com pré-visualização) e tom oficial; histórico com
-  restauração; erros do banco em português (`src/lib/errors.ts`); grafia do baixo (pendência 12);
-  montar escala (evento + pessoas + funções).
+- **Na `main`:** fases A a F e os dados de demonstração em português.
+- **Este PR:** Configurações (perfil, tema claro/escuro/sistema, instalar, sair), instalação do
+  PWA (Android e iPhone) com aviso no Início, ícone novo e README.
