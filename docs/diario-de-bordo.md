@@ -306,6 +306,45 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
 
 ---
 
+## Dados de demonstração e privacidade (19/11/2026)
+
+### Arquivos alterados
+
+- `supabase/seed.sql` — os 10 hinos em inglês saíram. Mesmos 12 ids, tons e categorias (o
+  repertório dos cultos e as escalas continuam apontando para as mesmas músicas):
+  - 4 hinos em português de domínio público (só a 1ª estrofe): "Santo! Santo! Santo!" e "Mais
+    Perto Quero Estar" (trad. João Gomes da Rocha, 1861–1947), "Sou Feliz com Jesus" (trad. W. E.
+    Entzminger, 1859–1930) e "Doxologia" (trad. Sarah P. Kalley, 1825–1907);
+  - 6 textos fictícios novos marcados "(exemplo)", além dos 2 que já existiam.
+  - "Mais Perto Quero Estar" ficou com a cifra `pending` e sem tom oficial (o papel que era do
+    "Rock of Ages"), para demonstrar a revisão de cifra.
+- `src/lib/chords/seed.test.ts` — lê o `seed.sql` (import `?raw`) e confere, sem banco: 10 a 12
+  músicas, toda música com letra e cifra, cifras ChordPro com acordes reconhecidos, `{key}` igual
+  ao tom original e letra igual à cifra sem acordes.
+- `supabase/demo-users.sql` — antes dos `update`, cria o perfil de quem ainda não tem (mesma regra
+  do trigger `handle_new_user`, `on conflict do nothing`). Antes, um usuário criado sem o trigger
+  ficava sem perfil e o script "passava" sem atualizar nada.
+- `index.html` — `<meta name="robots" content="noindex, nofollow">`.
+- `public/robots.txt` — `Disallow: /` para todos os robôs.
+- `package.json` / `package-lock.json` — `"license": "UNLICENSED"` (código sem licença de uso
+  para terceiros, mesmo com o repositório público).
+
+### Decisões
+
+- **Domínio público pelo autor do texto em português**, não pelo autor original: a tradução é uma
+  obra própria. Regra usada: tradutor falecido há mais de 70 anos (antes de 1956), conferido no
+  hymnary.org. Na dúvida (ex.: "Castelo Forte", data de morte do tradutor não encontrada),
+  texto fictício.
+- **Mesmos ids e tons**: nada que referencia as músicas (event_songs, testes, roteiro) precisa
+  mudar.
+- **`noindex` em dois lugares**: o `robots.txt` pede para não rastrear; a meta tag cobre quem
+  chega à página por link direto. Nenhum dos dois é segurança — os dados continuam protegidos
+  pelo login e pelo RLS.
+- **Lockfile editado à mão**: `npm install --package-lock-only` com outra versão do npm reescrevia
+  81 linhas sem relação com a mudança.
+
+---
+
 ## Fase F — Edição, histórico e escalas (19/11/2026)
 
 ### Arquivos criados/alterados

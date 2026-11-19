@@ -1,7 +1,8 @@
 -- =============================================================================
 -- SEED de demonstração (roda em `supabase db reset` e no `supabase start`).
--- Conteúdo: SOMENTE hinos em domínio público (textos anteriores a 1929, só a 1ª estrofe)
--- e textos fictícios. Nenhuma pessoa real. Usuários demo: ver supabase/demo-users.sql.
+-- Conteúdo: SOMENTE hinos em português em domínio público (autor do texto em português
+-- falecido há mais de 70 anos; só a 1ª estrofe) e textos fictícios marcados "(exemplo)".
+-- Nenhuma pessoa real. Usuários demo: ver supabase/demo-users.sql.
 -- =============================================================================
 
 -- Permissões -------------------------------------------------------------------------
@@ -46,62 +47,66 @@ insert into public.ministry_functions (name, sort_order) values
 on conflict (name) do nothing;
 
 -- Músicas ----------------------------------------------------------------------------
+-- Hinos em português SÓ quando o autor do texto em português morreu há mais de 70 anos
+-- (antes de 1956); autorias conferidas no hymnary.org. Só a 1ª estrofe, na forma tradicional.
+-- Todo o resto é texto fictício escrito para a demonstração e marcado "(exemplo)".
 insert into public.songs (id, title, artist, category, original_key, official_key, notes) values
-  ('00000000-0000-4000-8000-000000000001', 'Amazing Grace', 'John Newton (1779)', 'Hino', 'G', 'G', 'Domínio público'),
-  ('00000000-0000-4000-8000-000000000002', 'Holy, Holy, Holy', 'Reginald Heber (1826)', 'Adoração', 'D', 'D', 'Domínio público'),
-  ('00000000-0000-4000-8000-000000000003', 'A Mighty Fortress Is Our God', 'Martinho Lutero (1529), trad. F. H. Hedge (1853)', 'Hino', 'C', 'C', 'Domínio público — "Castelo Forte"'),
-  ('00000000-0000-4000-8000-000000000004', 'Joy to the World', 'Isaac Watts (1719)', 'Natal', 'D', 'D', 'Domínio público'),
-  ('00000000-0000-4000-8000-000000000005', 'Rock of Ages', 'Augustus Toplady (1763)', 'Hino', 'C', null, 'Domínio público'),
-  ('00000000-0000-4000-8000-000000000006', 'It Is Well with My Soul', 'Horatio Spafford (1873)', 'Hino', 'C', 'C', 'Domínio público'),
-  ('00000000-0000-4000-8000-000000000007', 'Blessed Assurance', 'Fanny Crosby (1873)', 'Louvor', 'D', 'D', 'Domínio público'),
-  ('00000000-0000-4000-8000-000000000008', 'Come, Thou Fount of Every Blessing', 'Robert Robinson (1758)', 'Louvor', 'D', null, 'Domínio público'),
-  ('00000000-0000-4000-8000-000000000009', 'Doxology', 'Thomas Ken (1674)', 'Adoração', 'G', 'G', 'Domínio público'),
-  ('00000000-0000-4000-8000-000000000010', 'O Come, All Ye Faithful', 'Frederick Oakeley (1841)', 'Natal', 'G', 'G', 'Domínio público'),
+  ('00000000-0000-4000-8000-000000000001', 'Graça Sem Fim (exemplo)', 'Texto fictício de demonstração', 'Hino', 'G', 'G', 'Texto fictício'),
+  ('00000000-0000-4000-8000-000000000002', 'Santo! Santo! Santo!', 'Reginald Heber (1826), trad. João Gomes da Rocha (1861–1947)', 'Adoração', 'D', 'D', 'Domínio público — tradução de 1888'),
+  ('00000000-0000-4000-8000-000000000003', 'Rocha Firme (exemplo)', 'Texto fictício de demonstração', 'Hino', 'C', 'C', 'Texto fictício'),
+  ('00000000-0000-4000-8000-000000000004', 'Nasceu o Salvador (exemplo)', 'Texto fictício de demonstração', 'Natal', 'D', 'D', 'Texto fictício'),
+  ('00000000-0000-4000-8000-000000000005', 'Mais Perto Quero Estar', 'Sarah F. Adams (1841), trad. João Gomes da Rocha (1861–1947)', 'Hino', 'C', null, 'Domínio público — cifra enviada por integrante, aguardando revisão'),
+  ('00000000-0000-4000-8000-000000000006', 'Sou Feliz com Jesus', 'Horatio G. Spafford (1873), trad. W. E. Entzminger (1859–1930)', 'Hino', 'C', 'C', 'Domínio público'),
+  ('00000000-0000-4000-8000-000000000007', 'Certeza Bendita (exemplo)', 'Texto fictício de demonstração', 'Louvor', 'D', 'D', 'Texto fictício'),
+  ('00000000-0000-4000-8000-000000000008', 'Fonte de Bênçãos (exemplo)', 'Texto fictício de demonstração', 'Louvor', 'D', null, 'Texto fictício'),
+  ('00000000-0000-4000-8000-000000000009', 'Doxologia', 'Thomas Ken (1674), trad. Sarah P. Kalley (1825–1907)', 'Adoração', 'G', 'G', 'Domínio público — tradução de 1861'),
+  ('00000000-0000-4000-8000-000000000010', 'Vinde Adorar (exemplo)', 'Texto fictício de demonstração', 'Natal', 'G', 'G', 'Texto fictício'),
   ('00000000-0000-4000-8000-000000000011', 'Cântico da Manhã (exemplo)', 'Texto fictício de demonstração', 'Louvor', 'E', 'E', 'Texto fictício — exercita acordes 7M, 7(9), m7(b5)'),
   ('00000000-0000-4000-8000-000000000012', 'Ao Deus Fiel (exemplo)', 'Texto fictício de demonstração', 'Adoração', 'A', 'A', 'Texto fictício — exercita baixo invertido')
 on conflict (id) do nothing;
 
 insert into public.song_lyrics (song_id, content) values
-  ('00000000-0000-4000-8000-000000000001', $t$Amazing grace! How sweet the sound
-That saved a wretch like me!
-I once was lost, but now am found;
-Was blind, but now I see.$t$),
-  ('00000000-0000-4000-8000-000000000002', $t$Holy, holy, holy! Lord God Almighty!
-Early in the morning our song shall rise to Thee;
-Holy, holy, holy, merciful and mighty!
-God in three Persons, blessed Trinity!$t$),
-  ('00000000-0000-4000-8000-000000000003', $t$A mighty fortress is our God,
-A bulwark never failing;
-Our helper He, amid the flood
-Of mortal ills prevailing.$t$),
-  ('00000000-0000-4000-8000-000000000004', $t$Joy to the world, the Lord is come!
-Let earth receive her King;
-Let every heart prepare Him room,
-And heaven and nature sing.$t$),
-  ('00000000-0000-4000-8000-000000000005', $t$Rock of Ages, cleft for me,
-Let me hide myself in Thee;
-Let the water and the blood,
-From Thy wounded side which flowed.$t$),
-  ('00000000-0000-4000-8000-000000000006', $t$When peace, like a river, attendeth my way,
-When sorrows like sea billows roll;
-Whatever my lot, Thou hast taught me to say,
-It is well, it is well with my soul.$t$),
-  ('00000000-0000-4000-8000-000000000007', $t$Blessed assurance, Jesus is mine!
-O what a foretaste of glory divine!
-Heir of salvation, purchase of God,
-Born of His Spirit, washed in His blood.$t$),
-  ('00000000-0000-4000-8000-000000000008', $t$Come, Thou Fount of every blessing,
-Tune my heart to sing Thy grace;
-Streams of mercy, never ceasing,
-Call for songs of loudest praise.$t$),
-  ('00000000-0000-4000-8000-000000000009', $t$Praise God, from whom all blessings flow;
-Praise Him, all creatures here below;
-Praise Him above, ye heavenly host;
-Praise Father, Son, and Holy Ghost.$t$),
-  ('00000000-0000-4000-8000-000000000010', $t$O come, all ye faithful, joyful and triumphant,
-O come ye, O come ye to Bethlehem;
-Come and behold Him, born the King of angels;
-O come, let us adore Him, Christ the Lord.$t$),
+  ('00000000-0000-4000-8000-000000000001', $t$Sem fim é a graça que me alcançou,
+Do pó da estrada o Senhor me ergueu;
+Perdido estava e ele me achou,
+E hoje canto o amor que me deu.$t$),
+  ('00000000-0000-4000-8000-000000000002', $t$Santo! Santo! Santo! Deus onipotente!
+Cedo de manhã cantaremos teu louvor;
+Santo! Santo! Santo! Deus Jeová triúno,
+És um só Deus, excelso Criador.$t$),
+  ('00000000-0000-4000-8000-000000000003', $t$Rocha firme é o nosso Deus,
+Abrigo em meio ao vendaval;
+Quem nele espera não temerá,
+Pois seu amor é sem igual.$t$),
+  ('00000000-0000-4000-8000-000000000004', $t$Nasceu na noite o Salvador,
+Os céus se enchem de canção;
+Pastores correm com fervor
+Para adorar com o coração.$t$),
+  ('00000000-0000-4000-8000-000000000005', $t$Mais perto quero estar, meu Deus, de ti,
+Inda que seja a dor que me una a ti;
+Sempre hei de suplicar:
+Mais perto quero estar,
+Mais perto quero estar, meu Deus, de ti!$t$),
+  ('00000000-0000-4000-8000-000000000006', $t$Se paz a mais doce me deres gozar,
+Se dor a mais forte sofrer,
+Oh! seja o que for, tu me fazes saber
+Que feliz com Jesus sempre sou!$t$),
+  ('00000000-0000-4000-8000-000000000007', $t$Tenho a certeza: Jesus é meu!
+Paz que o mundo jamais me deu;
+Sou seu herdeiro, por graça e fé,
+Nele descanso, firme de pé.$t$),
+  ('00000000-0000-4000-8000-000000000008', $t$Vem, ó fonte de alegria,
+Ensina-me a te louvar;
+Tua graça, noite e dia,
+Faz meu coração cantar.$t$),
+  ('00000000-0000-4000-8000-000000000009', $t$A Deus, supremo Benfeitor,
+Vós, anjos e homens, dai louvor;
+A Deus o Filho, a Deus o Pai,
+E a Deus Espírito, glória dai.$t$),
+  ('00000000-0000-4000-8000-000000000010', $t$Vinde, ó povo, cheio de alegria,
+Vinde depressa ver o Rei que nasceu;
+Vinde adorá-lo, luz da profecia,
+Vinde adorar o Filho que Deus nos deu.$t$),
   ('00000000-0000-4000-8000-000000000011', $t$Desperta, ó alma, que a manhã chegou,
 Canta ao Senhor que a noite dissipou;
 Cada novo dia é um dom de amor,
@@ -113,66 +118,67 @@ De geração em geração.$t$)
 on conflict (song_id) do nothing;
 
 insert into public.song_chords (song_id, content, review_status) values
-  ('00000000-0000-4000-8000-000000000001', $c${title: Amazing Grace}
+  ('00000000-0000-4000-8000-000000000001', $c${title: Graça Sem Fim (exemplo)}
 {key: G}
-A[G]mazing [G7]grace! How [C]sweet the [G]sound
-That [G]saved a wretch like [D]me!
-I [G]once was [G7]lost, but [C]now am [G]found;
-Was [Em]blind, but [D]now I [G]see.$c$, 'official'),
-  ('00000000-0000-4000-8000-000000000002', $c${title: Holy, Holy, Holy}
+Sem [G]fim é a [G7]graça que me al[C]cançou[G],
+Do [G]pó da es[Em]trada o Se[D]nhor me ergueu;
+Per[G]dido es[G7]tava e [C]ele me a[G]chou,
+E [Em]hoje [D]canto o amor que me [G]deu.$c$, 'official'),
+  ('00000000-0000-4000-8000-000000000002', $c${title: Santo! Santo! Santo!}
 {key: D}
-[D]Holy, holy, [Bm]holy! [G]Lord God Al[D]mighty!
-[A]Early in the [D]morning our [G]song shall [E]rise to [A]Thee;
-[D]Holy, holy, [Bm]holy, [G]merciful and [D]mighty!
-[G]God in three [D]Persons, [Bm]bless[G]ed [A]Trini[D]ty!$c$, 'official'),
-  ('00000000-0000-4000-8000-000000000003', $c${title: A Mighty Fortress Is Our God}
+[D]Santo! Santo! [Bm]Santo! [G]Deus oni[D]potente!
+[A]Cedo de ma[D]nhã canta[G]remos [E]teu lou[A]vor;
+[D]Santo! Santo! [Bm]Santo! [G]Deus Jeo[D]vá tri[A]úno,
+[G]És um só [D]Deus, ex[Bm]celso [G]Cri[A]a[D]dor.$c$, 'official'),
+  ('00000000-0000-4000-8000-000000000003', $c${title: Rocha Firme (exemplo)}
 {key: C}
-A [C]mighty [G]fortress [C]is our [F]God,
-A [C]bulwark [G]never [C]failing;
-Our [C]helper [G]He, a[C]mid the [F]flood
-Of [C]mortal [G]ills pre[C]vailing.$c$, 'official'),
-  ('00000000-0000-4000-8000-000000000004', $c${title: Joy to the World}
+[C]Rocha [G]firme é o [C]nosso [F]Deus,
+A[C]brigo em [G]meio ao venda[C]val;
+Quem [C]nele es[G]pera não [Am]teme[F]rá,
+Pois [C]seu a[G]mor é sem i[C]gual.$c$, 'official'),
+  ('00000000-0000-4000-8000-000000000004', $c${title: Nasceu o Salvador (exemplo)}
 {key: D}
-[D]Joy to the world, the [G]Lord [A]is [D]come!
-Let [D]earth receive her [A]King;
-Let [D]every heart prepare Him room,
-And [D]heaven and nature sing.$c$, 'official'),
-  ('00000000-0000-4000-8000-000000000005', $c${title: Rock of Ages}
+[D]Nasceu na noite o [G]Salva[A]dor[D],
+Os [D]céus se enchem de [A]canção;
+Pas[D]tores correm [G]com fer[D]vor
+Para ado[G]rar com o [A]cora[D]ção.$c$, 'official'),
+  ('00000000-0000-4000-8000-000000000005', $c${title: Mais Perto Quero Estar}
 {key: C}
-[C]Rock of Ages, [G]cleft for [C]me,
-Let me [F]hide my[C]self in [G]Thee;
-[C]Let the water [G]and the blood,
-[C]From Thy wounded [G]side which [C]flowed.$c$, 'pending'),
-  ('00000000-0000-4000-8000-000000000006', $c${title: It Is Well with My Soul}
+Mais [C]perto quero es[F]tar, meu [C]Deus, de [G]ti,
+Inda que [C]seja a [F]dor que me [C]una a [G]ti;[C]
+[C]Sempre hei de supli[G]car:
+[C]Mais perto quero es[G]tar,
+Mais [C]perto quero es[F]tar, meu [C]Deus, [G]de [C]ti!$c$, 'pending'),
+  ('00000000-0000-4000-8000-000000000006', $c${title: Sou Feliz com Jesus}
 {key: C}
-When [C]peace, like a [Am]river, at[F]tendeth my [C]way,
-When [C]sorrows like [Am]sea billows [D7]roll;[G]
-What[C]ever my [F]lot, Thou hast [Dm]taught me to [G]say,
-It is [C]well, it is [F]well with my [G7]soul.[C]$c$, 'official'),
-  ('00000000-0000-4000-8000-000000000007', $c${title: Blessed Assurance}
+Se [C]paz a mais [Am]doce me [F]deres go[C]zar,
+Se [C]dor a mais [Am]forte so[D7]frer,[G]
+Oh! [C]seja o que [F]for, tu me [Dm]fazes sa[G]ber
+Que fe[C]liz com Je[F]sus sempre [G7]sou![C]$c$, 'official'),
+  ('00000000-0000-4000-8000-000000000007', $c${title: Certeza Bendita (exemplo)}
 {key: D}
-[D]Blessed as[G]surance, [D]Jesus is mine!
-O [D]what a fore[A]taste of glory di[D]vine!
-[D]Heir of sal[G]vation, [D]purchase of God,
-[G]Born of His [D]Spirit, [A]washed in His [D]blood.$c$, 'official'),
-  ('00000000-0000-4000-8000-000000000008', $c${title: Come, Thou Fount of Every Blessing}
+[D]Tenho a cer[G]teza: Je[D]sus é meu!
+[D]Paz que o mundo ja[A]mais me deu;
+[D]Sou seu her[G]deiro, por [D]graça e fé,
+[G]Nele des[D]canso, [A]firme de [D]pé.$c$, 'official'),
+  ('00000000-0000-4000-8000-000000000008', $c${title: Fonte de Bênçãos (exemplo)}
 {key: D}
-[D]Come, Thou Fount of [G]every [D]blessing,
-[D]Tune my heart to [A]sing Thy [D]grace;
-[D]Streams of mercy, [G]never [D]ceasing,
-[D]Call for songs of [A]loudest [D]praise.$c$, 'official'),
-  ('00000000-0000-4000-8000-000000000009', $c${title: Doxology}
+[D]Vem, ó fonte de a[G]legri[D]a,
+[D]Ensina-me a te [A]lou[D]var;
+[D]Tua graça, noite e [G]di[D]a,
+[D]Faz meu coração [A]can[D]tar.$c$, 'official'),
+  ('00000000-0000-4000-8000-000000000009', $c${title: Doxologia}
 {key: G}
-[G]Praise God, from [D]whom all [Em]blessings [D]flow;
-[G]Praise Him, all [C]creatures [D]here be[G]low;
-[G]Praise Him a[D]bove, ye [Em]heavenly [D]host;
-[G]Praise Father, [C]Son, and [D]Holy [G]Ghost.$c$, 'official'),
-  ('00000000-0000-4000-8000-000000000010', $c${title: O Come, All Ye Faithful}
+[G]A Deus, su[D]premo [Em]Benfei[D]tor,
+[G]Vós, anjos e [C]homens, [D]dai lou[G]vor;
+[G]A Deus o [D]Filho, a [Em]Deus o [D]Pai,
+[G]E a Deus Es[C]pírito, [D]glória [G]dai.$c$, 'official'),
+  ('00000000-0000-4000-8000-000000000010', $c${title: Vinde Adorar (exemplo)}
 {key: G}
-O [G]come, all ye [D]faithful, [G]joyful and [D]tri[G]umphant,
-O [Em]come ye, O [D]come ye to [A]Beth[D]lehem;
-[G]Come and be[D]hold Him, [G]born the [C]King of [D]angels;
-O [G]come, let us a[D]dore Him, [G]Christ [D]the [G]Lord.$c$, 'official'),
+[G]Vinde, ó povo, [D]cheio de a[G]legri[D]a[G],
+[Em]Vinde de[D]pressa ver o [A]Rei que nas[D]ceu;
+[G]Vinde ado[D]rá-lo, [G]luz da pro[C]feci[D]a,
+[G]Vinde ado[D]rar o Filho que [G]Deus [D]nos [G]deu.$c$, 'official'),
   ('00000000-0000-4000-8000-000000000011', $c${title: Cântico da Manhã (exemplo)}
 {key: E}
 Des[E7M]perta, ó alma, que a ma[A7M]nhã chegou,
