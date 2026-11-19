@@ -25,6 +25,16 @@ begin
       v_admin_email, v_leader_email, v_member_email;
   end if;
 
+  -- Usuários criados antes das migrations (ou com o trigger desativado) podem estar sem perfil.
+  -- Cria só o que falta, do mesmo jeito que o trigger handle_new_user; os updates abaixo completam.
+  insert into public.profiles (id, full_name, display_name)
+  select u.id,
+         coalesce(u.raw_user_meta_data ->> 'full_name', split_part(u.email, '@', 1)),
+         u.raw_user_meta_data ->> 'display_name'
+  from auth.users u
+  where u.id in (v_admin, v_leader, v_member)
+  on conflict (id) do nothing;
+
   update public.profiles set full_name = 'Ana Administradora', display_name = 'Ana',
     access_role = 'admin', is_owner = true, status = 'active', phone = '(00) 90000-0001'
   where id = v_admin;

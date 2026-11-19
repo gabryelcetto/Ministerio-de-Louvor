@@ -1,0 +1,3 @@
+# App interno do ministério: nenhuma página deve ser indexada.
+User-agent: *
+Disallow: /

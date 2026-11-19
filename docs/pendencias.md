@@ -90,6 +90,31 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   aviso na tela quando o limite é atingido). Não há paginação ("carregar mais").
 - **O que fazer:** quando o volume justificar, trocar por `useInfiniteQuery` com `range()`.
 
+### 14. Conferir o texto dos hinos do seed com um hinário impresso antigo
+
+- **O quê:** o seed traz a 1ª estrofe de 4 hinos em português de domínio público: "Santo! Santo!
+  Santo!" e "Mais Perto Quero Estar" (trad. João Gomes da Rocha, 1861–1947), "Sou Feliz com
+  Jesus" (trad. W. E. Entzminger, 1859–1930) e "Doxologia" (trad. Sarah P. Kalley, 1825–1907).
+  As **autorias** foram conferidas no hymnary.org; o **texto** foi escrito na forma tradicional
+  do Cantor Cristão, mas não foi possível conferir palavra por palavra (os sites de busca não
+  reproduzem letras).
+- **Por quê:** hinários recentes trazem versões revisadas ("alt."), e a revisão pode ter direitos
+  próprios. Vale a versão antiga.
+- **O que fazer:** comparar com uma edição anterior a 1956 (ex.: Cantor Cristão ou Salmos e
+  Hinos antigos). Se alguma diferir de forma relevante ou houver dúvida, trocar o texto por um
+  fictício marcado "(exemplo)" — o teste `src/lib/chords/seed.test.ts` garante que letra, cifra
+  e tom continuam consistentes.
+- **Fora do seed:** "Castelo Forte" (trad. J. Eduardo von Hafe, 1886) ficou de fora porque não
+  foi possível confirmar a data de falecimento do tradutor.
+
+### 15. `demo-users.sql` ainda não executado
+
+- **O quê:** o `seed.sql` novo já rodou no job `db` do CI (migrations + seed + pgTAP verdes no
+  PR #6). O `supabase/demo-users.sql` não roda no CI (depende de usuários criados no painel), então
+  o novo `insert` de perfis não foi executado.
+- **O que fazer:** rodar no SQL Editor depois de criar os 3 usuários e conferir que os perfis
+  existem com os nomes e papéis do script.
+
 ## Resolvidas recentemente
 
 - **7. Comunicados e Integrantes sem atalho no celular** — menu "Mais" na barra inferior.
