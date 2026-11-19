@@ -64,7 +64,7 @@ set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 
 select is_empty('select id from public.songs', 'anônimo não lê músicas');
-select is_empty('select id from public.song_lyrics', 'anônimo não lê letras');
+select is_empty('select song_id from public.song_lyrics', 'anônimo não lê letras');
 select throws_ok(
   'select public.get_dashboard()', '42501', null,
   'anônimo não executa get_dashboard()'
