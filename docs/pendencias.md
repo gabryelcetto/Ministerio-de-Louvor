@@ -37,11 +37,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   comunicado publicado a todo integrante ativo. Falta a tabela de destinatários (ex.:
   `announcement_targets`) — fica para depois do protótipo.
 
-### 7. Comunicados e Integrantes sem atalho na barra inferior do celular
-
-- **O quê:** a barra inferior tem 5 itens (Início, Escalas, Repertório, Agenda, Notificações). No
-  celular, Comunicados e Integrantes só são acessíveis pelo endereço. Falta um menu "Mais".
-
 ### 8. Commit de merge sem linha de coautoria
 
 - O commit `Merge branch 'feat/fase-b-banco' into feat/fase-c-cifras` (usado para levar a correção do
@@ -49,36 +44,51 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 ### 9. Telas da fase E sem teste com dados reais
 
-- **O quê:** Dashboard, Minhas escalas, Detalhe do evento e Agenda foram construídos contra
-  `src/types/database.types.ts` e as migrations, **sem banco disponível**. Foram validados com
-  lint, typecheck, testes unitários das funções puras, build e capturas de tela com respostas
-  simuladas da API (Playwright interceptando as chamadas ao Supabase).
+- **O quê:** todas as telas de leitura (Início, Minhas escalas, Detalhe do evento, Agenda,
+  Repertório, Música, Notificações, Comunicados, Integrantes e o menu "Mais") foram construídas
+  contra `src/types/database.types.ts` e as migrations, **sem banco disponível**. Foram validadas
+  com lint, typecheck, testes unitários das funções puras, build e capturas de tela com respostas
+  simuladas da API (Playwright interceptando as chamadas ao Supabase), nos papéis de integrante e
+  de admin.
 - **O que não foi verificado com dados reais:**
-  - formato real do JSON de `get_dashboard()` (ex.: `unread_notifications` vem como número;
+  - formato real do JSON de `get_dashboard()` (ex.: `unread_notifications` como número;
     `next_service`/`next_rehearsal` como objeto `events` completo);
-  - select aninhado do detalhe do evento (`events → event_assignments → profiles/ministry_functions`
-    e `events → event_songs → songs`) — nomes das FKs em `Relationships` foram deduzidos do padrão
-    do Postgres (`<tabela>_<coluna>_fkey`);
+  - selects aninhados — os nomes das FKs em `Relationships` foram deduzidos do padrão do Postgres
+    (`<tabela>_<coluna>_fkey`): `events → event_assignments → profiles/ministry_functions`,
+    `events → event_songs → songs`, `songs → song_lyrics/song_chords` (1-para-1, vêm como objeto),
+    `profiles → member_functions → ministry_functions` e `announcements → profiles` (autor);
   - filtro no recurso embutido em Minhas escalas (`event:events!inner(...)` + `.gte('event.starts_at', …)`);
-  - RLS de `profiles` para um integrante comum ver os nomes dos colegas da escala;
-  - agrupamento por dia perto da meia-noite com eventos reais do seed.
-- **O que fazer:** com o Supabase local no ar (`npx supabase db start` + `supabase/demo-users.sql`),
-  entrar como líder e como integrante e abrir `/`, `/escalas`, `/escalas/<id>` e `/agenda`.
+  - `search_songs` encadeado com `.select(...)` e `.eq('category', …)` (filtro sobre o resultado
+    da função) e a busca sem acento com os títulos reais;
+  - `update` de `notifications.read_at` com o GRANT de coluna (deve funcionar só para as próprias);
+  - contagem de não lidas com `head: true` + `count: 'exact'` (o Supabase devolve no `Content-Range`);
+  - `get_member_contacts` para líder/admin (todos) e o fato de o integrante **não** chamar a RPC;
+  - RLS de `profiles` para um integrante comum ver os nomes dos colegas;
+  - agrupamento por dia perto da meia-noite com eventos reais do seed;
+  - o `<dialog>` do menu "Mais" no Safari do iPhone (testado só no Chromium).
+- **O que fazer:** seguir `docs/roteiro-de-teste.md` com os usuários de `supabase/demo-users.sql`.
   Depois, gerar os tipos (pendência 5) e conferir se o typecheck continua passando.
-
-### 10. Fase E incompleta: Comunicados, Integrantes, Repertório e Notificações
-
-- **O quê:** a mensagem com o escopo da fase E chegou cortada depois do item "Agenda". Foram
-  entregues Dashboard, Escalas (lista + detalhe) e Agenda. Continuam como tela provisória:
-  Comunicados, Integrantes, Repertório (busca/filtro + `<ChordSheet>` com seletor de tom) e
-  Notificações (lista + marcar como lida).
-- **O que fazer:** confirmar o escopo restante e entregá-lo em um novo PR a partir da `main`.
 
 ### 11. `CLAUDE.md` recriado no repositório
 
 - **O quê:** o `CLAUDE.md` citado nas instruções não estava versionado. Na fase E foi criado um
   com as regras atualizadas (fluxo de branches a partir da `main`, coautoria, fim da regra 5.1) e
   as convenções que aparecem no diário. Se existir uma versão local mais completa, junte as duas.
+
+### 12. Transposição: grafia do baixo segue o tom de destino
+
+- **O quê:** a biblioteca da fase C escolhe sustenido ou bemol pelo tom de destino. Em linhas de
+  baixo descendente isso pode sair com a grafia menos natural: `A/G` em E transposto para G vira
+  `C/A#` (o músico escreveria `C/Bb`). O som está certo; só a grafia.
+- **O que fazer (opcional):** em `src/lib/chords/chord.ts`, escolher a grafia do baixo pela
+  direção do movimento ou por uma tabela de baixos comuns por tom. Tem teste para acrescentar em
+  `chords.test.ts`.
+
+### 13. Listas com limite fixo
+
+- **O quê:** Notificações mostra as 100 mais recentes e Comunicados os 50 mais recentes (com
+  aviso na tela quando o limite é atingido). Não há paginação ("carregar mais").
+- **O que fazer:** quando o volume justificar, trocar por `useInfiniteQuery` com `range()`.
 
 ### 14. Conferir o texto dos hinos do seed com um hinário impresso antigo
 
@@ -97,15 +107,23 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **Fora do seed:** "Castelo Forte" (trad. J. Eduardo von Hafe, 1886) ficou de fora porque não
   foi possível confirmar a data de falecimento do tradutor.
 
-### 15. SQL do seed validado só pelo CI
+### 15. `demo-users.sql` ainda não executado
 
-- **O quê:** sem banco nesta execução, `supabase/seed.sql` e `supabase/demo-users.sql` não foram
-  executados. O teste `seed.test.ts` confere o conteúdo das músicas, não a sintaxe SQL.
-- **O que fazer:** o job `db` do CI aplica migrations + seed; para o `demo-users.sql`, rodar no
-  SQL Editor depois de criar os 3 usuários e conferir que os perfis existem.
+- **O quê:** o `seed.sql` novo já rodou no job `db` do CI (migrations + seed + pgTAP verdes no
+  PR #6). O `supabase/demo-users.sql` não roda no CI (depende de usuários criados no painel), então
+  o novo `insert` de perfis não foi executado.
+- **O que fazer:** rodar no SQL Editor depois de criar os 3 usuários e conferir que os perfis
+  existem com os nomes e papéis do script.
 
-## Situação em 19/11/2026 (fase E)
+## Resolvidas recentemente
 
-- **Concluídas e na `main`:** fases A (fundação), B (banco), C (cifras) e D (login e layout).
-- **Fase E (este PR):** Dashboard, Minhas escalas, Detalhe do evento e Agenda.
-- **Falta da fase E:** ver pendência 10.
+- **7. Comunicados e Integrantes sem atalho no celular** — menu "Mais" na barra inferior.
+- **10. Fase E incompleta** — Repertório, Notificações, Comunicados e Integrantes entregues.
+
+## Situação em 19/11/2026 (fase E concluída)
+
+- **Na `main`:** fases A (fundação), B (banco), C (cifras), D (login e layout) e a primeira parte
+  da E (Início, Escalas, Agenda).
+- **Este PR:** Repertório (lista + música com cifra transponível), Notificações, Comunicados,
+  Integrantes e menu "Mais" — fecha a fase E.
+- **Próximo:** fase F (não iniciada).

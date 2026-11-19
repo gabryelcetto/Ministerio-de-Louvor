@@ -251,6 +251,61 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
 
 ---
 
+## Fase E — Telas de leitura, parte 2 (19/11/2026)
+
+### Arquivos criados/alterados
+
+- `src/features/repertorio/song-key.ts` (+ teste) — lógica pura da tela da música: tom-base da
+  cifra (`{key}` ou tom original), semitons pelo caminho mais curto (−5…+6), tom atual, opções do
+  seletor no mesmo modo (maior/menor), link de mídia seguro (só `http(s)`) e categorias distintas.
+- `src/features/repertorio/api.ts` — `search_songs` (busca sem acento no banco) com
+  `.eq('category', …)` sobre o resultado, categorias para os filtros e a música com letra e cifra.
+- `src/features/repertorio/components/songs-page.tsx` — lista com busca (espera 250 ms após a
+  digitação), filtro por categoria e estado na URL (`?busca=&categoria=`).
+- `src/features/repertorio/components/song-page.tsx` — música: abas **Cifra** e **Letra**
+  (acessíveis por teclado), seletor de tom com − / + e "Tom oficial", tamanho da letra (A− / A+,
+  salvo no navegador), aviso de cifra `pending`, link de mídia.
+- `src/features/repertorio/components/chord-sheet.tsx` — acordes na cor `--chord` (dourado com
+  contraste) e em `em`, para acompanharem o tamanho da letra.
+- `src/features/escalas/components/song-row.tsx` — o link da música no repertório de um evento leva
+  `?tom=<tom do dia>`.
+- `src/features/notificacoes/api.ts` (+ teste) + `components/notifications-page.tsx` — lista
+  (lidas e não lidas), filtro "Não lidas", marcar uma / marcar todas, contador de não lidas.
+- `src/features/comunicados/api.ts` + `components/announcements-page.tsx` — do mais recente, com
+  autor e selo "Agendado" (só quem gerencia comunicados enxerga os futuros, pelo RLS).
+- `src/features/integrantes/api.ts` (+ teste) + `components/members-page.tsx` — nome, papel e
+  funções; telefone só com `members.view_contacts`; inativos só para `members.manage`.
+- `src/app/app-shell.tsx`, `src/app/nav.ts` (+ teste) — barra inferior com 4 itens + **Mais**;
+  sino com contador no topo do celular; contador também na barra lateral.
+- `src/app/router.tsx` — rotas `/repertorio`, `/repertorio/:songId`, `/notificacoes`,
+  `/comunicados`, `/integrantes`.
+- `src/types/database.types.ts` — FKs 1-para-1 (`song_lyrics`, `song_chords` → `songs`),
+  `song_favorites → songs` e `announcements.created_by → profiles`.
+- `src/index.css` — tokens `--chord` e `--overlay`.
+- `docs/roteiro-de-teste.md` — roteiro por tela para integrante e admin.
+
+### Decisões
+
+- **Tom guardado na URL** (`?tom=A`): recarregar, voltar e compartilhar mantêm o tom, e o
+  repertório de um culto abre a música direto no tom do dia. Sem `?tom`, abre no **tom oficial**
+  (o que a banda toca); sem tom oficial, no tom em que a cifra foi escrita.
+- **Estado = semitons em relação à cifra escrita**, sempre normalizado para −5…+6: os acordes
+  ficam com a grafia do tom de destino e o botão "+" nunca acumula voltas.
+- **Barra de tom fixa embaixo** (acima da navegação) no celular, botões de 48 px: dá para trocar
+  de tom com o polegar segurando o celular. O tamanho da letra fica junto das abas, porque se
+  ajusta uma vez e não durante a música.
+- **Barra inferior com 4 itens + "Mais"**: com 6 itens o rótulo "Notificações" não cabe em
+  telas de 360–390 px. Notificações ganhou um sino com contador no topo da tela e também aparece no
+  "Mais"; Comunicados, Integrantes e Configurações (esta só para admin) ficam no "Mais".
+- **Menu "Mais" com `<dialog>` nativo**: prende o foco, fecha com Esc e devolve o foco ao botão
+  sem biblioteca extra.
+- **Telefone nunca é pedido sem permissão**: sem `members.view_contacts` o app nem chama
+  `get_member_contacts` (o banco devolveria só o próprio telefone, mas assim nada trafega à toa).
+- **Links vindos do banco são filtrados**: notificações só seguem caminhos internos (`/…`) e o
+  link de mídia só aceita `http(s)`.
+
+---
+
 ## Dados de demonstração e privacidade (19/11/2026)
 
 ### Arquivos alterados

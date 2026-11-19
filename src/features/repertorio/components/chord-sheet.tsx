@@ -57,7 +57,8 @@ export function ChordSheet({
                     {hasChord && (
                       <span
                         className={cn(
-                          'min-h-[1.25em] pr-1 font-mono text-sm font-bold text-primary',
+                          // Tamanho em em: acompanha o tamanho da letra escolhido na tela.
+                          'min-h-[1.25em] pr-1 font-mono text-[0.85em] font-bold text-chord',
                           !unit.chord && 'select-none',
                         )}
                       >

@@ -18,7 +18,12 @@ export function SongRow({
 }) {
   return (
     <Link
-      to={`/repertorio/${song.songId}`}
+      // Abre a música já no tom do dia (a tela da música lê ?tom=).
+      to={
+        song.key
+          ? `/repertorio/${song.songId}?tom=${encodeURIComponent(song.key)}`
+          : `/repertorio/${song.songId}`
+      }
       className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span

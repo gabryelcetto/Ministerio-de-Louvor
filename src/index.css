@@ -31,6 +31,10 @@
   --event-ensaio-soft: oklch(0.94 0.035 300);
   --event-evento: oklch(0.5 0.11 70); /* dourado escuro, legível sobre branco */
   --event-evento-soft: oklch(0.95 0.05 85);
+  /* Acordes na cifra: dourado escurecido para ter contraste sobre o branco. */
+  --chord: oklch(0.52 0.12 70);
+  /* Fundo escurecido atrás de menus e diálogos. */
+  --overlay: oklch(0.15 0.03 264 / 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -55,6 +59,7 @@
     --event-ensaio-soft: oklch(0.28 0.06 300);
     --event-evento: oklch(0.84 0.13 85);
     --event-evento-soft: oklch(0.3 0.05 85);
+    --chord: oklch(0.84 0.14 85);
   }
 }
 
@@ -82,6 +87,8 @@
   --color-event-ensaio-soft: var(--event-ensaio-soft);
   --color-event-evento: var(--event-evento);
   --color-event-evento-soft: var(--event-evento-soft);
+  --color-chord: var(--chord);
+  --color-overlay: var(--overlay);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
