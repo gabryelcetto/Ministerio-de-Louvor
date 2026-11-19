@@ -1,8 +1,18 @@
-import { ArrowLeft, ExternalLink, Minus, Plus, RotateCcw } from 'lucide-react';
+import {
+  ArrowLeft,
+  ExternalLink,
+  History,
+  KeyRound,
+  Minus,
+  Pencil,
+  Plus,
+  RotateCcw,
+} from 'lucide-react';
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
+import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { useSong, type SongDetail } from '../api';
 import {
@@ -15,7 +25,9 @@ import {
   semitonesTo,
   sheetBaseKey,
 } from '../song-key';
+import { chordProToLyrics } from '../editor-checks';
 import { ChordSheet } from './chord-sheet';
+import { ChordsEditor, LyricsEditor, OfficialKeyEditor } from './song-editors';
 
 /** Tamanhos de letra para leitura tocando (o acorde acompanha, em `em`). */
 const TEXT_SIZES = ['text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl'] as const;
@@ -64,9 +76,22 @@ export function SongPage() {
 
 type Tab = 'cifra' | 'letra';
 
+type Editing = 'letra' | 'cifra' | 'tom' | null;
+
+const SAVED_MESSAGE: Record<Exclude<Editing, null>, string> = {
+  letra: 'Letra salva.',
+  cifra: 'Cifra salva.',
+  tom: 'Tom oficial salvo.',
+};
+
 function SongView({ song }: { song: SongDetail }) {
   const [params, setParams] = useSearchParams();
   const [size, setSizeState] = useState(readStoredSize);
+  const [editing, setEditing] = useState<Editing>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // Só esconde/mostra botões: quem barra de verdade é o banco (RLS e triggers).
+  const canEditChords = usePermission('chords.edit_official');
+  const canSetKey = usePermission('songs.set_official_key');
   const media = safeMediaUrl(song.media_url);
 
   const tab: Tab =
@@ -116,6 +141,16 @@ function SongView({ song }: { song: SongDetail }) {
 
   const textSize = TEXT_SIZES[size] ?? 'text-xl';
 
+  const startEditing = (what: Exclude<Editing, null>) => {
+    setNotice(null);
+    setEditing(what);
+    if (what === 'letra' || what === 'cifra') update({ aba: what });
+  };
+  const finishEditing = (saved: boolean) => {
+    if (saved && editing) setNotice(SAVED_MESSAGE[editing]);
+    setEditing(null);
+  };
+
   return (
     <>
       <header className="flex flex-col gap-2">
@@ -139,6 +174,43 @@ function SongView({ song }: { song: SongDetail }) {
         )}
         {song.notes && (
           <p className="rounded-lg bg-muted p-3 text-sm whitespace-pre-line">{song.notes}</p>
+        )}
+        {!editing && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button variant="outline" size="sm" onClick={() => startEditing('letra')}>
+              <Pencil aria-hidden="true" />
+              Editar letra
+            </Button>
+            {canEditChords && (
+              <Button variant="outline" size="sm" onClick={() => startEditing('cifra')}>
+                <Pencil aria-hidden="true" />
+                {song.chords ? 'Editar cifra' : 'Adicionar cifra'}
+              </Button>
+            )}
+            {canSetKey && (
+              <Button variant="outline" size="sm" onClick={() => startEditing('tom')}>
+                <KeyRound aria-hidden="true" />
+                Definir tom oficial
+              </Button>
+            )}
+            <Button asChild variant="ghost" size="sm">
+              <Link to={`/repertorio/${song.id}/historico`}>
+                <History aria-hidden="true" />
+                Histórico
+              </Link>
+            </Button>
+          </div>
+        )}
+        <p role="status" aria-live="polite" className="text-sm font-medium text-primary">
+          {notice}
+        </p>
+        {editing === 'tom' && (
+          <OfficialKeyEditor
+            songId={song.id}
+            current={song.official_key}
+            shownKey={shownKey}
+            onDone={finishEditing}
+          />
         )}
       </header>
 
@@ -164,7 +236,18 @@ function SongView({ song }: { song: SongDetail }) {
           </div>
         }
         cifra={
-          song.chords ? (
+          editing === 'cifra' ? (
+            <ChordsEditor
+              songId={song.id}
+              initial={
+                song.chords ??
+                (song.lyrics
+                  ? `${song.original_key ? `{key: ${song.original_key}}\n` : ''}${song.lyrics}`
+                  : '')
+              }
+              onDone={finishEditing}
+            />
+          ) : song.chords ? (
             <div className="flex flex-col gap-3">
               {song.chordsStatus === 'pending' && (
                 <p
@@ -187,7 +270,13 @@ function SongView({ song }: { song: SongDetail }) {
           )
         }
         letra={
-          song.lyrics ? (
+          editing === 'letra' ? (
+            <LyricsEditor
+              songId={song.id}
+              initial={song.lyrics ?? (song.chords ? chordProToLyrics(song.chords) : '')}
+              onDone={finishEditing}
+            />
+          ) : song.lyrics ? (
             <p className={cn('leading-relaxed whitespace-pre-line', textSize)}>{song.lyrics}</p>
           ) : song.chords ? (
             // Sem letra cadastrada: mostra a letra da própria cifra, sem acordes.
@@ -198,7 +287,7 @@ function SongView({ song }: { song: SongDetail }) {
         }
       />
 
-      {tab === 'cifra' && song.chords && (
+      {tab === 'cifra' && song.chords && !editing && (
         <>
           {/* Espaço para a barra fixa não cobrir o fim da cifra. */}
           <div aria-hidden="true" className="h-20 md:h-4" />
