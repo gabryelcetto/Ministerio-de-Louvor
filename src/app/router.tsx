@@ -5,6 +5,7 @@ import { AnnouncementsPage } from '@/features/comunicados/components/announcemen
 import { DashboardPage } from '@/features/dashboard/components/dashboard-page';
 import { EventDetailPage } from '@/features/escalas/components/event-detail-page';
 import { MySchedulesPage } from '@/features/escalas/components/my-schedules-page';
+import { ScheduleBuilderPage } from '@/features/escalas/components/schedule-builder-page';
 import { MembersPage } from '@/features/integrantes/components/members-page';
 import { NotificationsPage } from '@/features/notificacoes/components/notifications-page';
 import { SongHistoryPage } from '@/features/repertorio/components/song-history-page';
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'escalas', element: <MySchedulesPage /> },
+          { path: 'escalas/montar', element: <ScheduleBuilderPage /> },
           // As notificações do banco apontam para /escalas/<id do evento>.
           { path: 'escalas/:eventId', element: <EventDetailPage /> },
           { path: 'repertorio', element: <SongsPage /> },

@@ -95,3 +95,53 @@ export function groupByDay<T>(
   }
   return [...groups].map(([day, list]) => ({ day, items: list }));
 }
+
+const partsFormat = new Intl.DateTimeFormat('en-US', {
+  timeZone: APP_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** Diferença (ms) entre o relógio de São Paulo e o UTC num instante. */
+function zoneOffsetMs(instant: number): number {
+  const parts = Object.fromEntries(
+    partsFormat.formatToParts(new Date(instant)).map((p) => [p.type, p.value]),
+  );
+  const asUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  return asUtc - Math.floor(instant / 1000) * 1000;
+}
+
+/**
+ * "2026-11-23T19:30" digitado num <input type="datetime-local"> → instante ISO, lendo o horário
+ * como de São Paulo (e não do fuso do aparelho). `null` se o texto não for uma data.
+ */
+export function zonedLocalToIso(local: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local.trim());
+  if (!match) return null;
+  const [, y, mo, d, h, mi] = match.map(Number) as [number, number, number, number, number, number];
+  const guess = Date.UTC(y, mo - 1, d, h, mi);
+  // Duas passadas resolvem a virada de horário de verão (se o Brasil voltar a ter).
+  let instant = guess - zoneOffsetMs(guess);
+  instant = guess - zoneOffsetMs(instant);
+  return new Date(instant).toISOString();
+}
+
+/** Instante → "2026-11-23T19:30" no relógio de São Paulo (valor de datetime-local). */
+export function isoToZonedLocal(value: string | Date): string {
+  const parts = Object.fromEntries(
+    partsFormat.formatToParts(toDate(value)).map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
