@@ -30,3 +30,22 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 - Projeto Supabase (plano Free), `.env.local` com `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`,
   conta Cloudflare (Workers Free) conectada ao repositório. Passo a passo no PR mais recente.
+
+### 4. Testes pgTAP ainda não rodaram localmente
+
+- **O quê:** o Docker Desktop não estava rodando nesta máquina, então `supabase test db` não foi
+  executado aqui. A validação fica com o job `db` do CI (roda em todo PR).
+- **O que fazer:** abrir o Docker Desktop e rodar `npx supabase db start` e `npx supabase test db`.
+  Se o CI acusar falha, o log do job `db` mostra qual teste quebrou.
+
+### 5. `src/types/database.types.ts` escrito à mão
+
+- **Por quê:** sem Docker não dá para rodar `supabase gen types typescript --local`.
+- **O que fazer:** com o Supabase local no ar, rode
+  `npx supabase gen types typescript --local > src/types/database.types.ts` e confira o typecheck.
+
+### 6. Público dos comunicados (`audience`) ainda não filtra
+
+- **O quê:** a coluna `audience` (`all|function|event|users`) existe, mas a policy hoje mostra todo
+  comunicado publicado a todo integrante ativo. Falta a tabela de destinatários (ex.:
+  `announcement_targets`) — fica para depois do protótipo.

@@ -34,3 +34,19 @@ jobs:
           # Valores FICTÍCIOS só para o build passar; não é um projeto real.
           VITE_SUPABASE_URL: https://exemplo.supabase.co
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+
+  db:
+    name: Banco (migrations + pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Sobe só o Postgres local (Docker do runner), aplica as migrations e o seed.
+      - run: supabase db start
+
+      # Roda supabase/tests/*.test.sql (RLS, triggers, permissões).
+      - run: supabase test db
