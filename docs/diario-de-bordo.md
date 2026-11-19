@@ -126,3 +126,40 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
 - **Seed em inglês nos hinos**: as traduções em português de hinos antigos podem ter tradutor com
   direitos ainda vigentes; os originais em inglês anteriores a 1929 são domínio público com certeza.
 - **Datas do seed relativas a `current_date`**: a agenda sempre parece "viva" na demonstração.
+
+---
+
+## Fase C — Cifras (19/11/2026)
+
+### Arquivos criados
+
+- `src/lib/chords/notes.ts` — notas e tons: nota ↔ número (0–11), transposição de nota, grafia
+  padrão dos tons (`A#` → `Bb`), distância entre tons, e `keyPrefersFlats()` (o tom usa bemol?).
+- `src/lib/chords/chord.ts` — reconhece um acorde (`parseChord`/`isChord`) separando tônica, sufixo
+  e baixo, e transpõe (`transposeChord`). Aceita notação brasileira (`7M`, `7(9)`, `m7(b5)`, `°`) e
+  americana (`maj7`, `m7b5`, `dim`, `sus4`, `add9`), e baixo invertido (`D/F#`).
+- `src/lib/chords/chordpro.ts` — parser de ChordPro (linhas de letra com `[G]`, diretivas `{key: G}`,
+  comentários `{c: Refrão}`), extração de acordes e transposição da cifra inteira por semitons ou
+  para um tom alvo, atualizando o `{key}`.
+- `src/lib/chords/convert.ts` — conversor de "acordes sobre a letra" (o formato comum em sites e
+  cadernos) para ChordPro, usando a coluna de cada acorde. Linhas como `Intro: G D Em C` também.
+- `src/lib/chords/layout.ts` — `toSheetUnits()`: quebra cada linha em unidades "acorde + sílaba" e
+  palavras soltas, para o navegador quebrar a linha sem separar o acorde da sílaba.
+- `src/lib/chords/index.ts` — ponto único de importação (`import { ... } from '@/lib/chords'`).
+- `src/lib/chords/chords.test.ts` — 57 testes Vitest com trechos reais dos hinos do seed.
+- `src/features/repertorio/components/chord-sheet.tsx` — componente `<ChordSheet>`: recebe a cifra
+  ChordPro, os semitons e se mostra acordes; renderiza acorde sobre a sílaba com `flex-wrap`.
+
+### Decisões
+
+- **Biblioteca pura, sem React e sem dependências**: fácil de testar e reaproveitar (ex.: numa
+  Edge Function ou num futuro app).
+- **O sufixo nunca é reescrito**: só tônica e baixo mudam. Assim `7M` continua `7M` e `m7(b5)`
+  continua `m7(b5)` — o músico lê do jeito que está acostumado.
+- **Sustenido x bemol pelo tom de destino**: transpor `G` para `F` gera `Bb` (não `A#`); para `A`
+  gera `F#m`. Na transposição por semitons, o tom de destino sai do `{key}` da cifra.
+- **Reconhecimento de acorde por "tokens" de sufixo** em vez de uma lista fixa de acordes: cobre
+  combinações como `G7(#11)`, `C6(9)`, `E7(b9)` sem precisar listar uma a uma, e ainda rejeita
+  palavras como "Amazing" ou "Do".
+- **Celular**: em vez de `<pre>` com rolagem horizontal (comum em sites de cifra), cada palavra é
+  um bloco que pode descer de linha; o acorde vai junto da sua sílaba.
