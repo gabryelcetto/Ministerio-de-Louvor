@@ -49,3 +49,13 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **O quê:** a coluna `audience` (`all|function|event|users`) existe, mas a policy hoje mostra todo
   comunicado publicado a todo integrante ativo. Falta a tabela de destinatários (ex.:
   `announcement_targets`) — fica para depois do protótipo.
+
+### 7. Comunicados e Integrantes sem atalho na barra inferior do celular
+
+- **O quê:** a barra inferior tem 5 itens (Início, Escalas, Repertório, Agenda, Notificações). No
+  celular, Comunicados e Integrantes só são acessíveis pelo endereço. Falta um menu "Mais".
+
+### 8. Commit de merge sem linha de coautoria
+
+- O commit `Merge branch 'feat/fase-b-banco' into feat/fase-c-cifras` (usado para levar a correção do
+  teste pgTAP para a fase C sem reescrever histórico) saiu sem a linha `Co-authored-by`.
