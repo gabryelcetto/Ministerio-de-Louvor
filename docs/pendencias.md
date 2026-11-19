@@ -149,6 +149,20 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   `scripts/generate-icons.mjs`. É original e simples; se o ministério tiver um logo, trocar o
   desenho no script (ou os arquivos em `public/`).
 
+### 21. Workflow "Deploy banco" ainda não executado
+
+- **O quê:** `.github/workflows/deploy-db.yml` foi escrito e validado (YAML e sintaxe dos scripts),
+  mas não rodou: depende do environment `staging` com os secrets/variable e de um projeto real.
+- **Atenção à CLI do Supabase:** o workflow usa `supabase/setup-cli` com `version: latest`. A CLI
+  v3 tornou os comandos de banco locais por padrão e exige confirmação para mexer no projeto
+  hospedado; por isso os comandos usam `db push --linked --yes` e `SUPABASE_YES=true`. Não foi
+  possível conferir na documentação oficial nesta execução (o site do Supabase não estava
+  acessível daqui).
+- **O que fazer:** configurar o `staging` (README), rodar uma vez **sem** seed e conferir o log da
+  "Prévia (dry run)". Se algum flag for recusado, ajustar o comando conforme a mensagem da CLI.
+  Depois de um deploy bem-sucedido, **fixar a versão** da CLI (`version: X.Y.Z` no lugar de
+  `latest`) para o deploy não mudar sozinho.
+
 ## Resolvidas recentemente
 
 - **7. Comunicados e Integrantes sem atalho no celular** — menu "Mais" na barra inferior.
@@ -159,6 +173,5 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 ## Situação em 19/11/2026
 
-- **Na `main`:** fases A a F e os dados de demonstração em português.
-- **Este PR:** Configurações (perfil, tema claro/escuro/sistema, instalar, sair), instalação do
-  PWA (Android e iPhone) com aviso no Início, ícone novo e README.
+- **Na `main`:** fases A a F, dados de demonstração, Configurações/instalação/ícone e README.
+- **Este PR:** workflow manual "Deploy banco" (migrations para o Supabase de staging).
