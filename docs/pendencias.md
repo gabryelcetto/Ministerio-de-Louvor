@@ -5,19 +5,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 ## Abertas
 
-### 1. Branch `main` não existe no GitHub (bloqueia o PR da fase A)
-
-- **O quê:** o repositório remoto estava vazio. A regra proíbe push na `main`, então o commit inicial
-  (`chore: commit inicial`, vazio) existe só localmente e é a base da branch `feat/fase-a-fundacao`.
-- **Por quê:** sem `main` no GitHub não dá para abrir PR apontando para ela.
-- **O que fazer (uma vez):**
-  ```bash
-  git push origin main          # publica só o commit inicial vazio
-  gh pr create --base main --head feat/fase-a-fundacao --fill
-  ```
-  Alternativa sem terminal local: no GitHub, crie a branch `main` a partir do primeiro commit da
-  `feat/fase-a-fundacao` e abra o PR pela interface.
-
 ### 2. Vitest falha no Windows quando a pasta é aberta como `c:\` (minúsculo)
 
 - **O quê:** `npm test` acusa `Cannot read properties of undefined (reading 'config')`.
@@ -60,10 +47,41 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - O commit `Merge branch 'feat/fase-b-banco' into feat/fase-c-cifras` (usado para levar a correção do
   teste pgTAP para a fase C sem reescrever histórico) saiu sem a linha `Co-authored-by`.
 
-## Onde a execução parou (19/11/2026, 04:48 — limite das 05:00)
+### 9. Telas da fase E sem teste com dados reais
 
-- **Concluídas:** fases A (fundação), B (banco), C (cifras) e D (login e layout).
-- **Não iniciada:** fase E (telas de leitura: Dashboard via `get_dashboard`, Minhas escalas + detalhe
-  do evento, Agenda, Comunicados, Integrantes, Repertório com busca/filtro e `<ChordSheet>` com
-  seletor de tom). Não havia tempo para entregá-la com qualidade antes das 05:00; tudo que ela
-  precisa (RPCs, tipos, `ChordSheet`, `usePermission`, layout) já está pronto.
+- **O quê:** Dashboard, Minhas escalas, Detalhe do evento e Agenda foram construídos contra
+  `src/types/database.types.ts` e as migrations, **sem banco disponível**. Foram validados com
+  lint, typecheck, testes unitários das funções puras, build e capturas de tela com respostas
+  simuladas da API (Playwright interceptando as chamadas ao Supabase).
+- **O que não foi verificado com dados reais:**
+  - formato real do JSON de `get_dashboard()` (ex.: `unread_notifications` vem como número;
+    `next_service`/`next_rehearsal` como objeto `events` completo);
+  - select aninhado do detalhe do evento (`events → event_assignments → profiles/ministry_functions`
+    e `events → event_songs → songs`) — nomes das FKs em `Relationships` foram deduzidos do padrão
+    do Postgres (`<tabela>_<coluna>_fkey`);
+  - filtro no recurso embutido em Minhas escalas (`event:events!inner(...)` + `.gte('event.starts_at', …)`);
+  - RLS de `profiles` para um integrante comum ver os nomes dos colegas da escala;
+  - agrupamento por dia perto da meia-noite com eventos reais do seed.
+- **O que fazer:** com o Supabase local no ar (`npx supabase db start` + `supabase/demo-users.sql`),
+  entrar como líder e como integrante e abrir `/`, `/escalas`, `/escalas/<id>` e `/agenda`.
+  Depois, gerar os tipos (pendência 5) e conferir se o typecheck continua passando.
+
+### 10. Fase E incompleta: Comunicados, Integrantes, Repertório e Notificações
+
+- **O quê:** a mensagem com o escopo da fase E chegou cortada depois do item "Agenda". Foram
+  entregues Dashboard, Escalas (lista + detalhe) e Agenda. Continuam como tela provisória:
+  Comunicados, Integrantes, Repertório (busca/filtro + `<ChordSheet>` com seletor de tom) e
+  Notificações (lista + marcar como lida).
+- **O que fazer:** confirmar o escopo restante e entregá-lo em um novo PR a partir da `main`.
+
+### 11. `CLAUDE.md` recriado no repositório
+
+- **O quê:** o `CLAUDE.md` citado nas instruções não estava versionado. Na fase E foi criado um
+  com as regras atualizadas (fluxo de branches a partir da `main`, coautoria, fim da regra 5.1) e
+  as convenções que aparecem no diário. Se existir uma versão local mais completa, junte as duas.
+
+## Situação em 19/11/2026 (fase E)
+
+- **Concluídas e na `main`:** fases A (fundação), B (banco), C (cifras) e D (login e layout).
+- **Fase E (este PR):** Dashboard, Minhas escalas, Detalhe do evento e Agenda.
+- **Falta da fase E:** ver pendência 10.
