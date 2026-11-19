@@ -108,3 +108,56 @@ Marque ✅/❌ e anote o que estranhar.
 - **Erro:** com a rede "Offline", aparece a mensagem e o botão **"Tentar de novo"**; voltar a rede
   e tocar no botão carrega a tela.
 - **Vazio:** com o banco sem dados (antes do `demo-users.sql`), cada lista mostra a sua mensagem.
+
+---
+
+# Fase F — edição, histórico e escalas
+
+Use também o **líder** (`lider@demo.local`, Lucas): tem `chords.edit_official`,
+`songs.set_official_key`, `history.restore`, `schedules.manage` e `events.manage`, mas não
+`members.manage`.
+
+## Música — editar (`/repertorio/:id`)
+
+| #   | Passo                                                                                           | Integrante (Isa)                                                                                         | Admin (Ana)                                                                             |
+| --- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| 1   | Botões abaixo do título                                                                         | Só **Editar letra** e **Histórico**                                                                      | Editar letra, **Editar cifra**, **Definir tom oficial**, Histórico                      |
+| 2   | Editar letra → mudar → **Salvar letra**                                                         | "Letra salva."; a aba Letra mostra o texto novo sem recarregar                                           | Idem                                                                                    |
+| 3   | Editar letra → mudar → **Cancelar**                                                             | Pergunta "Descartar alterações?"                                                                         | Idem                                                                                    |
+| 4   | Editar letra → mudar → clicar em "Agenda" no menu                                               | Pergunta "Sair sem salvar?"; "Continuar editando" mantém o texto                                         | Idem                                                                                    |
+| 5   | **Integrante tenta editar cifra**: no console do navegador, `upsert` em `song_chords` da música | Banco recusa (42501). Se a tela for forçada, aparece "Você não tem permissão para fazer essa alteração." | —                                                                                       |
+| 6   | Editar cifra → digitar `[Xyz]`                                                                  | —                                                                                                        | Aviso "Não reconhecido como acorde…"; pré-visualização atualiza ao digitar              |
+| 7   | Editar cifra → **Salvar cifra**                                                                 | —                                                                                                        | "Cifra salva."; a cifra exibida muda; aviso de "aguardando revisão" some (vira oficial) |
+| 8   | Cifra `pending` (`…-000000000005`) → Editar → Salvar                                            | —                                                                                                        | Passa a oficial                                                                         |
+| 9   | "Converter acordes sobre a letra" com texto de site                                             | —                                                                                                        | Vira ChordPro com os acordes no lugar                                                   |
+| 10  | **Definir tom oficial** → escolher → Salvar                                                     | —                                                                                                        | "Tom oficial salvo."; lista do repertório, Início e detalhe do culto mostram o tom novo |
+| 11  | Tom oficial → "Sem tom oficial" → Salvar                                                        | —                                                                                                        | Botão "Tom oficial" da barra fica desativado                                            |
+
+## Histórico (`/repertorio/:id/historico`)
+
+| #   | Passo                                                                         | Integrante (Isa)                                                    | Admin (Ana)                                                                                                                 |
+| --- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Abrir depois dos passos acima                                                 | Vê as versões: campo, quem, quando, resumo; **sem botão Restaurar** | Idem, com **Restaurar** nas versões que não são a atual                                                                     |
+| 2   | Abrir "Valor anterior" / "Conteúdo desta versão"                              | Mostra os textos                                                    | Idem                                                                                                                        |
+| 3   | Filtros Cifra / Letra / Tom oficial                                           | Lista filtra                                                        | Idem                                                                                                                        |
+| 4   | **Admin restaura** uma cifra antiga                                           | —                                                                   | Confirmação → "Versão restaurada…"; nova linha "Restauração" no topo marcada "versão atual"; a música mostra a cifra antiga |
+| 5   | Restaurar o tom oficial antigo                                                | —                                                                   | Tom oficial volta; repertório e Início atualizam                                                                            |
+| 6   | **Integrante tenta restaurar** pelo console: `rpc('restore_song_version', …)` | Banco recusa: "Sem permissão para restaurar versões."               | —                                                                                                                           |
+
+## Montar escala (`/escalas/montar`)
+
+| #   | Passo                                                  | Integrante (Isa)                              | Líder / Admin                                                                                      |
+| --- | ------------------------------------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 1   | Abrir Escalas                                          | **Sem** botão "Montar escala"                 | Botão "Montar escala"                                                                              |
+| 2   | Abrir `/escalas/montar` pelo endereço                  | "Você não tem permissão para montar escalas." | Formulário                                                                                         |
+| 3   | Salvar sem preencher                                   | —                                             | "Informe o título." / "Informe data e hora de início."                                             |
+| 4   | Novo evento + 2 pessoas → Salvar                       | —                                             | Abre o detalhe do evento novo com a equipe; Agenda mostra o evento; cada pessoa recebe notificação |
+| 5   | Mesma pessoa e função duas vezes                       | —                                             | "Essa pessoa já está nessa função." antes de enviar                                                |
+| 6   | Detalhe do evento → **Editar escala** → Remover alguém | —                                             | Confirmação → sai da lista; a pessoa recebe "Você saiu da escala"                                  |
+| 7   | Horário: criar evento às 19:30                         | —                                             | Aparece 19:30 na Agenda mesmo com o aparelho em outro fuso                                         |
+
+## Mensagens de erro (todas as telas de edição)
+
+- Rede "Offline" ao salvar → "Sem conexão com o servidor. Verifique a internet e tente de novo."
+- Sessão expirada → "Sua sessão expirou. Entre de novo."
+- Nenhuma mensagem em inglês ou com código técnico deve aparecer.

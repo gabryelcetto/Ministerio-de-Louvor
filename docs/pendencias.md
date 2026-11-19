@@ -75,30 +75,53 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   com as regras atualizadas (fluxo de branches a partir da `main`, coautoria, fim da regra 5.1) e
   as convenções que aparecem no diário. Se existir uma versão local mais completa, junte as duas.
 
-### 12. Transposição: grafia do baixo segue o tom de destino
-
-- **O quê:** a biblioteca da fase C escolhe sustenido ou bemol pelo tom de destino. Em linhas de
-  baixo descendente isso pode sair com a grafia menos natural: `A/G` em E transposto para G vira
-  `C/A#` (o músico escreveria `C/Bb`). O som está certo; só a grafia.
-- **O que fazer (opcional):** em `src/lib/chords/chord.ts`, escolher a grafia do baixo pela
-  direção do movimento ou por uma tabela de baixos comuns por tom. Tem teste para acrescentar em
-  `chords.test.ts`.
-
 ### 13. Listas com limite fixo
 
 - **O quê:** Notificações mostra as 100 mais recentes e Comunicados os 50 mais recentes (com
   aviso na tela quando o limite é atingido). Não há paginação ("carregar mais").
 - **O que fazer:** quando o volume justificar, trocar por `useInfiniteQuery` com `range()`.
 
+### 16. Fase F sem teste com dados reais
+
+- **O quê:** edição de letra/cifra/tom oficial, histórico com restauração e montar escala foram
+  validados com testes unitários e no navegador com a API simulada (inclusive respostas de recusa
+  do banco), **sem banco**.
+- **O que não foi verificado com dados reais:**
+  - `upsert` em `song_lyrics`/`song_chords` (`on conflict (song_id)`): para quem **não** tem
+    `chords.edit_official`, o esperado é erro 42501 do PostgREST no `ON CONFLICT DO UPDATE`;
+  - `update … select('id')` barrado pelo RLS devolvendo **0 linhas** (o app mostra "Nada foi
+    salvo…");
+  - o trigger `guard_song_official_key` respondendo 42501 com a mensagem em português;
+  - `restore_song_version` para cada campo (letra, cifra, tom oficial, dados) e o registro da
+    restauração como nova versão;
+  - FK `song_versions.changed_by → profiles` no select do histórico (nome deduzido do padrão);
+  - `insert` em `events` com `select('id')` (exige a policy de leitura, que integrantes ativos têm)
+    e as notificações geradas ao incluir/remover pessoas.
+- **O que fazer:** seguir a seção "Fase F" de `docs/roteiro-de-teste.md` com os 3 usuários demo.
+
+### 17. Criar evento + equipe são duas gravações
+
+- **O quê:** "Montar escala" com evento novo grava o evento e depois a equipe. Se a equipe
+  falhar, o evento fica criado; a tela avisa ("O evento foi criado, mas a equipe não foi salva") e
+  a nova tentativa grava só a equipe.
+- **O que fazer (se incomodar):** uma RPC `create_event_with_team(...)` no banco faria tudo numa
+  transação.
+
+### 18. Configurações ainda é tela provisória
+
+- **O quê:** a tela de Configurações (perfis, permissões, funções do ministério) não foi pedida
+  até a fase F.
+
 ## Resolvidas recentemente
 
 - **7. Comunicados e Integrantes sem atalho no celular** — menu "Mais" na barra inferior.
 - **10. Fase E incompleta** — Repertório, Notificações, Comunicados e Integrantes entregues.
+- **12. Grafia do baixo na transposição** — fase F: cada nota (tônica e baixo) é escrita pelo
+  grau no tom de destino; `A/G` de E para G sai `C/Bb`.
 
-## Situação em 19/11/2026 (fase E concluída)
+## Situação em 19/11/2026 (fase F)
 
-- **Na `main`:** fases A (fundação), B (banco), C (cifras), D (login e layout) e a primeira parte
-  da E (Início, Escalas, Agenda).
-- **Este PR:** Repertório (lista + música com cifra transponível), Notificações, Comunicados,
-  Integrantes e menu "Mais" — fecha a fase E.
-- **Próximo:** fase F (não iniciada).
+- **Na `main`:** fases A a E.
+- **Fase F (este PR):** editar letra, cifra (com pré-visualização) e tom oficial; histórico com
+  restauração; erros do banco em português (`src/lib/errors.ts`); grafia do baixo (pendência 12);
+  montar escala (evento + pessoas + funções).
