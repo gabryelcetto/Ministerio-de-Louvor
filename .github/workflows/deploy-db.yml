@@ -1,0 +1,82 @@
+name: Deploy banco
+
+# Envia as migrations (e, se pedido, o seed) para o projeto Supabase de staging.
+# Só roda à mão: Actions → "Deploy banco" → Run workflow.
+#
+# Configuração (ver README, seção "Deploy do banco pelo GitHub Actions"):
+#   Settings → Environments → staging
+#     Secrets:   SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD
+#     Variables: SUPABASE_PROJECT_REF
+on:
+  workflow_dispatch:
+    inputs:
+      include_seed:
+        description: 'Também rodar o seed (dados de demonstração)?'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Nunca dois deploys do mesmo banco ao mesmo tempo; o segundo espera o primeiro terminar.
+concurrency:
+  group: deploy-db-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Migrations no Supabase (staging)
+    runs-on: ubuntu-latest
+    # O environment permite exigir aprovação manual antes de rodar (Settings → Environments →
+    # staging → Required reviewers) e guarda os segredos só para este job.
+    environment: staging
+    env:
+      # Lidos pela CLI do Supabase direto do ambiente: nunca aparecem na linha de comando.
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      # Inputs e variables passam por env (não interpolados no script) para evitar injeção.
+      INCLUDE_SEED: ${{ inputs.include_seed }}
+      # Sem terminal no Actions: responde "sim" às confirmações da CLI.
+      SUPABASE_YES: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Falha cedo e com mensagem clara se faltar configuração. Só testa se existe;
+      # nunca imprime o valor.
+      - name: Conferir secrets e variables
+        run: |
+          missing=0
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_REF; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Falta $name no environment 'staging' (ver README)."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Ligar ao projeto
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      # Mostra no log quais migrations serão aplicadas, sem aplicar.
+      - name: Prévia (dry run)
+        run: |
+          if [ "$INCLUDE_SEED" = "true" ]; then
+            supabase db push --linked --dry-run --include-seed
+          else
+            supabase db push --linked --dry-run
+          fi
+
+      - name: Enviar migrations
+        run: |
+          if [ "$INCLUDE_SEED" = "true" ]; then
+            echo "Enviando migrations + seed."
+            supabase db push --linked --yes --include-seed
+          else
+            echo "Enviando só as migrations (sem seed)."
+            supabase db push --linked --yes
+          fi

@@ -447,3 +447,42 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
   borda**, com o desenho reduzido para a zona segura (o sistema recorta em círculo/squircle).
 - **README sem segredos**: só a chave pública vai para o `.env.local`; o passo a passo reforça que
   a `service_role` nunca entra no frontend.
+
+---
+
+## Deploy do banco pelo GitHub Actions (19/11/2026)
+
+### Arquivos criados/alterados
+
+- `.github/workflows/deploy-db.yml` — workflow **"Deploy banco"**, só por disparo manual
+  (`workflow_dispatch`) com o input booleano `include_seed` (padrão `false`). Passos: checkout →
+  `supabase/setup-cli` → confere se secrets/variable existem (sem imprimir valores) →
+  `supabase link --project-ref $SUPABASE_PROJECT_REF` → prévia (`db push --dry-run`) →
+  `supabase db push` (com `--include-seed` só se o input for `true`).
+- `README.md` — seção "Deploy do banco pelo GitHub Actions": o que criar, onde e como rodar.
+
+### O que configurar (GitHub → Settings → Environments → `staging`)
+
+- **Secrets:** `SUPABASE_ACCESS_TOKEN` (token pessoal em supabase.com/dashboard/account/tokens) e
+  `SUPABASE_DB_PASSWORD` (senha do banco do projeto).
+- **Variable:** `SUPABASE_PROJECT_REF` (código do projeto na URL do painel).
+- **Opcional:** "Required reviewers" no `staging` para exigir aprovação antes de cada deploy.
+- **Rodar:** Actions → **Deploy banco** → **Run workflow** → escolher a branch e se inclui o seed.
+
+### Decisões
+
+- **Environment `staging` no job:** os segredos ficam presos a esse ambiente (outros workflows não
+  os enxergam) e dá para ligar aprovação manual depois, sem mudar o workflow.
+- **Segredos só por variável de ambiente:** a CLI lê `SUPABASE_ACCESS_TOKEN` e
+  `SUPABASE_DB_PASSWORD` do ambiente, então nada sensível vai para a linha de comando; nenhum
+  `echo` de segredo e nenhum `set -x`. O passo de conferência só testa se a variável está vazia.
+- **Inputs e variables via `env`, não interpolados no script** (`${{ }}` dentro de `run:` abre
+  espaço para injeção de comando).
+- **`concurrency` sem cancelar:** dois deploys no mesmo banco nunca rodam juntos; o segundo
+  espera o primeiro.
+- **`permissions: contents: read`:** o workflow só lê o repositório.
+- **Prévia antes de aplicar:** o `--dry-run` deixa no log a lista de migrations, útil para quem
+  aprova ou para entender um erro.
+- **`--linked --yes` + `SUPABASE_YES`:** explícitos para funcionar na CLI v2 e na v3 (que passou a
+  tratar os comandos de banco como locais por padrão e pede confirmação para o projeto hospedado).
+  Ver pendência 21.

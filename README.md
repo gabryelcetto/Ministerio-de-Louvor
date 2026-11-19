@@ -89,6 +89,41 @@ O `npx supabase start` mostra a URL e a chave pública locais para o `.env.local
 7. Em **Authentication → URL Configuration**, ponha o endereço onde o app vai rodar em "Site URL"
    (ex.: `http://localhost:5173` no desenvolvimento, o domínio da Cloudflare em produção).
 
+## Deploy do banco pelo GitHub Actions
+
+O workflow [`.github/workflows/deploy-db.yml`](.github/workflows/deploy-db.yml) ("Deploy banco")
+envia as migrations para o projeto Supabase de **staging**, sem precisar da CLI no seu computador.
+Só roda quando alguém dispara à mão.
+
+### Configurar uma vez
+
+No GitHub: **Settings → Environments → New environment**, nome **`staging`**. Dentro dele:
+
+| Tipo                                   | Nome                    | Valor / onde pegar                                                                                                                     |
+| -------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Environment secret**                 | `SUPABASE_ACCESS_TOKEN` | Token pessoal do Supabase: [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) → Generate new token |
+| **Environment secret**                 | `SUPABASE_DB_PASSWORD`  | Senha do banco do projeto (definida ao criar o projeto; para trocar: Project Settings → Database → Reset database password)            |
+| **Environment variable** (não secreta) | `SUPABASE_PROJECT_REF`  | O código do projeto na URL do painel: `supabase.com/dashboard/project/SEU_PROJECT_REF`                                                 |
+
+Os segredos nunca aparecem no log: a CLI os lê do ambiente e o GitHub mascara os valores.
+
+**Aprovação manual (opcional):** em Settings → Environments → `staging`, marque **Required
+reviewers** e escolha quem aprova. Daí em diante, cada execução espera essa aprovação antes de
+tocar no banco.
+
+### Rodar
+
+1. Aba **Actions** → **Deploy banco** (na lista da esquerda) → **Run workflow**.
+2. Escolha a branch (normalmente `main`).
+3. **include_seed**: deixe **desmarcado** para enviar só as migrations. Marque apenas para
+   (re)carregar os dados de demonstração — o seed não duplica o que já existe (`on conflict do
+nothing`), mas é pensado para ambiente de teste, não para dados reais.
+4. **Run workflow**. O passo "Prévia (dry run)" lista no log o que vai ser aplicado antes do passo
+   "Enviar migrations".
+
+Os usuários de demonstração continuam sendo criados no painel + `supabase/demo-users.sql` (passos
+4 e 5 da seção anterior); o workflow não mexe no Auth.
+
 ## Publicar (Cloudflare Workers)
 
 ```bash
