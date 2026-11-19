@@ -69,3 +69,60 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
 - **`noUncheckedIndexedAccess`**: mais rígido que o `strict`; evita o clássico "undefined is not a
   function" ao acessar `lista[0]`.
 - **Commit inicial vazio na `main` local**: a base das branches empilhadas. Ver pendência 1.
+
+---
+
+## Fase B — Banco (19/11/2026)
+
+### Arquivos criados
+
+- `supabase/config.toml` — configuração do Supabase **local** (CLI): portas, seed e Auth com
+  **cadastro público desligado** (`enable_signup = false`), usuários só por convite/painel.
+- `supabase/migrations/20261119070000_access.sql` — extensões (`unaccent`, `pg_trgm`), enum
+  `access_role`, `profiles` (+ trigger que cria o perfil quando nasce um usuário no Auth),
+  `permissions`, `role_permissions`, `user_permissions`, `ministry_functions`, `member_functions`,
+  `audit_logs`, e as funções `is_active_member()`, `has_permission(p)`, `my_permissions()` e
+  `get_member_contacts()`.
+- `supabase/migrations/20261119070100_agenda.sql` — `events` e `event_assignments` (a escala).
+- `supabase/migrations/20261119070200_repertoire.sql` — `songs`, `song_lyrics`, `song_chords`,
+  `song_versions` (histórico), `song_favorites`, `event_songs`, busca sem acento (`search_songs`) e
+  os triggers de versão, de tom oficial e de cifra pendente; RPC `restore_song_version`.
+- `supabase/migrations/20261119070300_communication.sql` — `announcements`, `notifications`
+  (geradas por trigger quando alguém entra/sai da escala ou o evento muda/é cancelado) e a RPC
+  `get_dashboard()`.
+- `supabase/seed.sql` — permissões e padrões por perfil, funções do ministério, 12 músicas (10 hinos
+  em domínio público, só a 1ª estrofe, + 2 textos fictícios que exercitam a notação brasileira de
+  acordes), 5 eventos nas próximas 2 semanas, repertório dos cultos e 3 comunicados.
+- `supabase/demo-users.sql` — script para rodar no SQL Editor **depois** de criar os 3 usuários no
+  painel: define perfis (admin dono, líder, integrante), funções e escalas.
+- `supabase/tests/rls.test.sql` — 31 testes pgTAP (admin, líder, integrante, inativo e anônimo).
+- `src/types/database.types.ts` — tipos TypeScript do banco (escritos à mão; ver pendências).
+- `src/lib/supabase.ts` — agora tipado com `createClient<Database>`.
+- `.github/workflows/ci.yml` — novo job `db`: instala o Supabase CLI, `supabase db start`,
+  `supabase test db`.
+
+### Decisões
+
+- **Toda a autorização mora no Postgres.** As políticas chamam `has_permission()`, que é
+  `security definer` (lê as tabelas de permissão sem esbarrar no próprio RLS) e tem
+  `search_path = ''` (evita sequestro de função por outro schema). A regra é: inativo → nada;
+  dono → tudo; exceção individual (`grant`/`deny`) decide; senão vale o padrão do perfil.
+- **Telefone protegido por GRANT de coluna**, não só por RLS: RLS filtra _linhas_, não _colunas_.
+  A coluna `phone` não é legível pela API; quem tem `members.view_contacts` usa
+  `get_member_contacts()`. Consequência para o frontend: em `profiles`, liste as colunas no
+  `select(...)` (não use `select('*')`).
+- **Ninguém se promove**: trigger `guard_profile_update` barra mudar `access_role`/`status` sem
+  `members.manage` e bloqueia mexer em `is_owner` pela API.
+- **Histórico só por trigger**: `song_versions` não tem policy de insert/update/delete. Os triggers
+  (security definer) gravam valor antigo, novo, autor e tipo (`create`/`update`/`restore`).
+- **Restaurar = nova alteração**: `restore_song_version` aplica o valor daquela versão e o trigger
+  registra uma versão `restore`; nada do histórico é apagado. Também grava em `audit_logs`.
+- **Cifra de quem não tem permissão nasce `pending`** (trigger `BEFORE INSERT`), mesmo que o
+  cliente mande `official`. UPDATE de cifra só com `chords.edit_official` (policy).
+- **`auth.uid()` nulo = contexto administrativo** (seed, migrations, SQL Editor). Os triggers de
+  guarda liberam esse caso; pela API isso nunca acontece, porque anônimo não tem policy nenhuma.
+- **Busca sem acento indexada**: `unaccent()` não é `IMMUTABLE`, então criamos o wrapper
+  `immutable_unaccent()` para poder usar em índice GIN trigram.
+- **Seed em inglês nos hinos**: as traduções em português de hinos antigos podem ter tradutor com
+  direitos ainda vigentes; os originais em inglês anteriores a 1929 são domínio público com certeza.
+- **Datas do seed relativas a `current_date`**: a agenda sempre parece "viva" na demonstração.
