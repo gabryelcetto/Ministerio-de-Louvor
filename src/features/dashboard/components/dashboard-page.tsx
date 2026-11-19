@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EVENT_TYPE_STYLES } from '@/features/agenda/event-type';
 import { CancelledBadge, EventTypeBadge } from '@/features/agenda/event-type-badge';
 import { useMyProfile } from '@/features/auth/hooks/use-me';
+import { InstallTip } from '@/features/instalar/components/install-tip';
 import { unreadLabel } from '@/features/notificacoes/api';
 import { SongRow } from '@/features/escalas/components/song-row';
 import { formatDayLabel, formatShortDate, formatTimeRange, greeting } from '@/lib/dates';
@@ -28,6 +29,8 @@ export function DashboardPage() {
         </h1>
         {query.data && <UnreadBadge count={query.data.unread_notifications} />}
       </header>
+
+      <InstallTip />
 
       {query.isPending ? (
         <LoadingState label="Carregando o painel…" />
