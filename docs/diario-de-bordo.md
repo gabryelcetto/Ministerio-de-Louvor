@@ -196,3 +196,55 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
   UI e o RLS usam exatamente a mesma regra — não há uma cópia da lógica no frontend.
 - **Esconder item de menu não é segurança**: as rotas administrativas continuam protegidas pelo RLS.
 - **Navegação mobile-first**: alvos de toque de 56px, `safe-area-inset-bottom` para iPhone.
+
+---
+
+## Fase E — Telas de leitura, parte 1 (19/11/2026)
+
+### Arquivos criados/alterados
+
+- `CLAUDE.md` — criado: fluxo de branches a partir da `main` (PR direto para a `main`, sem empilhar),
+  coautoria em todo commit (inclusive merge), fim da regra 5.1 (limite das 05:00) e convenções.
+- `src/types/database.types.ts` — **corrigido**:
+  - as linhas (`ProfileRow`, `EventRow`, `SongRow`, `AnnouncementRow`, `Database`) eram
+    `interface`; o supabase-js exige `Record<string, unknown>` e interface não tem assinatura de
+    índice, então **todo select tipado virava `never`**. Agora são `type`;
+  - `Relationships` preenchido para `event_assignments`, `event_songs` e `member_functions`
+    (habilita selects aninhados tipados);
+  - novos tipos `MinistryFunctionRow` e `Dashboard` (formato do JSON de `get_dashboard()`).
+- `src/index.css` — tokens de cor por tipo de evento (`--event-culto`, `--event-ensaio`,
+  `--event-evento` e versões `-soft`), claro e escuro.
+- `src/lib/dates.ts` (+ teste) — datas no fuso `America/Sao_Paulo`: hora, dia, "Hoje"/"Amanhã",
+  saudação e agrupamento por dia.
+- `src/components/common/states.tsx` — estados de carregando, erro (com "Tentar de novo") e vazio.
+- `src/features/agenda/event-type.ts` / `event-type-badge.tsx` — cor, ícone e rótulo de cada tipo
+  (culto: igreja/azul; ensaio: nota musical/roxo; evento: calendário/dourado) e selo "Cancelado".
+- `src/features/agenda/components/event-card.tsx` — cartão de evento com faixa lateral na cor do
+  tipo; leva ao detalhe.
+- `src/features/agenda/api.ts` + `components/agenda-page.tsx` — Agenda: eventos de hoje até 90
+  dias, agrupados por dia, filtro por tipo e aviso "Você está escalado(a)".
+- `src/features/escalas/schedule-utils.ts` (+ teste) — funções puras: agrupar atribuições por
+  evento, separar próximas/anteriores, agrupar equipe por função e resolver o tom do dia.
+- `src/features/escalas/api.ts`, `hooks.ts` — consultas de Minhas escalas e do detalhe do evento.
+- `src/features/escalas/components/my-schedules-page.tsx` — Minhas escalas (próximas primeiro;
+  anteriores dos últimos 60 dias recolhidas).
+- `src/features/escalas/components/event-detail-page.tsx` — detalhe: dados do evento, equipe
+  agrupada por função (você destacado) e repertório na ordem.
+- `src/features/escalas/components/song-row.tsx` — linha do repertório com o tom em destaque e a
+  origem do tom (tom do dia / oficial / original).
+- `src/features/dashboard/api.ts` (+ teste) + `components/dashboard-page.tsx` — painel inicial.
+- `src/app/router.tsx` — rotas `/`, `/escalas`, `/escalas/:eventId` e `/agenda`;
+  `src/app/home-page.tsx` removido.
+
+### Decisões
+
+- **Dashboard em uma chamada só** (`get_dashboard()`), com `parseDashboard()` garantindo listas
+  nunca nulas: a tela não precisa se defender de `null`.
+- **Tom do dia com a mesma regra do banco**: tom do evento > tom oficial > tom original
+  (`resolveEventKey`, igual ao `coalesce` do `get_dashboard`). No detalhe mostramos também de
+  onde o tom veio, para o músico saber se é o tom combinado para aquele culto.
+- **Detalhe do evento em `/escalas/:id`**: é o endereço que os triggers de notificação já gravam
+  em `notifications.link`; Agenda e Dashboard apontam para o mesmo lugar.
+- **Fuso fixo da igreja** em vez do fuso do aparelho: quem viaja continua vendo o horário do culto.
+- **Tipo nunca só pela cor**: sempre ícone + texto junto (acessibilidade para daltonismo).
+- **Evento em andamento continua em "Próximas"** (vale o término, não o início).

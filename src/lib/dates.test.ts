@@ -1,0 +1,44 @@
+import { describe, expect, it } from 'vitest';
+import { dayKey, formatDayLabel, formatTime, formatTimeRange, greeting, groupByDay } from './dates';
+
+// Horários em UTC; São Paulo é UTC-3 (sem horário de verão desde 2019).
+describe('datas no fuso da igreja', () => {
+  it('usa o dia de São Paulo, não o de UTC', () => {
+    // 01:30 UTC do dia 24 = 22:30 do dia 23 em São Paulo.
+    expect(dayKey('2026-11-24T01:30:00Z')).toBe('2026-11-23');
+    expect(formatTime('2026-11-24T01:30:00Z')).toBe('22:30');
+  });
+
+  it('formata intervalo de horário', () => {
+    expect(formatTimeRange('2026-11-23T22:00:00Z', '2026-11-24T00:00:00Z')).toBe('19:00–21:00');
+    expect(formatTimeRange('2026-11-23T22:00:00Z', null)).toBe('19:00');
+  });
+
+  it('rotula hoje, amanhã e outros dias', () => {
+    const now = new Date('2026-11-19T15:00:00Z'); // quinta, 12:00 em SP
+    expect(formatDayLabel('2026-11-19T23:00:00Z', now)).toBe('Hoje');
+    expect(formatDayLabel('2026-11-20T22:30:00Z', now)).toBe('Amanhã');
+    expect(formatDayLabel('2026-11-22T13:00:00Z', now)).toBe('Domingo, 22 de novembro');
+  });
+
+  it('saúda pela hora local', () => {
+    expect(greeting(new Date('2026-11-19T11:00:00Z'))).toBe('Bom dia'); // 08h
+    expect(greeting(new Date('2026-11-19T17:00:00Z'))).toBe('Boa tarde'); // 14h
+    expect(greeting(new Date('2026-11-19T23:00:00Z'))).toBe('Boa noite'); // 20h
+    expect(greeting(new Date('2026-11-19T06:00:00Z'))).toBe('Boa noite'); // 03h
+  });
+
+  it('agrupa por dia mantendo a ordem', () => {
+    const items = [
+      { id: 'a', at: '2026-11-22T13:00:00Z' },
+      { id: 'b', at: '2026-11-22T22:00:00Z' },
+      { id: 'c', at: '2026-11-23T01:00:00Z' }, // ainda dia 22 em SP
+      { id: 'd', at: '2026-11-24T22:00:00Z' },
+    ];
+    const groups = groupByDay(items, (i) => i.at);
+    expect(groups.map((g) => [g.day, g.items.map((i) => i.id)])).toEqual([
+      ['2026-11-22', ['a', 'b', 'c']],
+      ['2026-11-24', ['d']],
+    ]);
+  });
+});

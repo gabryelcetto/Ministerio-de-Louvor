@@ -9,12 +9,21 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 type Timestamp = string;
 type Uuid = string;
 
+/** Chave estrangeira no formato do `supabase gen types` (habilita selects com relacionamentos). */
+type Fk<Name extends string, Column extends string, Ref extends string> = {
+  foreignKeyName: Name;
+  columns: [Column];
+  isOneToOne: false;
+  referencedRelation: Ref;
+  referencedColumns: ['id'];
+};
+
 /** Gera Row/Insert/Update/Relationships: Insert exige só as colunas obrigatórias. */
-type Table<Row, Required extends keyof Row> = {
+type Table<Row, Required extends keyof Row, Rels extends Fk<string, string, string>[] = []> = {
   Row: Row;
   Insert: Pick<Row, Required> & Partial<Omit<Row, Required>>;
   Update: Partial<Row>;
-  Relationships: [];
+  Relationships: Rels;
 };
 
 export type AccessRole = 'admin' | 'leader' | 'member';
@@ -38,7 +47,7 @@ export type PermissionKey =
   | 'history.restore';
 
 /** Colunas de profiles legíveis pela API (phone só via get_member_contacts). */
-export interface ProfileRow {
+export type ProfileRow = {
   id: Uuid;
   full_name: string;
   display_name: string | null;
@@ -47,9 +56,9 @@ export interface ProfileRow {
   status: ProfileStatus;
   created_at: Timestamp;
   updated_at: Timestamp;
-}
+};
 
-export interface EventRow {
+export type EventRow = {
   id: Uuid;
   type: EventType;
   title: string;
@@ -61,9 +70,9 @@ export interface EventRow {
   created_by: Uuid | null;
   created_at: Timestamp;
   updated_at: Timestamp;
-}
+};
 
-export interface SongRow {
+export type SongRow = {
   id: Uuid;
   title: string;
   artist: string | null;
@@ -76,9 +85,9 @@ export interface SongRow {
   archived_at: Timestamp | null;
   created_at: Timestamp;
   updated_at: Timestamp;
-}
+};
 
-export interface AnnouncementRow {
+export type AnnouncementRow = {
   id: Uuid;
   title: string;
   body: string;
@@ -86,9 +95,54 @@ export interface AnnouncementRow {
   audience: Audience;
   created_by: Uuid | null;
   created_at: Timestamp;
+};
+
+export type MinistryFunctionRow = {
+  id: number;
+  name: string;
+  sort_order: number;
+};
+
+/**
+ * Formato do JSON devolvido por get_dashboard() (migration 20261119070300_communication.sql).
+ * No banco o retorno é `jsonb`, por isso em `Functions` ele aparece como `Json`.
+ */
+export interface DashboardAssignment {
+  assignment_id: Uuid;
+  event_id: Uuid;
+  event_title: string;
+  event_type: EventType;
+  starts_at: Timestamp;
+  location: string | null;
+  function: string;
 }
 
-export interface Database {
+export interface DashboardSong {
+  song_id: Uuid;
+  title: string;
+  artist: string | null;
+  position: number;
+  /** Já resolvido no banco: tom do dia > tom oficial > tom original. */
+  key: string | null;
+}
+
+export interface DashboardAnnouncement {
+  id: Uuid;
+  title: string;
+  body: string;
+  published_at: Timestamp;
+}
+
+export interface Dashboard {
+  next_service: EventRow | null;
+  next_rehearsal: EventRow | null;
+  my_assignments: DashboardAssignment[];
+  next_service_songs: DashboardSong[];
+  recent_announcements: DashboardAnnouncement[];
+  unread_notifications: number;
+}
+
+export type Database = {
   public: {
     Tables: {
       profiles: {
@@ -105,8 +159,15 @@ export interface Database {
         { user_id: Uuid; permission_key: string; effect: 'grant' | 'deny' },
         'user_id' | 'permission_key' | 'effect'
       >;
-      ministry_functions: Table<{ id: number; name: string; sort_order: number }, 'name'>;
-      member_functions: Table<{ user_id: Uuid; function_id: number }, 'user_id' | 'function_id'>;
+      ministry_functions: Table<MinistryFunctionRow, 'name'>;
+      member_functions: Table<
+        { user_id: Uuid; function_id: number },
+        'user_id' | 'function_id',
+        [
+          Fk<'member_functions_user_id_fkey', 'user_id', 'profiles'>,
+          Fk<'member_functions_function_id_fkey', 'function_id', 'ministry_functions'>,
+        ]
+      >;
       audit_logs: Table<
         {
           id: number;
@@ -129,7 +190,12 @@ export interface Database {
           notes: string | null;
           created_at: Timestamp;
         },
-        'event_id' | 'user_id' | 'function_id'
+        'event_id' | 'user_id' | 'function_id',
+        [
+          Fk<'event_assignments_event_id_fkey', 'event_id', 'events'>,
+          Fk<'event_assignments_user_id_fkey', 'user_id', 'profiles'>,
+          Fk<'event_assignments_function_id_fkey', 'function_id', 'ministry_functions'>,
+        ]
       >;
       songs: Table<SongRow, 'title'>;
       song_lyrics: Table<
@@ -171,7 +237,11 @@ export interface Database {
           key_for_event: string | null;
           notes: string | null;
         },
-        'event_id' | 'song_id'
+        'event_id' | 'song_id',
+        [
+          Fk<'event_songs_event_id_fkey', 'event_id', 'events'>,
+          Fk<'event_songs_song_id_fkey', 'song_id', 'songs'>,
+        ]
       >;
       announcements: Table<AnnouncementRow, 'title'>;
       notifications: {
@@ -206,4 +276,4 @@ export interface Database {
     Enums: { access_role: AccessRole };
     CompositeTypes: Record<string, never>;
   };
-}
+};

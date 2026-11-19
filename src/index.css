@@ -24,6 +24,13 @@
   --input: oklch(0.9 0.015 264);
   --ring: oklch(0.8 0.13 85);
   --radius: 0.75rem;
+  /* Tipos de evento (agenda, escalas, painel): cor de destaque + fundo suave. */
+  --event-culto: oklch(0.42 0.12 264); /* azul */
+  --event-culto-soft: oklch(0.94 0.03 264);
+  --event-ensaio: oklch(0.45 0.14 300); /* roxo */
+  --event-ensaio-soft: oklch(0.94 0.035 300);
+  --event-evento: oklch(0.5 0.11 70); /* dourado escuro, legível sobre branco */
+  --event-evento-soft: oklch(0.95 0.05 85);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -42,6 +49,12 @@
     --muted-foreground: oklch(0.72 0.03 264);
     --border: oklch(0.32 0.04 264);
     --input: oklch(0.32 0.04 264);
+    --event-culto: oklch(0.8 0.1 264);
+    --event-culto-soft: oklch(0.28 0.06 264);
+    --event-ensaio: oklch(0.8 0.11 300);
+    --event-ensaio-soft: oklch(0.28 0.06 300);
+    --event-evento: oklch(0.84 0.13 85);
+    --event-evento-soft: oklch(0.3 0.05 85);
   }
 }
 
@@ -63,6 +76,12 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-event-culto: var(--event-culto);
+  --color-event-culto-soft: var(--event-culto-soft);
+  --color-event-ensaio: var(--event-ensaio);
+  --color-event-ensaio-soft: var(--event-ensaio-soft);
+  --color-event-evento: var(--event-evento);
+  --color-event-evento-soft: var(--event-evento-soft);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
