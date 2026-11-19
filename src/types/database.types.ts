@@ -10,16 +10,26 @@ type Timestamp = string;
 type Uuid = string;
 
 /** Chave estrangeira no formato do `supabase gen types` (habilita selects com relacionamentos). */
-type Fk<Name extends string, Column extends string, Ref extends string> = {
+type Fk<
+  Name extends string,
+  Column extends string,
+  Ref extends string,
+  OneToOne extends boolean = false,
+> = {
   foreignKeyName: Name;
   columns: [Column];
-  isOneToOne: false;
+  /** true quando a FK também é a PK (ex.: song_lyrics.song_id): o embed vira objeto, não lista. */
+  isOneToOne: OneToOne;
   referencedRelation: Ref;
   referencedColumns: ['id'];
 };
 
 /** Gera Row/Insert/Update/Relationships: Insert exige só as colunas obrigatórias. */
-type Table<Row, Required extends keyof Row, Rels extends Fk<string, string, string>[] = []> = {
+type Table<
+  Row,
+  Required extends keyof Row,
+  Rels extends Fk<string, string, string, boolean>[] = [],
+> = {
   Row: Row;
   Insert: Pick<Row, Required> & Partial<Omit<Row, Required>>;
   Update: Partial<Row>;
@@ -200,7 +210,8 @@ export type Database = {
       songs: Table<SongRow, 'title'>;
       song_lyrics: Table<
         { song_id: Uuid; content: string; updated_by: Uuid | null; updated_at: Timestamp },
-        'song_id'
+        'song_id',
+        [Fk<'song_lyrics_song_id_fkey', 'song_id', 'songs', true>]
       >;
       song_chords: Table<
         {
@@ -210,7 +221,8 @@ export type Database = {
           updated_by: Uuid | null;
           updated_at: Timestamp;
         },
-        'song_id'
+        'song_id',
+        [Fk<'song_chords_song_id_fkey', 'song_id', 'songs', true>]
       >;
       song_versions: {
         Row: {
@@ -227,7 +239,11 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
-      song_favorites: Table<{ user_id: Uuid; song_id: Uuid; created_at: Timestamp }, 'song_id'>;
+      song_favorites: Table<
+        { user_id: Uuid; song_id: Uuid; created_at: Timestamp },
+        'song_id',
+        [Fk<'song_favorites_song_id_fkey', 'song_id', 'songs'>]
+      >;
       event_songs: Table<
         {
           id: Uuid;
@@ -243,7 +259,11 @@ export type Database = {
           Fk<'event_songs_song_id_fkey', 'song_id', 'songs'>,
         ]
       >;
-      announcements: Table<AnnouncementRow, 'title'>;
+      announcements: Table<
+        AnnouncementRow,
+        'title',
+        [Fk<'announcements_created_by_fkey', 'created_by', 'profiles'>]
+      >;
       notifications: {
         Row: {
           id: Uuid;
