@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSession } from '@/features/auth/session-context';
 import { CancelledBadge, EventTypeBadge } from '@/features/agenda/event-type-badge';
 import { formatDayLabel, formatTimeRange } from '@/lib/dates';
+import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import type { EventDetail, EventSongItem } from '../api';
 import { SongRow } from './song-row';
@@ -87,21 +88,27 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <TeamCard team={team} />
+        <TeamCard team={team} eventId={event.id} />
         <SongsCard songs={songs} />
       </div>
     </>
   );
 }
 
-function TeamCard({ team }: { team: TeamGroup[] }) {
+function TeamCard({ team, eventId }: { team: TeamGroup[]; eventId: string }) {
   const { session } = useSession();
   const myId = session?.user.id;
+  const canSchedule = usePermission('schedules.manage');
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
         <CardTitle>Equipe</CardTitle>
+        {canSchedule && (
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/escalas/montar?evento=${eventId}`}>Editar escala</Link>
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         {team.length === 0 ? (

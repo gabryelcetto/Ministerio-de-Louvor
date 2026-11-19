@@ -1,6 +1,10 @@
+import { CalendarPlus } from 'lucide-react';
+import { Link } from 'react-router';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
+import { Button } from '@/components/ui/button';
 import { EventCard } from '@/features/agenda/components/event-card';
 import { formatShortDate } from '@/lib/dates';
+import { usePermission } from '@/lib/permissions';
 import { PAST_DAYS } from '../api';
 import { useMySchedules } from '../hooks';
 import { splitByTime, type MyScheduleItem } from '../schedule-utils';
@@ -8,14 +12,25 @@ import { splitByTime, type MyScheduleItem } from '../schedule-utils';
 /** "Minhas escalas": próximas primeiro; as anteriores ficam numa seção recolhida. */
 export function MySchedulesPage() {
   const query = useMySchedules();
+  const canSchedule = usePermission('schedules.manage');
 
   return (
     <section className="mx-auto flex max-w-3xl flex-col gap-6">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Minhas escalas</h1>
-        <p className="text-sm text-muted-foreground">
-          Eventos em que você está escalado(a) e a sua função em cada um.
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Minhas escalas</h1>
+          <p className="text-sm text-muted-foreground">
+            Eventos em que você está escalado(a) e a sua função em cada um.
+          </p>
+        </div>
+        {canSchedule && (
+          <Button asChild>
+            <Link to="/escalas/montar">
+              <CalendarPlus aria-hidden="true" />
+              Montar escala
+            </Link>
+          </Button>
+        )}
       </header>
 
       {query.isPending ? (

@@ -49,6 +49,36 @@ export function transposeNote(note: string, semitones: number, preferFlats: bool
   return pitchToNote(noteToPitch(note) + semitones, preferFlats);
 }
 
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
+
+/**
+ * Grau (0 = tônica … 6 = sétimo) usado para escrever cada distância em semitons a partir da
+ * tônica: 1, b2, 2, b3, 3, 4, #4, 5, b6, 6, b7, 7. É a grafia convencional das notas cromáticas
+ * (em G: Bb, Eb, F, C#), e vale para tons maiores e menores (em Am: C, C#, F, G#).
+ */
+const DEGREE_FOR_INTERVAL = [0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6] as const;
+
+/**
+ * Nome da nota `pitch` escrito dentro do tom `key`: a letra vem do grau e o acidente da
+ * diferença para a letra natural. Ex.: em G, a classe 10 é "Bb" (b3), não "A#".
+ * Se o resultado exigir dobrado sustenido/bemol, cai na grafia simples do tom.
+ */
+export function spellPitchInKey(pitch: number, key: string): string {
+  const parsed = parseKey(key);
+  if (!parsed) return pitchToNote(pitch, false);
+  const tonicName = keyName(parsed.pitch, parsed.minor).replace(/m$/, '');
+  const tonicLetter = LETTERS.indexOf(tonicName.charAt(0) as (typeof LETTERS)[number]);
+  const interval = (((pitch - parsed.pitch) % 12) + 12) % 12;
+  const letter = LETTERS[(tonicLetter + DEGREE_FOR_INTERVAL[interval]!) % 7] as string;
+  const target = ((pitch % 12) + 12) % 12;
+  // Diferença entre a nota pedida e a letra natural, entre -6 e +5.
+  const diff = ((((target - (NATURAL[letter] as number)) % 12) + 18) % 12) - 6;
+  if (diff === 0) return letter;
+  if (diff === 1) return `${letter}#`;
+  if (diff === -1) return `${letter}b`;
+  return pitchToNote(target, keyPrefersFlats(key));
+}
+
 export interface ParsedKey {
   pitch: number;
   minor: boolean;

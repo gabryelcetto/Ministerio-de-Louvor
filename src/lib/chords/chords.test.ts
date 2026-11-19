@@ -10,6 +10,7 @@ import {
   parseChord,
   parseChordPro,
   parseLine,
+  spellPitchInKey,
   semitonesBetween,
   toSheetUnits,
   transposeChord,
@@ -243,5 +244,64 @@ describe('layout para o celular', () => {
       { chord: null, text: 'soul.' },
       { chord: 'C', text: '' },
     ]);
+  });
+});
+
+describe('grafia pelo grau no tom de destino (pendência 12)', () => {
+  it('baixo de A/G em E vai para C/Bb em G (b3 de G), não C/A#', () => {
+    expect(transposeChordProToKey('{key: E}\n[A/G]Sua bondade', 'E', 'G')).toBe(
+      '{key: G}\n[C/Bb]Sua bondade',
+    );
+    expect(transposeChordPro('{key: E}\n[A/G]x', 3)).toBe('{key: G}\n[C/Bb]x');
+  });
+
+  it('tônica e baixo seguem a mesma regra', () => {
+    // Em G: b7 = F, b6 = Eb, #4 = C#, 7 = F#.
+    expect(transposeChord('G/F', 0, 'G')).toBe('G/F');
+    expect(transposeChord('Bb/Ab', 0, 'C')).toBe('Bb/Ab');
+    expect(transposeChord('D/C', 5, 'G')).toBe('G/F');
+    expect(transposeChord('A#7', 0, 'G')).toBe('Bb7');
+    expect(transposeChord('Gb/Db', 0, 'G')).toBe('F#/C#');
+  });
+
+  it('em tom menor, 3ª e 7ª maiores ficam com sustenido (dominante)', () => {
+    expect(transposeChord('E7/Ab', 0, 'Am')).toBe('E7/G#');
+    expect(transposeChord('A/Db', 0, 'Am')).toBe('A/C#');
+    expect(transposeChord('Bb', 0, 'Am')).toBe('Bb');
+  });
+
+  it('tons de bemóis continuam com bemóis', () => {
+    expect(transposeChordPro('{key: G}\n[G]a [D/F#]b [Em]c [C]d', 3)).toBe(
+      '{key: Bb}\n[Bb]a [F/A]b [Gm]c [Eb]d',
+    );
+    expect(transposeChord('A#m', 0, 'Eb')).toBe('Bbm');
+  });
+
+  it('sem tom conhecido, ou com preferFlats forçado, mantém a escolha global', () => {
+    expect(transposeChord('A/G', 3, false)).toBe('C/A#');
+    expect(transposeChord('A/G', 3, true)).toBe('C/Bb');
+    expect(transposeChordPro('[A/G]x', 3)).toBe('[C/A#]x');
+    expect(transposeChordPro('{key: E}\n[A/G]x', 3, { preferFlats: false })).toBe(
+      '{key: G}\n[C/A#]x',
+    );
+  });
+
+  it('spellPitchInKey cobre os 12 graus de C e cai na grafia simples se precisar de dobrado', () => {
+    expect(Array.from({ length: 12 }, (_, p) => spellPitchInKey(p, 'C'))).toEqual([
+      'C',
+      'Db',
+      'D',
+      'Eb',
+      'E',
+      'F',
+      'F#',
+      'G',
+      'Ab',
+      'A',
+      'Bb',
+      'B',
+    ]);
+    // Em C#m, o #4 seria F## (dobrado): usa G.
+    expect(spellPitchInKey(7, 'C#m')).toBe('G');
   });
 });

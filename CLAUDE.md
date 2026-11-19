@@ -42,6 +42,9 @@ npm run format:check
   `type` (não `interface`) e as chaves estrangeiras ficam em `Relationships`, senão o supabase-js
   não consegue inferir o resultado dos selects. Strings de `select` devem ser um literal único
   (sem `${}` ou `+`) pelo mesmo motivo.
+- Erros para o usuário só via `friendlyError()` (`src/lib/errors.ts`); escritas pedem `.select()` e
+  passam por `requireAffected()` (o RLS barra UPDATE/DELETE sem erro, com 0 linhas).
+- Botões dentro de `<form>` sempre com `type` explícito (`button` ou `submit`).
 - Cores só por tokens do tema (`src/index.css`); nada de cor fixa nos componentes.
 - Datas sempre no fuso `America/Sao_Paulo` (`src/lib/dates.ts`), o mesmo dos triggers do banco.
 - Registre cada fase em `docs/diario-de-bordo.md` e o que ficou em aberto em `docs/pendencias.md`.

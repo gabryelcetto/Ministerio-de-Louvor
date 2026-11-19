@@ -342,3 +342,62 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
   pelo login e pelo RLS.
 - **Lockfile editado à mão**: `npm install --package-lock-only` com outra versão do npm reescrevia
   81 linhas sem relação com a mudança.
+
+---
+
+## Fase F — Edição, histórico e escalas (19/11/2026)
+
+### Arquivos criados/alterados
+
+- `src/lib/errors.ts` (+ teste) — **utilitário único de erros**: `friendlyError(error, fallback)`
+  traduz RLS/GRANT (42501), mensagens dos triggers (já em português, passam como estão),
+  constraints conhecidas (escala duplicada, término antes do início, música em uso), rede, sessão
+  expirada e login. `requireAffected()` + `NoRowsAffectedError` tratam o caso em que o RLS barra um
+  UPDATE/DELETE sem erro (0 linhas). O login passou a usar o mesmo utilitário.
+- `src/components/common/confirm-dialog.tsx`, `form-error.tsx`, `use-unsaved-guard.tsx` —
+  confirmação com `<dialog>` nativo, erro de ação já traduzido e aviso ao sair com alterações
+  (`useBlocker` do React Router + `beforeunload`).
+- `src/components/ui/textarea.tsx` — componente shadcn/ui.
+- `src/features/repertorio/editing.ts` (+ teste) — salvar letra (`upsert`), cifra (`upsert`, volta
+  a `official`), tom oficial (`update`), histórico (`song_versions` + autor) e restaurar
+  (`restore_song_version`); invalidação por tipo de alteração.
+- `src/features/repertorio/editor-checks.ts` — avisos da cifra (acorde não reconhecido, colchete
+  sem par, sem `{key}`) e letra extraída da cifra.
+- `src/features/repertorio/history-format.ts` (+ teste) — rótulos, resumo de cada alteração e
+  diferença dos "dados da música" (JSON).
+- `src/features/repertorio/components/song-editors.tsx` — editores de letra, cifra (com
+  pré-visualização em `<ChordSheet>` lado a lado; no celular, alterna Editar/Pré-visualizar) e tom
+  oficial.
+- `src/features/repertorio/components/song-page.tsx` — botões por permissão e editores nas abas.
+- `src/features/repertorio/components/song-history-page.tsx` — `/repertorio/:id/historico`.
+- `src/lib/chords/notes.ts`, `chord.ts`, `chordpro.ts` (+ testes) — `spellPitchInKey`: cada nota
+  (tônica e baixo) é escrita pelo **grau** no tom de destino (pendência 12).
+- `src/lib/dates.ts` (+ teste) — `zonedLocalToIso` / `isoToZonedLocal` para `datetime-local` no
+  horário de São Paulo.
+- `src/features/escalas/manage.ts` (+ teste) + `components/schedule-builder-page.tsx` — montar
+  escala em `/escalas/montar` (`?evento=` para um evento existente); botões em Minhas escalas e no
+  detalhe do evento.
+- `src/types/database.types.ts` — FK `song_versions.changed_by → profiles`.
+
+### Decisões
+
+- **A interface esconde, o banco decide.** Botões aparecem por `usePermission`, mas toda escrita
+  vai direto ao banco e o erro é traduzido; nada de "checar permissão" de novo no cliente.
+- **Toda escrita pede `.select()`**: sem isso, um UPDATE barrado pelo RLS parece sucesso.
+- **Mensagens dos triggers passam direto**: já são escritas em português para o usuário. Mensagens
+  nativas (inglês) nunca chegam à tela — viram texto genérico. O critério é simples: a mensagem
+  tem acento.
+- **Restaurar = voltar ao conteúdo daquela versão** (é o que `restore_song_version` faz com o
+  `new_value`). Por isso o histórico mostra o valor anterior **e** o conteúdo da versão, e a versão
+  mais recente de cada campo fica marcada "versão atual", sem botão.
+- **Quem salva a cifra oficial também aprova**: o `upsert` manda `review_status = 'official'`.
+  Quem não tem a permissão nem vê o editor; se forçar, o banco recusa.
+- **Grafia pelo grau** (1, b2, 2, b3, 3, 4, #4, 5, b6, 6, b7, 7): é a convenção de partitura. Vale
+  igual para tom menor (em Am: C, C#, F, G#), cobre a 3ª/7ª maiores dos acordes de dominante e,
+  se a nota exigir dobrado sustenido/bemol, cai na grafia simples do tom.
+- **Invalidação por alcance**: letra/cifra recarregam a música e o histórico; tom oficial e
+  restauração também a lista, o Início e o detalhe dos eventos (que mostram o tom resolvido);
+  escala recarrega agenda, eventos, Minhas escalas, Início e notificações.
+- **Montar escala respeita as duas permissões do banco**: criar evento é `events.manage`, incluir
+  pessoas é `schedules.manage`. Sem a primeira, a tela só oferece eventos já existentes.
+- **Horário digitado é de Brasília**, não do aparelho (mesmo critério de exibição desde a fase E).

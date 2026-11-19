@@ -237,7 +237,7 @@ export type Database = {
         };
         Insert: never;
         Update: never;
-        Relationships: [];
+        Relationships: [Fk<'song_versions_changed_by_fkey', 'changed_by', 'profiles'>];
       };
       song_favorites: Table<
         { user_id: Uuid; song_id: Uuid; created_at: Timestamp },

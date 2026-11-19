@@ -3,7 +3,7 @@
  * Exemplos aceitos: G, Am, F#m7, Bb7(9), C7M, Dm7(b5), Bm7b5, B°, Gº, Esus4, Cadd9,
  * D/F#, A/C#, G7(#11), C6(9), Ebmaj7, F+, Caug, Cdim, D4, A2.
  */
-import { NOTE_RE_SOURCE, transposeNote } from './notes';
+import { NOTE_RE_SOURCE, noteToPitch, spellPitchInKey, transposeNote } from './notes';
 
 export interface Chord {
   root: string;
@@ -34,13 +34,26 @@ export function formatChord(chord: Chord): string {
 /**
  * Transpõe um acorde. Texto que não é acorde (ex.: "N.C.", "x2") volta igual.
  * O sufixo (7M, m7(b5), sus4...) é preservado; tônica e baixo mudam.
+ *
+ * `spelling` decide sustenido x bemol:
+ * - um tom (ex.: "G"): tônica e baixo são escritos pelo grau dentro desse tom — em G, A/G
+ *   transposto vira C/Bb (b3 de G), não C/A#;
+ * - `true`/`false`: força bemóis/sustenidos em todas as notas.
  */
-export function transposeChord(text: string, semitones: number, preferFlats: boolean): string {
+export function transposeChord(
+  text: string,
+  semitones: number,
+  spelling: boolean | string,
+): string {
   const chord = parseChord(text);
   if (!chord) return text;
+  const move = (note: string) =>
+    typeof spelling === 'string'
+      ? spellPitchInKey(noteToPitch(note) + semitones, spelling)
+      : transposeNote(note, semitones, spelling);
   return formatChord({
-    root: transposeNote(chord.root, semitones, preferFlats),
+    root: move(chord.root),
     suffix: chord.suffix,
-    bass: chord.bass ? transposeNote(chord.bass, semitones, preferFlats) : null,
+    bass: chord.bass ? move(chord.bass) : null,
   });
 }

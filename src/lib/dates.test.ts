@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { dayKey, formatDayLabel, formatTime, formatTimeRange, greeting, groupByDay } from './dates';
+import {
+  dayKey,
+  formatDayLabel,
+  formatTime,
+  formatTimeRange,
+  greeting,
+  groupByDay,
+  isoToZonedLocal,
+  zonedLocalToIso,
+} from './dates';
 
 // Horários em UTC; São Paulo é UTC-3 (sem horário de verão desde 2019).
 describe('datas no fuso da igreja', () => {
@@ -40,5 +49,18 @@ describe('datas no fuso da igreja', () => {
       ['2026-11-22', ['a', 'b', 'c']],
       ['2026-11-24', ['d']],
     ]);
+  });
+});
+
+describe('datetime-local no fuso da igreja', () => {
+  it('lê o horário digitado como de São Paulo (UTC-3)', () => {
+    expect(zonedLocalToIso('2026-11-23T19:30')).toBe('2026-11-23T22:30:00.000Z');
+    expect(zonedLocalToIso('2026-11-23T22:30')).toBe('2026-11-24T01:30:00.000Z');
+    expect(zonedLocalToIso('23/11/2026 19:30')).toBeNull();
+  });
+
+  it('faz o caminho de volta para preencher o campo', () => {
+    expect(isoToZonedLocal('2026-11-24T01:30:00Z')).toBe('2026-11-23T22:30');
+    expect(isoToZonedLocal(zonedLocalToIso('2027-01-02T09:05') as string)).toBe('2027-01-02T09:05');
   });
 });
