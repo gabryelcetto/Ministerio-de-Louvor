@@ -90,8 +90,11 @@ for (const [role, email] of Object.entries(users)) {
         .catch(() => '');
       const errorOnScreen =
         /Não foi possível|Tentar de novo|Algo deu errado|undefined|NaN|Invalid/i.test(text);
+      // Compara com a largura configurada: no modo celular a janela "cresce" junto com a página
+      // (como o zoom automático do celular), então window.innerWidth esconderia o problema.
       const scrollX = await page.evaluate(
-        () => document.documentElement.scrollWidth > window.innerWidth,
+        (width) => document.documentElement.scrollWidth > width + 1,
+        vp.width,
       );
       await page.screenshot({ path: `${OUT}/${role}-${vpName}-${name}.png`, fullPage: true });
       const entry = {

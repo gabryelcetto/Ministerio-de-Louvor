@@ -73,7 +73,7 @@ function ProfileCard() {
       ) : profile.isError ? (
         <ErrorState onRetry={() => void profile.refetch()} />
       ) : (
-        <dl className="grid gap-3 text-sm sm:grid-cols-[10rem_1fr]">
+        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-[10rem_1fr]">
           <dt className="text-muted-foreground">Nome</dt>
           <dd className="font-medium">{profile.data.full_name || '—'}</dd>
           {profile.data.display_name && (

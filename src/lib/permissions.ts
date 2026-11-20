@@ -1,5 +1,5 @@
 import { useMyPermissions } from '@/features/auth/hooks/use-me';
-import type { PermissionKey } from '@/types/database.types';
+import type { PermissionKey } from '@/types/app.types';
 
 /**
  * usePermission('chords.edit_official') → true/false.

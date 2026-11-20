@@ -1,4 +1,4 @@
-import type { ChangeType, VersionField } from '@/types/database.types';
+import type { ChangeType, VersionField } from '@/types/app.types';
 
 export const FIELD_LABEL: Record<VersionField, string> = {
   lyrics: 'Letra',

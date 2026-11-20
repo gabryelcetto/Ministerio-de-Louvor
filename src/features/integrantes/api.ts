@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { displayName } from '@/features/escalas/schedule-utils';
 import { usePermission } from '@/lib/permissions';
 import { supabase } from '@/lib/supabase';
-import type { AccessRole, ProfileStatus } from '@/types/database.types';
+import type { AccessRole, ProfileStatus } from '@/types/app.types';
 
 export interface MemberRow {
   id: string;

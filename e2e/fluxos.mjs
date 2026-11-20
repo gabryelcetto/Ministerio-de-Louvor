@@ -79,6 +79,17 @@ async function step(page, who, label, fn, { expectApiErrors = false } = {}) {
 }
 
 const main = (page) => page.locator('main');
+/** Repete `fn` até devolver true (a lista pode levar um instante para atualizar). */
+const poll = async (fn, what, timeout = 8000) => {
+  const end = Date.now() + timeout;
+  let last;
+  while (Date.now() < end) {
+    last = await fn();
+    if (last === true) return;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`${what} (último valor: ${last})`);
+};
 const expectText = async (page, text, timeout = 8000) => {
   await main(page).getByText(text).first().waitFor({ timeout });
 };
@@ -113,8 +124,10 @@ const expectText = async (page, text, timeout = 8000) => {
   await step(page, who, 'Busca sem acento "cantico"', async () => {
     await page.getByLabel('Buscar música').fill('cantico');
     await expectText(page, 'Cântico da Manhã');
-    const n = await main(page).locator('a[href^="/repertorio/"]').count();
-    if (n !== 1) throw new Error(`${n} resultados`);
+    await poll(
+      async () => (await main(page).locator('a[href^="/repertorio/"]').count()) === 1,
+      'esperava 1 resultado',
+    );
   });
 
   await step(page, who, 'Busca sem resultado', async () => {
@@ -125,7 +138,7 @@ const expectText = async (page, text, timeout = 8000) => {
   await step(page, who, 'Abrir música e transpor meio tom acima', async () => {
     await page.goto(`${BASE}/repertorio/${SONG}`);
     await page.waitForLoadState('networkidle');
-    const tom = page.getByLabel('Tom');
+    const tom = page.getByRole('combobox', { name: 'Tom', exact: true });
     const antes = await tom.inputValue();
     await page.getByRole('button', { name: 'Subir meio tom' }).click();
     await page.waitForURL(/tom=/);
@@ -135,7 +148,7 @@ const expectText = async (page, text, timeout = 8000) => {
   });
 
   await step(page, who, 'Escolher tom no seletor e voltar ao oficial', async () => {
-    await page.getByLabel('Tom').selectOption('E');
+    await page.getByRole('combobox', { name: 'Tom', exact: true }).selectOption('E');
     await page.waitForURL(/tom=E/);
     await page.getByRole('button', { name: /Voltar ao tom oficial/ }).click();
     await page.waitForURL((u) => !u.search.includes('tom=E'));
@@ -151,7 +164,7 @@ const expectText = async (page, text, timeout = 8000) => {
 
   await step(page, who, 'Editar letra e salvar', async () => {
     await page.getByRole('button', { name: 'Editar letra' }).click();
-    const box = page.getByLabel('Letra', { exact: true });
+    const box = page.getByRole('textbox', { name: 'Letra', exact: true });
     await box.fill(`${await box.inputValue()}\nVerso de teste (integrante)`);
     await page.getByRole('button', { name: 'Salvar letra' }).click();
     await expectText(page, 'Letra salva.');
@@ -220,8 +233,10 @@ const expectText = async (page, text, timeout = 8000) => {
     await page.getByRole('button', { name: 'Marcar todas como lidas' }).click();
     await page.getByRole('button', { name: 'Marcar todas como lidas' }).isDisabled();
     await page.waitForLoadState('networkidle');
-    const unread = await page.getByRole('button', { name: /^Marcar como lida:/ }).count();
-    if (unread) throw new Error(`${unread} ainda não lidas`);
+    await poll(
+      async () => (await page.getByRole('button', { name: /^Marcar como lida:/ }).count()) === 0,
+      'ainda há não lidas',
+    );
   });
 
   await step(page, who, 'Menu Mais sem Configurações', async () => {

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { requireAffected } from '@/lib/errors';
 import { zonedLocalToIso } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
-import type { EventType } from '@/types/database.types';
+import type { EventType } from '@/types/app.types';
 import { displayName } from './schedule-utils';
 
 /**

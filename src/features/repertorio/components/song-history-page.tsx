@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { formatShortDate, formatTime } from '@/lib/dates';
 import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import type { VersionField } from '@/types/database.types';
+import type { VersionField } from '@/types/app.types';
 import { useSong } from '../api';
 import { useRestoreVersion, useSongVersions, VERSIONS_LIMIT, type SongVersion } from '../editing';
 import {
@@ -216,7 +216,7 @@ function MetadataDiff({ oldValue, newValue }: { oldValue: string; newValue: stri
   const changes = changedMetadata(oldValue, newValue);
   if (changes.length === 0) return null;
   return (
-    <dl className="grid gap-1 rounded-lg bg-muted p-3 text-sm">
+    <dl className="grid grid-cols-1 gap-1 rounded-lg bg-muted p-3 text-sm">
       {changes.map((c) => (
         <div key={c.label} className="flex flex-wrap gap-x-2">
           <dt className="font-medium">{c.label}:</dt>
@@ -248,7 +248,7 @@ function ValueDetails({
         {label}
       </summary>
       {entries ? (
-        <dl className="mt-2 grid gap-1">
+        <dl className="mt-2 grid grid-cols-1 gap-1">
           {entries.map(([k, v]) => (
             <div key={k} className="flex gap-2">
               <dt className="text-muted-foreground">{k}:</dt>

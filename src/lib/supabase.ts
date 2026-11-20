@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/database.types';
+import type { AppDatabase } from '@/types/app.types';
 import { readPublicEnv } from './env';
 
 /**
@@ -9,7 +9,7 @@ import { readPublicEnv } from './env';
  */
 const env = readPublicEnv(import.meta.env);
 
-export const supabase = createClient<Database>(env.supabaseUrl, env.supabasePublishableKey, {
+export const supabase = createClient<AppDatabase>(env.supabaseUrl, env.supabasePublishableKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

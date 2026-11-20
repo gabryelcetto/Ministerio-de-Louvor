@@ -14,7 +14,7 @@ import { EVENT_TYPE_STYLES } from '@/features/agenda/event-type';
 import { formatShortDate, formatTime } from '@/lib/dates';
 import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import type { EventType } from '@/types/database.types';
+import type { EventType } from '@/types/app.types';
 import {
   addAssignments,
   assignmentsToInsert,
@@ -360,7 +360,7 @@ function NewEventFields({
       : { 'aria-invalid': false };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Field label="Tipo" id={`${base}-type`}>
         <select
           id={`${base}-type`}
