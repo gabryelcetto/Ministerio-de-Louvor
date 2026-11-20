@@ -1,4 +1,4 @@
-import type { EventRow } from '@/types/database.types';
+import type { EventRow } from '@/types/app.types';
 
 /** Campos do evento usados nas listas. */
 export type EventSummary = Pick<

@@ -11,7 +11,7 @@ import { unreadLabel } from '@/features/notificacoes/api';
 import { SongRow } from '@/features/escalas/components/song-row';
 import { formatDayLabel, formatShortDate, formatTimeRange, greeting } from '@/lib/dates';
 import { cn } from '@/lib/utils';
-import type { Dashboard, EventRow } from '@/types/database.types';
+import type { Dashboard, EventRow } from '@/types/app.types';
 import { groupDashboardAssignments, useDashboard, type DashboardScheduleItem } from '../api';
 
 /** Tela inicial: tudo vem de uma única chamada a get_dashboard(). */
@@ -66,7 +66,7 @@ function DashboardContent({ data }: { data: Dashboard }) {
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <HighlightCard
           heading="Próximo culto"
           event={data.next_service}
@@ -81,7 +81,7 @@ function DashboardContent({ data }: { data: Dashboard }) {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Section
           title="Repertório do próximo culto"
           action={
@@ -130,7 +130,7 @@ function DashboardContent({ data }: { data: Dashboard }) {
         {data.recent_announcements.length === 0 ? (
           <EmptyState>Nenhum comunicado por enquanto.</EmptyState>
         ) : (
-          <ul className="grid gap-3 md:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
             {data.recent_announcements.map((a) => (
               <li key={a.id} className="flex flex-col gap-1 rounded-lg border p-3">
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">

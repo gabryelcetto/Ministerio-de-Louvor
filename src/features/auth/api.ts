@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { ProfileRow } from '@/types/database.types';
+import type { ProfileRow } from '@/types/app.types';
 
 /** Colunas legíveis de profiles (phone NÃO: só via get_member_contacts). */
 export const PROFILE_COLUMNS =

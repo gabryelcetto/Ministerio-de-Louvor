@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { EventType } from '@/types/database.types';
+import type { EventType } from '@/types/app.types';
 import { EVENT_TYPE_STYLES } from './event-type';
 
 export function EventTypeBadge({ type, className }: { type: EventType; className?: string }) {

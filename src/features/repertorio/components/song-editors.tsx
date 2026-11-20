@@ -143,7 +143,7 @@ export function ChordsEditor({ songId, initial, onDone }: EditorProps) {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className={cn('flex flex-col gap-2', view === 'previa' && 'hidden lg:flex')}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Label htmlFor={id}>Cifra (ChordPro)</Label>

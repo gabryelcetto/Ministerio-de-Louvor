@@ -18,19 +18,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - Projeto Supabase (plano Free), `.env.local` com `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`,
   conta Cloudflare (Workers Free) conectada ao repositório. Passo a passo no PR mais recente.
 
-### 4. Testes pgTAP ainda não rodaram localmente
-
-- **O quê:** o Docker Desktop não estava rodando nesta máquina, então `supabase test db` não foi
-  executado aqui. A validação fica com o job `db` do CI (roda em todo PR).
-- **O que fazer:** abrir o Docker Desktop e rodar `npx supabase db start` e `npx supabase test db`.
-  Se o CI acusar falha, o log do job `db` mostra qual teste quebrou.
-
-### 5. `src/types/database.types.ts` escrito à mão
-
-- **Por quê:** sem Docker não dá para rodar `supabase gen types typescript --local`.
-- **O que fazer:** com o Supabase local no ar, rode
-  `npx supabase gen types typescript --local > src/types/database.types.ts` e confira o typecheck.
-
 ### 6. Público dos comunicados (`audience`) ainda não filtra
 
 - **O quê:** a coluna `audience` (`all|function|event|users`) existe, mas a policy hoje mostra todo
@@ -41,33 +28,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 - O commit `Merge branch 'feat/fase-b-banco' into feat/fase-c-cifras` (usado para levar a correção do
   teste pgTAP para a fase C sem reescrever histórico) saiu sem a linha `Co-authored-by`.
-
-### 9. Telas da fase E sem teste com dados reais
-
-- **O quê:** todas as telas de leitura (Início, Minhas escalas, Detalhe do evento, Agenda,
-  Repertório, Música, Notificações, Comunicados, Integrantes e o menu "Mais") foram construídas
-  contra `src/types/database.types.ts` e as migrations, **sem banco disponível**. Foram validadas
-  com lint, typecheck, testes unitários das funções puras, build e capturas de tela com respostas
-  simuladas da API (Playwright interceptando as chamadas ao Supabase), nos papéis de integrante e
-  de admin.
-- **O que não foi verificado com dados reais:**
-  - formato real do JSON de `get_dashboard()` (ex.: `unread_notifications` como número;
-    `next_service`/`next_rehearsal` como objeto `events` completo);
-  - selects aninhados — os nomes das FKs em `Relationships` foram deduzidos do padrão do Postgres
-    (`<tabela>_<coluna>_fkey`): `events → event_assignments → profiles/ministry_functions`,
-    `events → event_songs → songs`, `songs → song_lyrics/song_chords` (1-para-1, vêm como objeto),
-    `profiles → member_functions → ministry_functions` e `announcements → profiles` (autor);
-  - filtro no recurso embutido em Minhas escalas (`event:events!inner(...)` + `.gte('event.starts_at', …)`);
-  - `search_songs` encadeado com `.select(...)` e `.eq('category', …)` (filtro sobre o resultado
-    da função) e a busca sem acento com os títulos reais;
-  - `update` de `notifications.read_at` com o GRANT de coluna (deve funcionar só para as próprias);
-  - contagem de não lidas com `head: true` + `count: 'exact'` (o Supabase devolve no `Content-Range`);
-  - `get_member_contacts` para líder/admin (todos) e o fato de o integrante **não** chamar a RPC;
-  - RLS de `profiles` para um integrante comum ver os nomes dos colegas;
-  - agrupamento por dia perto da meia-noite com eventos reais do seed;
-  - o `<dialog>` do menu "Mais" no Safari do iPhone (testado só no Chromium).
-- **O que fazer:** seguir `docs/roteiro-de-teste.md` com os usuários de `supabase/demo-users.sql`.
-  Depois, gerar os tipos (pendência 5) e conferir se o typecheck continua passando.
 
 ### 11. `CLAUDE.md` recriado no repositório
 
@@ -97,32 +57,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   e tom continuam consistentes.
 - **Fora do seed:** "Castelo Forte" (trad. J. Eduardo von Hafe, 1886) ficou de fora porque não
   foi possível confirmar a data de falecimento do tradutor.
-
-### 15. `demo-users.sql` ainda não executado
-
-- **O quê:** o `seed.sql` novo já rodou no job `db` do CI (migrations + seed + pgTAP verdes no
-  PR #6). O `supabase/demo-users.sql` não roda no CI (depende de usuários criados no painel), então
-  o novo `insert` de perfis não foi executado.
-- **O que fazer:** rodar no SQL Editor depois de criar os 3 usuários e conferir que os perfis
-  existem com os nomes e papéis do script.
-
-### 16. Fase F sem teste com dados reais
-
-- **O quê:** edição de letra/cifra/tom oficial, histórico com restauração e montar escala foram
-  validados com testes unitários e no navegador com a API simulada (inclusive respostas de recusa
-  do banco), **sem banco**.
-- **O que não foi verificado com dados reais:**
-  - `upsert` em `song_lyrics`/`song_chords` (`on conflict (song_id)`): para quem **não** tem
-    `chords.edit_official`, o esperado é erro 42501 do PostgREST no `ON CONFLICT DO UPDATE`;
-  - `update … select('id')` barrado pelo RLS devolvendo **0 linhas** (o app mostra "Nada foi
-    salvo…");
-  - o trigger `guard_song_official_key` respondendo 42501 com a mensagem em português;
-  - `restore_song_version` para cada campo (letra, cifra, tom oficial, dados) e o registro da
-    restauração como nova versão;
-  - FK `song_versions.changed_by → profiles` no select do histórico (nome deduzido do padrão);
-  - `insert` em `events` com `select('id')` (exige a policy de leitura, que integrantes ativos têm)
-    e as notificações geradas ao incluir/remover pessoas.
-- **O que fazer:** seguir a seção "Fase F" de `docs/roteiro-de-teste.md` com os 3 usuários demo.
 
 ### 17. Criar evento + equipe são duas gravações
 
@@ -163,7 +97,68 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   Depois de um deploy bem-sucedido, **fixar a versão** da CLI (`version: X.Y.Z` no lugar de
   `latest`) para o deploy não mudar sozinho.
 
+### 22. Docker desta máquina danificado (disco cheio)
+
+- **O quê:** em 20/11 o disco C: chegou a 0 bytes livres durante o download da imagem do Postgres
+  do Supabase. O sistema de arquivos interno do Docker Desktop ficou com arquivos de 0 bytes
+  (ex.: `docker-entrypoint.sh` da imagem `supabase/postgres`), e o `supabase start` não sobe
+  mesmo baixando a imagem de novo. Por isso a validação com dados reais foi feita no runner do
+  GitHub Actions (workflow **E2E (dados reais)**), que usa o mesmo Supabase local em Docker.
+- **Já feito (autorizado):** `npm cache clean --force` e `docker image prune -a` (apagou as
+  imagens paradas, inclusive `aluno-app`, `controle-equipamentos-docker-web`, `mysql:8.0`,
+  `nginx` e `node:20-alpine`; os **volumes** do controle-equipamentos foram preservados).
+- **O que fazer:** liberar espaço no C: (deixar 15 GB ou mais livres) e, no Docker Desktop,
+  _Troubleshoot → Clean / Purge data_ (isso **apaga os volumes**, inclusive os do
+  controle-equipamentos: faça backup antes) ou reinstalar o Docker Desktop. Depois,
+  `npx supabase start` deve funcionar aqui também.
+
+### 23. Fixar a versão da CLI também no "Deploy banco"
+
+- **O quê:** os workflows CI e E2E passaram a usar `supabase/setup-cli` com `version: 3.2.0`
+  (com `latest`, o job `db` falhou uma vez por limite de requisições da API do GitHub). O
+  `deploy-db.yml` continua com `latest` (ver pendência 21).
+- **O que fazer:** depois do primeiro deploy bem-sucedido, trocar para `version: 3.2.0`.
+
+### 24. `npm run format:check` falha no Windows por fim de linha
+
+- **O quê:** com `core.autocrlf=true`, o Git entrega os arquivos com CRLF e o Prettier (que
+  espera LF) acusa uns 80 arquivos. No Git e no CI os arquivos estão em LF e formatados
+  (conferido convertendo os arquivos alterados para LF).
+- **O que fazer (opcional):** adicionar `.gitattributes` com `* text=auto eol=lf` e rodar
+  `git add --renormalize .`, ou `git config core.autocrlf input` nesta máquina.
+
+### 25. Partes do roteiro que continuam manuais
+
+- Rede lenta/offline (estados "Carregando…" e "Tentar de novo"), comunicado agendado no futuro,
+  inativar integrante pelo SQL Editor, Safari do iPhone e instalação do app (pendência 19). O
+  resto de `docs/roteiro-de-teste.md` roda no workflow **E2E (dados reais)**.
+
+### 26. "Workers Builds" da Cloudflare falha em branches de PR
+
+- **O quê:** a integração da Cloudflare com o GitHub (conectada depois do PR #9) passou na `main`,
+  mas falha no PR "fix: validação com dados reais" desde o 1º commit, que só adicionou `e2e/` e
+  um workflow. Localmente, `npm run build` e `npx wrangler deploy --dry-run` passam (13 arquivos
+  de `dist/`, sem erro). O log fica no painel da Cloudflare, que exige login.
+- **Provável causa:** configuração de builds de branches **não-produção** (comando de deploy
+  dessas branches, normalmente `npx wrangler versions upload`, ou variáveis `VITE_*` definidas só
+  para produção).
+- **O que fazer:** abrir o link "Details" do check "Workers Builds" no PR e ler o log. Em
+  _Workers & Pages → ministerio-de-louvor → Settings → Build_, conferir "Non-production branch
+  deploy command" e se as variáveis de build valem para todas as branches (ou desligar builds de
+  branches não-produção, se não quiser prévias).
+
 ## Resolvidas recentemente
+
+- **4. pgTAP sem rodar com banco** — rodam no job `db` do CI e no workflow E2E; todos passam.
+- **5. Tipos escritos à mão** — `src/types/database.types.ts` agora é o gerado pelo Supabase
+  (idêntico ao gerado no CI); tipos de domínio em `src/types/app.types.ts`.
+- **9. Telas da fase E sem dados reais** — 84/84 telas (3 perfis × celular/desktop) sem erro de
+  API, de console ou rolagem lateral; FKs, `get_dashboard`, busca sem acento, `read_at`,
+  contagem de não lidas, `get_member_contacts` e RLS de `profiles` conferidos.
+- **15. demo-users.sql não executado** — roda a cada execução do E2E (perfis, funções e escalas).
+- **16. Fase F sem dados reais** — editar letra/cifra/tom oficial, histórico com restauração,
+  montar escala e notificações conferidos (29/29 passos), além das recusas do banco chamando a
+  API direto (12/12).
 
 - **7. Comunicados e Integrantes sem atalho no celular** — menu "Mais" na barra inferior.
 - **10. Fase E incompleta** — Repertório, Notificações, Comunicados e Integrantes entregues.
@@ -171,7 +166,9 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   grau no tom de destino; `A/G` de E para G sai `C/Bb`.
 - **18. Configurações provisória** — tela de Configurações com perfil, tema, instalar e sair.
 
-## Situação em 19/11/2026
+## Situação em 20/11/2026
 
-- **Na `main`:** fases A a F, dados de demonstração, Configurações/instalação/ícone e README.
-- **Este PR:** workflow manual "Deploy banco" (migrations para o Supabase de staging).
+- **Na `main`:** fases A a F, dados de demonstração, Configurações/instalação/ícone, README e o
+  workflow "Deploy banco".
+- **PR "fix: validação com dados reais":** workflow E2E, tipos gerados, correção de layout no
+  celular e versão fixa da CLI.

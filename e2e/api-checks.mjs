@@ -1,0 +1,142 @@
+// Confere pela API (sem a interface) que o banco recusa o que cada perfil não pode fazer.
+// Simula alguém chamando o Supabase direto pelo console do navegador.
+// Uso: API_URL=... ANON_KEY=... DEMO_PASSWORD=... node e2e/api-checks.mjs
+import { createClient } from '@supabase/supabase-js';
+
+const { API_URL, ANON_KEY, DEMO_PASSWORD } = process.env;
+const SONG = '00000000-0000-4000-8000-000000000001';
+let failures = 0;
+
+function check(ok, label, detail = '') {
+  console.log(`${ok ? '✅' : '❌'} ${label}${detail ? ` — ${detail}` : ''}`);
+  if (!ok) failures++;
+}
+
+async function login(email) {
+  const client = createClient(API_URL, ANON_KEY, { auth: { persistSession: false } });
+  const { error } = await client.auth.signInWithPassword({ email, password: DEMO_PASSWORD });
+  if (error) throw new Error(`login ${email}: ${error.message}`);
+  return client;
+}
+
+// ---------------------------------------------------------------- integrante
+const member = await login('integrante@demo.local');
+const { data: before } = await member
+  .from('song_chords')
+  .select('content')
+  .eq('song_id', SONG)
+  .single();
+
+{
+  const { error } = await member
+    .from('song_chords')
+    .upsert(
+      { song_id: SONG, content: '[A]hack', review_status: 'official' },
+      { onConflict: 'song_id' },
+    )
+    .select('song_id');
+  check(
+    error?.code === '42501',
+    'integrante: upsert de cifra oficial é recusado',
+    error?.code ?? 'sem erro',
+  );
+}
+{
+  const { data, error } = await member
+    .from('song_chords')
+    .update({ content: '[A]hack' })
+    .eq('song_id', SONG)
+    .select('song_id');
+  check(
+    !error && data.length === 0,
+    'integrante: update de cifra afeta 0 linhas (RLS)',
+    error?.message ?? `${data?.length} linhas`,
+  );
+}
+{
+  const { data: after } = await member
+    .from('song_chords')
+    .select('content')
+    .eq('song_id', SONG)
+    .single();
+  check(after?.content === before?.content, 'integrante: cifra continua igual no banco');
+}
+{
+  const { data: v } = await member
+    .from('song_versions')
+    .select('id')
+    .eq('song_id', SONG)
+    .limit(1)
+    .single();
+  const { error } = await member.rpc('restore_song_version', { version_id: v.id });
+  check(
+    error?.code === '42501',
+    'integrante: restore_song_version é recusado',
+    error?.message ?? 'sem erro',
+  );
+}
+{
+  const { error } = await member
+    .from('songs')
+    .update({ official_key: 'A' })
+    .eq('id', SONG)
+    .select('id');
+  check(
+    error?.code === '42501',
+    'integrante: mudar tom oficial é recusado',
+    error?.message ?? 'sem erro',
+  );
+}
+{
+  const { error } = await member.from('profiles').select('phone');
+  check(Boolean(error), 'integrante: coluna phone não é legível', error?.code ?? 'sem erro');
+}
+{
+  const { data, error } = await member.rpc('get_member_contacts');
+  check(
+    !error && data.length === 1,
+    'integrante: get_member_contacts devolve só o próprio telefone',
+    `${data?.length} linhas`,
+  );
+}
+{
+  const { data } = await member.from('profiles').select('id, full_name');
+  check((data?.length ?? 0) >= 3, 'integrante: vê os nomes dos colegas', `${data?.length} perfis`);
+}
+{
+  const { data } = await member.from('notifications').select('user_id');
+  const { data: me } = await member.auth.getUser();
+  check(
+    (data ?? []).every((n) => n.user_id === me.user.id),
+    'integrante: só vê as próprias notificações',
+    `${data?.length} notificações`,
+  );
+}
+{
+  const { error } = await member
+    .from('events')
+    .insert({ type: 'culto', title: 'x', starts_at: new Date().toISOString() })
+    .select('id');
+  check(error?.code === '42501', 'integrante: não cria eventos', error?.code ?? 'sem erro');
+}
+
+// ---------------------------------------------------------------- líder
+const leader = await login('lider@demo.local');
+{
+  const { data, error } = await leader.rpc('get_member_contacts');
+  check(!error && data.length >= 3, 'líder: vê os telefones de todos', `${data?.length} linhas`);
+}
+{
+  const { error } = await leader
+    .from('profiles')
+    .update({ access_role: 'admin' })
+    .eq('id', (await leader.auth.getUser()).data.user.id)
+    .select('id');
+  check(error?.code === '42501', 'líder: não se promove a admin', error?.code ?? 'sem erro');
+}
+
+if (failures) {
+  console.log(`\n${failures} verificação(ões) falharam.`);
+  process.exit(1);
+}
+console.log('\nTodas as verificações de API passaram.');

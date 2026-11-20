@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { displayName } from '@/features/escalas/schedule-utils';
 import { requireAffected } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
-import type { ChangeType, VersionField } from '@/types/database.types';
+import type { ChangeType, VersionField } from '@/types/app.types';
 
 /**
  * Edição de música (fase F). Quem decide se pode é o banco (RLS + triggers); a interface só

@@ -81,7 +81,7 @@ function MemberList({ members, showPhone }: { members: Member[]; showPhone: bool
   const { session } = useSession();
   if (members.length === 0) return null;
   return (
-    <ul className="grid gap-2 sm:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {members.map((m) => {
         const role = ROLE_LABEL[m.role];
         const href = m.phone ? telHref(m.phone) : null;

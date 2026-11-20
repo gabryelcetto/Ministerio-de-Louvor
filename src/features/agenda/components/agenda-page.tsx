@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
 import { formatDayLabel, groupByDay } from '@/lib/dates';
 import { cn } from '@/lib/utils';
-import type { EventType } from '@/types/database.types';
+import type { EventType } from '@/types/app.types';
 import { AGENDA_DAYS, useAgenda, type AgendaItem } from '../api';
 import { EVENT_TYPE_STYLES } from '../event-type';
 import { EventCard } from './event-card';

@@ -1,5 +1,5 @@
 import { CalendarHeart, Church, Music2, type LucideIcon } from 'lucide-react';
-import type { EventType } from '@/types/database.types';
+import type { EventType } from '@/types/app.types';
 
 interface EventTypeStyle {
   label: string;

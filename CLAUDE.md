@@ -38,10 +38,14 @@ npm run format:check
 - Toda autorização mora no Postgres (RLS + `has_permission`). `usePermission()` é só para a
   interface.
 - Em `profiles`, sempre liste as colunas no `select` (a coluna `phone` não é legível pela API).
-- `src/types/database.types.ts` é escrito à mão a partir das migrations: tabelas e linhas são
-  `type` (não `interface`) e as chaves estrangeiras ficam em `Relationships`, senão o supabase-js
-  não consegue inferir o resultado dos selects. Strings de `select` devem ser um literal único
-  (sem `${}` ou `+`) pelo mesmo motivo.
+- `src/types/database.types.ts` é **gerado** (`npx supabase gen types typescript --local`; não
+  edite à mão). O artefato `e2e-output` do workflow E2E traz o arquivo gerado de cada PR.
+  Tipos de domínio, o estreitamento das colunas com CHECK e o formato do `get_dashboard` ficam
+  em `src/types/app.types.ts`; o cliente usa `AppDatabase`. Importe tipos de
+  `@/types/app.types`. Strings de `select` devem ser um literal único (sem `${}` ou `+`), senão o
+  supabase-js não infere o resultado.
+- Toda migration nova pede: tipos regenerados, teste pgTAP e o workflow **E2E (dados reais)**
+  verde (`e2e/`).
 - Erros para o usuário só via `friendlyError()` (`src/lib/errors.ts`); escritas pedem `.select()` e
   passam por `requireAffected()` (o RLS barra UPDATE/DELETE sem erro, com 0 linhas).
 - Botões dentro de `<form>` sempre com `type` explícito (`button` ou `submit`).

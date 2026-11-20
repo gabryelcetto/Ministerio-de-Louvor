@@ -10,7 +10,7 @@ import {
   type TeamAssignmentRow,
   type TeamGroup,
 } from './schedule-utils';
-import type { EventRow } from '@/types/database.types';
+import type { EventRow } from '@/types/app.types';
 
 /** Quantos dias para trás "Minhas escalas" mostra em "Anteriores". */
 export const PAST_DAYS = 60;
