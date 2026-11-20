@@ -405,7 +405,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "current_change_type":
+            "complete_password_change":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
+"current_change_type":
 { Args: { "op": string }; Returns: string
                            },
 "get_dashboard":
@@ -425,17 +428,11 @@ isOneToOne: false
 "is_active_member":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
-"complete_password_change":
-{ Args: Record<PropertyKey, never>; Returns: undefined
-                           },
 "my_permissions":
 { Args: Record<PropertyKey, never>; Returns: string[]
                            },
 "restore_song_version":
 { Args: { "version_id": string }; Returns: undefined
-                           },
-"setup_new_member":
-{ Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": number[],"p_user_id": string }; Returns: undefined
                            },
 "search_songs":
 { Args: { "q": string }; Returns: {
@@ -457,7 +454,10 @@ isOneToOne: false
         to: "songs"
         isOneToOne: false
         isSetofReturn: true
-      } }
+      } },
+"setup_new_member":
+{ Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_user_id": string }; Returns: undefined
+                           }
           }
           Enums: {
             "access_role": "admin"|"leader"|"member"
