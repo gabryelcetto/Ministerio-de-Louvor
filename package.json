@@ -13,7 +13,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:grants": "node scripts/check-grants.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.7",

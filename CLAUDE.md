@@ -22,6 +22,7 @@ Instruções para o agente que trabalha neste repositório. Antes de qualquer a�
 
 ```bash
 npm run lint
+npm run check:grants
 npm run typecheck
 npm test
 VITE_SUPABASE_URL=https://exemplo.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_placeholder npm run build
@@ -46,6 +47,16 @@ npm run format:check
   supabase-js não infere o resultado.
 - Toda migration nova pede: tipos regenerados, teste pgTAP e o workflow **E2E (dados reais)**
   verde (`e2e/`).
+- **Toda tabela nova tem GRANT explícito na mesma migration**, além de RLS e políticas. Projetos
+  novos do Supabase **não** concedem privilégios de tabela em `public` para `anon`/`authenticated`
+  (o Supabase local concede): sem GRANT, a API responde 403 antes do RLS. Padrão:
+  `grant select, insert, update, delete on public.<tabela> to authenticated;` (só o necessário
+  quando a tabela for restrita; colunas sensíveis com GRANT de coluna, como em `profiles`).
+  **Nada para `anon`.** Sequences novas: `grant usage, select on sequence ... to authenticated`.
+  O `npm run check:grants` (CI) falha se faltar o GRANT; exceção só com o comentário
+  `-- sem-grant: public.<tabela> — motivo`. O CI e o E2E rodam `supabase/ci/simular-nuvem.sql`
+  antes das migrations para reproduzir a nuvem, e `supabase/tests/privileges.test.sql` confere os
+  privilégios de cada tabela — ajuste o teste se a tabela nova tiver regra de coluna.
 - Erros para o usuário só via `friendlyError()` (`src/lib/errors.ts`); escritas pedem `.select()` e
   passam por `requireAffected()` (o RLS barra UPDATE/DELETE sem erro, com 0 linhas).
 - Botões dentro de `<form>` sempre com `type` explícito (`button` ou `submit`).

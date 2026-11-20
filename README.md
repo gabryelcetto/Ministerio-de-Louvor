@@ -53,6 +53,18 @@ npx supabase test db     # testes pgTAP de RLS e triggers
 
 O `npx supabase start` mostra a URL e a chave pública locais para o `.env.local`.
 
+**Igual à nuvem:** projetos novos do Supabase não concedem privilégios de tabela em `public` para
+`anon`/`authenticated`, mas o Supabase local concede. Para o banco local se comportar como a
+nuvem (e um GRANT esquecido aparecer como erro), suba-o assim — é o que o CI e o E2E fazem:
+
+```bash
+cp supabase/ci/simular-nuvem.sql supabase/migrations/00000000000000_simular_nuvem.sql  # fica fora do Git
+npx supabase db reset    # recria o banco aplicando a simulação antes das migrations
+npx supabase test db
+```
+
+Toda tabela nova precisa de GRANT explícito (ver `CLAUDE.md`); `npm run check:grants` confere.
+
 Tipos do banco (sempre que criar uma migration):
 
 ```bash

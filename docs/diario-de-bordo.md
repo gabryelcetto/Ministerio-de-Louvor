@@ -567,3 +567,73 @@ trigger.
   navegador só para rodar `npm ci`.
 - **Senha dos usuários demo gerada a cada execução** e mascarada no log: nada de senha no
   repositório, nem de teste.
+
+---
+
+## GRANT explícito — o 403 do banco da nuvem (20/11/2026)
+
+### O problema
+
+No projeto da nuvem quase toda chamada à API respondia **403**. Projetos **novos** do Supabase
+deixaram de conceder `SELECT/INSERT/UPDATE/DELETE` nas tabelas de `public` para `anon` e
+`authenticated`; o Supabase **local** (usado no CI e no E2E) ainda concede tudo. Como o Postgres
+confere o privilégio de tabela (GRANT) **antes** do RLS, sem GRANT a requisição morre com
+`permission denied for table …` (42501 → HTTP 403), mesmo com as policies certas. Os testes não
+pegaram porque o ambiente de teste era mais permissivo que a produção.
+
+**Lição de DevOps:** o ambiente de teste precisa ser igual à produção no que importa. Aqui a
+diferença era invisível (privilégios padrão do banco) e só apareceu em produção.
+
+### Arquivos criados/alterados
+
+- `supabase/migrations/20261120200000_explicit_grants.sql` — nova migration: `usage` no schema
+  `public`; zera os privilégios de `anon`/`authenticated`; concede `select/insert/update/delete`
+  em todas as tabelas e `usage/select` nas sequences para `authenticated`; define os mesmos
+  **privilégios padrão** para objetos futuros criados pelo `postgres`; e reaplica as restrições
+  de coluna de `profiles` (select sem `phone`, update só em `full_name`, `display_name`, `phone`,
+  `access_role`, `status`) e `notifications` (só update de `read_at`). Nada para `anon`.
+- `supabase/ci/simular-nuvem.sql` — script que faz o Supabase local se comportar como um projeto
+  novo da nuvem (revoga os privilégios padrão de `anon`/`authenticated`). O CI e o E2E copiam o
+  arquivo para `supabase/migrations/00000000000000_simular_nuvem.sql` antes de subir o banco: o
+  nome com zeros faz rodar antes de todas as migrations. Essa cópia está no `.gitignore`.
+- `supabase/tests/privileges.test.sql` — testes pgTAP lendo o catálogo: cada tabela de `public`
+  tem exatamente `DELETE/INSERT/SELECT/UPDATE` para `authenticated` (exceto `profiles`, só por
+  coluna, e `notifications`, só `SELECT` + update de `read_at`) e **nada** para `anon`;
+  sequences; colunas de `profiles`/`notifications`; RLS ligado em toda tabela; `usage` no schema;
+  privilégios padrão. Tabela nova entra no teste sozinha.
+- `supabase/tests/rls.test.sql` — o anônimo agora recebe **erro de permissão** (42501) em vez de
+  lista vazia, que é o comportamento real da nuvem.
+- `scripts/check-grants.mjs` + `npm run check:grants` — falha se uma migration nova criar tabela
+  sem `grant … to authenticated` (exceção só com `-- sem-grant: public.<tabela> — motivo`).
+- `.github/workflows/ci.yml` — job `app` roda `check:grants`; job `db` simula a nuvem antes das
+  migrations e, depois dos testes, prova a **idempotência**: aplica um `grant all` (inclusive para
+  `anon`, simulando uma correção manual mais larga), reaplica a migration duas vezes e roda o
+  pgTAP de novo.
+- `.github/workflows/e2e.yml` — também simula a nuvem antes de subir o Supabase.
+- `CLAUDE.md` — regra: toda tabela nova com GRANT explícito; nada para `anon`.
+
+### Como provamos que o CI pega o problema
+
+1. Primeiro commit do PR: só a simulação da nuvem + os testes novos, **sem** a migration. O CI
+   falhou do jeito esperado: 23 testes de privilégio, `rls.test.sql` abortando com
+   `permission denied for table songs`, e o E2E com o mesmo erro da nuvem,
+   `403 POST /rest/v1/rpc/get_dashboard — permission denied for table events`.
+2. Segundo commit: a migration. Tudo verde.
+
+Achado extra no passo 1: `notifications` também quebrava na nuvem. A migration antiga tirava
+INSERT/UPDATE/DELETE e contava com o SELECT padrão do Supabase.
+
+### Decisões
+
+- **Revogar tudo e conceder de novo** (em vez de só conceder): o resultado final não depende do
+  que havia antes — nem da correção manual feita na nuvem, nem do `TRUNCATE`/`REFERENCES`/
+  `TRIGGER` que o Supabase local dá. Isso é o que torna a migration idempotente. Atenção: em
+  PostgreSQL, revogar um privilégio de tabela também revoga os de coluna; por isso as regras de
+  `profiles`/`notifications` vêm **depois**.
+- **Privilégios padrão para `authenticated`:** rede de segurança para não repetir o 403. Como eles
+  escondem um GRANT esquecido, a regra explícita é garantida pelo `check:grants`.
+- **Nada para `anon`:** o app só fala com o banco depois do login (o login é o Auth, não o
+  PostgREST). Menos superfície de ataque.
+- **Mantido o pedido "select/insert/update/delete em todas as tabelas"**, inclusive em
+  `song_versions` e `audit_logs` (só inserção). Quem barra as escritas indevidas nelas é o RLS
+  (sem policy de update/delete). Ver pendência 27.

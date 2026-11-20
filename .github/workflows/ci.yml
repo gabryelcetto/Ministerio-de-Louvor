@@ -26,6 +26,8 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      # Toda tabela nova precisa de GRANT explícito para authenticated (CLAUDE.md).
+      - run: npm run check:grants
       - run: npm run typecheck
       - run: npm test
       - name: Build
@@ -56,3 +58,16 @@ jobs:
 
       # Roda supabase/tests/*.test.sql (RLS, triggers, permissões).
       - run: supabase test db
+
+      # A migration de GRANT precisa ser idempotente: no projeto da nuvem a correção foi feita à
+      # mão antes do "Deploy banco". Simula uma correção manual mais larga que a nossa (grant all,
+      # inclusive para anon), reaplica a migration e confere que o resultado volta ao esperado.
+      - name: Migration de GRANT é idempotente
+        run: |
+          docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
+          grant all on all tables in schema public to anon, authenticated;
+          grant all on all sequences in schema public to anon, authenticated;
+          SQL
+          docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/migrations/20261120200000_explicit_grants.sql
+          docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/migrations/20261120200000_explicit_grants.sql
+          supabase test db
