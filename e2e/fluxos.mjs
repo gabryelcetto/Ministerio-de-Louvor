@@ -142,15 +142,15 @@ const expectText = async (page, text, timeout = 8000) => {
     const antes = await tom.inputValue();
     await page.getByRole('button', { name: 'Subir meio tom' }).click();
     await page.waitForURL(/tom=/);
+    await poll(async () => (await tom.inputValue()) !== antes, `tom não mudou (${antes})`);
     const depois = await tom.inputValue();
-    if (antes === depois) throw new Error(`tom não mudou (${antes})`);
     return `${antes} → ${depois}`;
   });
 
   await step(page, who, 'Escolher tom no seletor e voltar ao oficial', async () => {
     await page.getByRole('combobox', { name: 'Tom', exact: true }).selectOption('E');
     await page.waitForURL(/tom=E/);
-    await page.getByRole('button', { name: /Voltar ao tom oficial/ }).click();
+    await page.getByRole('button', { name: /Oficial/ }).click();
     await page.waitForURL((u) => !u.search.includes('tom=E'));
   });
 
@@ -239,14 +239,25 @@ const expectText = async (page, text, timeout = 8000) => {
     );
   });
 
-  await step(page, who, 'Menu Mais sem Configurações', async () => {
+  // Configurações é a tela pessoal (perfil, tema, instalar, sair): aparece para todos.
+  await step(page, who, 'Menu Mais abre, mostra os itens e fecha com Esc', async () => {
     await page.goto(`${BASE}/`);
-    await page.getByRole('button', { name: /^Mais/ }).click();
+    const button = page.getByRole('button', { name: /^Mais/ });
+    await button.click();
     const menu = page.getByRole('navigation', { name: 'Mais opções' });
-    await menu.getByRole('link', { name: 'Comunicados' }).waitFor();
-    if (await menu.getByRole('link', { name: 'Configurações' }).count())
-      throw new Error('Configurações visível para integrante');
+    for (const item of ['Notificações', 'Comunicados', 'Integrantes', 'Configurações'])
+      await menu.getByRole('link', { name: item }).waitFor();
     await page.keyboard.press('Escape');
+    await poll(
+      () => button.evaluate((el) => el === document.activeElement),
+      'foco não voltou ao Mais',
+    );
+  });
+
+  await step(page, who, 'Configurações pessoais sem itens de administração', async () => {
+    await page.goto(`${BASE}/configuracoes`);
+    await page.waitForLoadState('networkidle');
+    await expectText(page, /Isa/);
   });
 
   await context.close();
