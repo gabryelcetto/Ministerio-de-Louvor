@@ -474,6 +474,10 @@ let temporaryPassword = '';
       .getByRole('navigation', { name: 'Navegação principal' })
       .first()
       .waitFor({ timeout: 15000 });
+    // Liberado: o app abre onde a pessoa estava (aqui, /repertorio).
+    if (await page.getByRole('heading', { name: 'Defina sua senha' }).count())
+      throw new Error('continua bloqueado depois de salvar');
+    await page.goto(`${BASE}/`);
     await expectText(page, /Novato/);
   });
   await context.close();
@@ -493,6 +497,7 @@ let temporaryPassword = '';
     'Configurações: trocar senha (confere a atual)',
     async () => {
       await page.goto(`${BASE}/configuracoes`);
+      await page.waitForLoadState('networkidle');
       await page.getByLabel('Senha atual').fill('senhaerrada123');
       await page.getByLabel('Nova senha', { exact: true }).fill(NEXT_PASSWORD);
       await page.getByLabel('Repita a nova senha').fill(NEXT_PASSWORD);

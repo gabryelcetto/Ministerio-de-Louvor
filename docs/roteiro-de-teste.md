@@ -166,3 +166,41 @@ Use também o **líder** (`lider@demo.local`, Lucas): tem `chords.edit_official`
 - Rede "Offline" ao salvar → "Sem conexão com o servidor. Verifique a internet e tente de novo."
 - Sessão expirada → "Sua sessão expirou. Entre de novo."
 - Nenhuma mensagem em inglês ou com código técnico deve aparecer.
+
+---
+
+# Cadastro de integrantes e primeiro acesso
+
+Automatizado em `e2e/fluxos.mjs` (seção CADASTRO) e `e2e/api-checks.mjs` (Edge Function).
+
+## Cadastrar integrante (`/integrantes/cadastrar`)
+
+| #   | Passo                                                             | Integrante (Isa)                                         | Admin (Ana)                                                                                      |
+| --- | ----------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1   | Abrir Integrantes                                                 | **Sem** botão "Cadastrar integrante"                     | Botão "Cadastrar integrante"                                                                     |
+| 2   | Abrir `/integrantes/cadastrar` pelo endereço                      | "Você não tem permissão para cadastrar integrantes."     | Formulário                                                                                       |
+| 3   | Cadastrar sem preencher                                           | —                                                        | "Informe o nome completo." / "Informe o e-mail."                                                 |
+| 4   | Perfil de acesso                                                  | —                                                        | Integrante, Liderança e Administração (quem só tem `members.manage` vê os dois últimos travados) |
+| 5   | Nome, e-mail novo, funções → **Cadastrar**                        | —                                                        | Senha provisória (4 grupos de 4), aviso "não será mostrada de novo", mensagem pronta             |
+| 6   | **Copiar senha** / **Copiar mensagem** / **Enviar pelo WhatsApp** | —                                                        | Copia / abre o WhatsApp com endereço do app + e-mail + senha                                     |
+| 7   | Cadastrar outra pessoa com o **mesmo e-mail**                     | —                                                        | "Já existe uma conta com este e-mail."                                                           |
+| 8   | Console: `supabase.functions.invoke('invite-member', …)`          | 403 "Você não tem permissão para cadastrar integrantes." | 201                                                                                              |
+
+## Primeiro acesso da pessoa cadastrada
+
+| #   | Passo                                                      | Esperado                                                                |
+| --- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 1   | Entrar com o e-mail e a senha provisória                   | Tela **"Defina sua senha"**; sem menu; qualquer endereço volta para ela |
+| 2   | Senha `curta1`                                             | "Use pelo menos 10 caracteres." (e as outras regras que faltarem)       |
+| 3   | Senhas diferentes nos dois campos                          | "As senhas não são iguais."                                             |
+| 4   | Senha válida (10+, letras e números) → **Salvar e entrar** | Abre o Início com o nome da pessoa                                      |
+| 5   | Sair e entrar com a senha nova                             | Vai direto para o Início                                                |
+| 6   | Console antes de trocar: `from('songs').select()`          | Lista vazia (o banco também bloqueia a conta com senha provisória)      |
+
+## Trocar senha (Configurações, todos os perfis)
+
+| #   | Passo                         | Esperado                                       |
+| --- | ----------------------------- | ---------------------------------------------- |
+| 1   | Senha atual errada            | "A senha atual está incorreta."                |
+| 2   | Nova senha igual à atual      | "A nova senha precisa ser diferente da atual." |
+| 3   | Tudo certo → **Trocar senha** | "Senha alterada."; entrar de novo com a nova   |
