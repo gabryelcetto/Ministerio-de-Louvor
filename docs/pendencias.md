@@ -133,6 +133,20 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   inativar integrante pelo SQL Editor, Safari do iPhone e instalação do app (pendência 19). O
   resto de `docs/roteiro-de-teste.md` roda no workflow **E2E (dados reais)**.
 
+### 26. "Workers Builds" da Cloudflare falha em branches de PR
+
+- **O quê:** a integração da Cloudflare com o GitHub (conectada depois do PR #9) passou na `main`,
+  mas falha no PR "fix: validação com dados reais" desde o 1º commit, que só adicionou `e2e/` e
+  um workflow. Localmente, `npm run build` e `npx wrangler deploy --dry-run` passam (13 arquivos
+  de `dist/`, sem erro). O log fica no painel da Cloudflare, que exige login.
+- **Provável causa:** configuração de builds de branches **não-produção** (comando de deploy
+  dessas branches, normalmente `npx wrangler versions upload`, ou variáveis `VITE_*` definidas só
+  para produção).
+- **O que fazer:** abrir o link "Details" do check "Workers Builds" no PR e ler o log. Em
+  _Workers & Pages → ministerio-de-louvor → Settings → Build_, conferir "Non-production branch
+  deploy command" e se as variáveis de build valem para todas as branches (ou desligar builds de
+  branches não-produção, se não quiser prévias).
+
 ## Resolvidas recentemente
 
 - **4. pgTAP sem rodar com banco** — rodam no job `db` do CI e no workflow E2E; todos passam.
