@@ -22,3 +22,6 @@ Thumbs.db
 !.vscode/extensions.json
 .idea
 *.log
+
+# saídas do Playwright (capturas e relatórios)
+e2e-output

@@ -1,0 +1,106 @@
+name: E2E (dados reais)
+
+# Sobe o Supabase LOCAL no runner (Docker), aplica migrations + seed, roda o pgTAP, gera os tipos,
+# cria os usuários demo, roda o demo-users.sql e percorre o app com Playwright nos 3 perfis.
+# Nada daqui toca no Supabase da nuvem. A senha dos usuários demo é aleatória a cada execução.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Supabase local + Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - run: npm ci
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Subir Supabase local (banco, Auth, API)
+        run: >
+          supabase start -x
+          studio,edge-runtime,storage-api,imgproxy,logflare,vector,realtime,postgres-meta,supavisor,mailpit
+
+      - name: Variáveis do Supabase local
+        run: |
+          eval "$(supabase status -o env)"
+          echo "API_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          PASS="$(openssl rand -base64 18)"
+          echo "::add-mask::$PASS"
+          echo "DEMO_PASSWORD=$PASS" >> "$GITHUB_ENV"
+
+      - name: pgTAP
+        run: supabase test db
+
+      - name: Tipos gerados do banco local
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p e2e-output
+          supabase gen types typescript --local > e2e-output/database.types.generated.ts
+
+      - name: Usuários demo + demo-users.sql
+        id: users
+        if: ${{ !cancelled() }}
+        run: |
+          node e2e/create-demo-users.mjs
+          docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/demo-users.sql
+
+      - name: Verificações de permissão pela API
+        if: ${{ !cancelled() && steps.users.outcome == 'success' }}
+        run: node e2e/api-checks.mjs
+
+      - name: App apontando para o Supabase local
+        id: app
+        if: ${{ !cancelled() && steps.users.outcome == 'success' }}
+        run: |
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$API_URL" "$ANON_KEY" > .env.local
+          npm run dev -- --host 127.0.0.1 --port 5173 --strictPort > e2e-output/vite.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:5173/ > /dev/null && break; sleep 1; done
+
+      - name: Playwright
+        id: pw
+        if: ${{ !cancelled() && steps.app.outcome == 'success' }}
+        run: |
+          npm i --no-save playwright@1.65.1
+          npx playwright install --with-deps chromium
+
+      - name: Varredura das telas (3 perfis × celular/desktop)
+        if: ${{ !cancelled() && steps.pw.outcome == 'success' }}
+        run: node e2e/varredura.mjs
+        env:
+          BASE: http://127.0.0.1:5173
+
+      - name: Roteiro de fluxos (transpor, editar, histórico, escala…)
+        if: ${{ !cancelled() && steps.pw.outcome == 'success' }}
+        run: node e2e/fluxos.mjs
+        env:
+          BASE: http://127.0.0.1:5173
+
+      - name: Capturas, relatório e tipos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-output
+          path: e2e-output
+          retention-days: 14
