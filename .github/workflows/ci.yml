@@ -46,6 +46,11 @@ jobs:
           # Versão fixa: "latest" consulta a API do GitHub e falha por limite de requisições.
           version: 3.2.0
 
+      # Reproduz um projeto NOVO da nuvem: sem privilégios padrão de tabela para anon/authenticated
+      # em public. Roda antes das migrations, então um GRANT esquecido quebra os testes aqui.
+      - name: Simular privilégios da nuvem
+        run: cp supabase/ci/simular-nuvem.sql supabase/migrations/00000000000000_simular_nuvem.sql
+
       # Sobe só o Postgres local (Docker do runner), aplica as migrations e o seed.
       - run: supabase db start
 
