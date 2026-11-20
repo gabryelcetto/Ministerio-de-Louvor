@@ -6,6 +6,7 @@ import { ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { signOut } from '@/features/auth/api';
+import { PasswordForm } from '@/features/auth/components/password-form';
 import { useMyProfile } from '@/features/auth/hooks/use-me';
 import { useSession } from '@/features/auth/session-context';
 import { InstallButton } from '@/features/instalar/components/install-button';
@@ -27,13 +28,16 @@ async function fetchMyFunctions(userId: string): Promise<string[]> {
     .map((f) => f.name);
 }
 
-/** Configurações pessoais: perfil, tema, instalação do app e sair. */
+/** Configurações pessoais: perfil, tema, senha, instalação do app e sair. */
 export function SettingsPage() {
   return (
     <section className="mx-auto flex max-w-2xl flex-col gap-5">
       <h1 className="text-2xl font-semibold">Configurações</h1>
       <ProfileCard />
       <ThemeCard />
+      <Section title="Trocar senha">
+        <PasswordForm askCurrent submitLabel="Trocar senha" />
+      </Section>
       <Section title="Aplicativo">
         <p className="text-sm text-muted-foreground">
           Instale para abrir pelo ícone na tela inicial, em tela cheia.

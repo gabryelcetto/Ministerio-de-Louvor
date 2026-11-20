@@ -3,6 +3,7 @@ import { useMyProfile } from '@/features/auth/hooks/use-me';
 import { useSession } from '@/features/auth/session-context';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/features/auth/api';
+import { FirstAccessPage } from '@/features/auth/components/first-access-page';
 
 function FullScreenMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -12,7 +13,10 @@ function FullScreenMessage({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Guarda de rota: sem sessão → /login; perfil inativo → aviso. (Proteção real = RLS.) */
+/**
+ * Guarda de rota: sem sessão → /login; perfil inativo → aviso; senha provisória → "Defina sua
+ * senha" (bloqueia o app inteiro). Proteção real = RLS: no banco a conta também fica sem acesso.
+ */
 export function ProtectedRoute() {
   const { session, loading } = useSession();
   const location = useLocation();
@@ -47,6 +51,9 @@ export function ProtectedRoute() {
         </Button>
       </FullScreenMessage>
     );
+  }
+  if (profile.data?.must_change_password) {
+    return <FirstAccessPage name={profile.data.display_name || profile.data.full_name} />;
   }
   return <Outlet />;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { friendlyError, NoRowsAffectedError, requireAffected } from './errors';
+import { friendlyError, NoRowsAffectedError, requireAffected, UserFacingError } from './errors';
 
 describe('friendlyError', () => {
   it('RLS e GRANT viram "sem permissão"', () => {
@@ -78,5 +78,31 @@ describe('friendlyError', () => {
   it('valores estranhos usam o texto padrão', () => {
     expect(friendlyError(undefined)).toBe('Não foi possível concluir a operação. Tente de novo.');
     expect(friendlyError(42)).toBe('Não foi possível concluir a operação. Tente de novo.');
+  });
+});
+
+describe('troca de senha e cadastro de integrante', () => {
+  it('erros do Auth na troca de senha', () => {
+    expect(
+      friendlyError({
+        code: 'same_password',
+        message: 'New password should be different from the old password.',
+      }),
+    ).toBe('A nova senha precisa ser diferente da atual.');
+    expect(
+      friendlyError({
+        code: 'weak_password',
+        message: 'Password should contain at least one character of each',
+      }),
+    ).toBe('Senha fraca: use pelo menos 10 caracteres, com letras e números.');
+    expect(friendlyError({ code: 'reauthentication_needed', message: 'x' })).toBe(
+      'Por segurança, saia e entre de novo antes de trocar a senha.',
+    );
+  });
+
+  it('mensagem já pronta (ex.: Edge Function) passa sem mudança', () => {
+    expect(friendlyError(new UserFacingError('Já existe uma conta com este e-mail.'))).toBe(
+      'Já existe uma conta com este e-mail.',
+    );
   });
 });

@@ -1,6 +1,8 @@
-import { Phone, Search } from 'lucide-react';
+import { Phone, Search, UserPlus } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSession } from '@/features/auth/session-context';
 import { usePermission } from '@/lib/permissions';
@@ -22,12 +24,23 @@ export function MembersPage() {
 
   return (
     <section className="mx-auto flex max-w-3xl flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Integrantes</h1>
-        <p className="text-sm text-muted-foreground">
-          Quem faz parte do ministério e em que funções.
-          {canViewContacts && ' Você pode ver os telefones.'}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Integrantes</h1>
+          <p className="text-sm text-muted-foreground">
+            Quem faz parte do ministério e em que funções.
+            {canViewContacts && ' Você pode ver os telefones.'}
+          </p>
+        </div>
+        {/* Só aparece com members.manage; quem decide de verdade é a Edge Function + o banco. */}
+        {canManage && (
+          <Button asChild>
+            <Link to="/integrantes/cadastrar">
+              <UserPlus aria-hidden="true" />
+              Cadastrar integrante
+            </Link>
+          </Button>
+        )}
       </header>
 
       <div className="relative">

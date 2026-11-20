@@ -12,7 +12,7 @@ set search_path = public, extensions;
 select plan(
   (select count(*)::int * 2 from pg_tables where schemaname = 'public')
   + (select count(*)::int * 2 from pg_sequences where schemaname = 'public')
-  + 9 -- colunas de profiles
+  + 10 -- colunas de profiles
   + 3 -- colunas de notifications
   + 5 -- RLS, schema e privilégios padrão
 );
@@ -77,7 +77,8 @@ from (
     ('is_owner', array['SELECT']),
     ('status', array['SELECT', 'UPDATE']),
     ('created_at', array['SELECT']),
-    ('updated_at', array['SELECT'])
+    ('updated_at', array['SELECT']),
+    ('must_change_password', array['SELECT']) -- só a RPC complete_password_change() altera
 ) as c(col, privs);
 
 -- notifications: lê tudo, mas só atualiza read_at (inserção só por trigger).

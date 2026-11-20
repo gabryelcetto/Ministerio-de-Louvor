@@ -19,7 +19,7 @@ const browser = await chromium.launch(
   process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {},
 );
 
-async function session(email, device) {
+async function session(email, device, password = PASSWORD) {
   const context = await browser.newContext({
     ...device,
     locale: 'pt-BR',
@@ -44,7 +44,7 @@ async function session(email, device) {
   page.on('pageerror', (e) => page.apiErrors.push(`pageerror: ${e.message}`));
   await page.goto(`${BASE}/login`);
   await page.getByLabel('E-mail').fill(email);
-  await page.getByLabel('Senha').fill(PASSWORD);
+  await page.getByLabel('Senha').fill(password);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 15000 });
   await page.waitForLoadState('networkidle');
@@ -372,6 +372,147 @@ const expectText = async (page, text, timeout = 8000) => {
     await page.goto(`${BASE}/notificacoes`);
     await page.waitForLoadState('networkidle');
     await expectText(page, /Culto de teste E2E/);
+  });
+  await context.close();
+}
+
+// =============================================================================== CADASTRO
+// Integrante não vê a tela; admin cadastra; a pessoa nova entra com a senha provisória, é
+// obrigada a trocar e depois entra normalmente; troca de senha em Configurações.
+const NEW_EMAIL = 'cadastro-e2e@demo.local';
+const NEW_PASSWORD = 'NovaSenha2026';
+const NEXT_PASSWORD = 'OutraSenha2027';
+let temporaryPassword = '';
+
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE);
+  const who = 'integrante';
+  await step(page, who, 'Cadastro: integrante não vê o botão', async () => {
+    await page.goto(`${BASE}/integrantes`);
+    await page.waitForLoadState('networkidle');
+    await expectText(page, /Lucas/);
+    if (await page.getByRole('link', { name: 'Cadastrar integrante' }).count())
+      throw new Error('botão Cadastrar integrante visível');
+  });
+  await step(page, who, 'Cadastro: tela bloqueada pelo endereço', async () => {
+    await page.goto(`${BASE}/integrantes/cadastrar`);
+    await expectText(page, 'Você não tem permissão para cadastrar integrantes.');
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  const who = 'admin';
+  await step(page, who, 'Cadastro: validação do formulário', async () => {
+    await page.goto(`${BASE}/integrantes`);
+    await page.getByRole('link', { name: 'Cadastrar integrante' }).click();
+    await page.waitForURL(/\/integrantes\/cadastrar$/);
+    await page.getByRole('button', { name: 'Cadastrar', exact: true }).click();
+    await expectText(page, 'Informe o nome completo.');
+    await expectText(page, 'Informe o e-mail.');
+  });
+  await step(page, who, 'Cadastro: admin cadastra e vê a senha provisória', async () => {
+    await page.getByLabel('Nome completo').fill('Teste Cadastro E2E');
+    await page.getByLabel('Como aparece no app (opcional)').fill('Novato');
+    await page.getByLabel('E-mail').fill(NEW_EMAIL);
+    await page.getByRole('checkbox', { name: 'Violão' }).check();
+    await page.getByRole('radio', { name: /Integrante/ }).check();
+    await page.getByRole('button', { name: 'Cadastrar', exact: true }).click();
+    await expectText(page, /não será mostrada de novo/, 20000);
+    temporaryPassword = (await page.getByLabel('Senha provisória').innerText()).trim();
+    if (!/^[A-Za-z2-9]{4}(-[A-Za-z2-9]{4}){3}$/.test(temporaryPassword))
+      throw new Error(`senha provisória em formato inesperado: ${temporaryPassword}`);
+    const message = await page.getByLabel('Mensagem pronta para o WhatsApp').inputValue();
+    for (const piece of [BASE, NEW_EMAIL, temporaryPassword])
+      if (!message.includes(piece)) throw new Error(`mensagem sem "${piece}"`);
+    const wa = await page.getByRole('link', { name: /Enviar pelo WhatsApp/ }).getAttribute('href');
+    if (!wa?.startsWith('https://wa.me/?text=')) throw new Error(`link do WhatsApp: ${wa}`);
+  });
+  await step(
+    page,
+    who,
+    'Cadastro: e-mail duplicado',
+    async () => {
+      await page.getByRole('button', { name: 'Cadastrar outra pessoa' }).click();
+      await page.getByLabel('Nome completo').fill('Outra Pessoa');
+      await page.getByLabel('E-mail').fill(NEW_EMAIL);
+      await page.getByRole('button', { name: 'Cadastrar', exact: true }).click();
+      await expectText(page, 'Já existe uma conta com este e-mail.', 20000);
+    },
+    { expectApiErrors: true },
+  );
+  await step(page, who, 'Cadastro: nova pessoa aparece em Integrantes', async () => {
+    await page.goto(`${BASE}/integrantes`);
+    await page.waitForLoadState('networkidle');
+    await expectText(page, 'Novato');
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session(NEW_EMAIL, MOBILE, temporaryPassword);
+  const who = 'novo';
+  await step(page, who, 'Primeiro acesso: app bloqueado em "Defina sua senha"', async () => {
+    await page.getByRole('heading', { name: 'Defina sua senha' }).waitFor();
+    if (await page.getByRole('navigation', { name: 'Navegação principal' }).count())
+      throw new Error('navegação visível antes de trocar a senha');
+    await page.goto(`${BASE}/repertorio`);
+    await page.getByRole('heading', { name: 'Defina sua senha' }).waitFor();
+  });
+  await step(page, who, 'Primeiro acesso: senha fraca é recusada', async () => {
+    await page.getByLabel('Nova senha', { exact: true }).fill('curta1');
+    await page.getByLabel('Repita a nova senha').fill('curta1');
+    await page.getByRole('button', { name: 'Salvar e entrar' }).click();
+    await expectText(page, 'Use pelo menos 10 caracteres.');
+  });
+  await step(page, who, 'Primeiro acesso: define a senha e entra no app', async () => {
+    await page.getByLabel('Nova senha', { exact: true }).fill(NEW_PASSWORD);
+    await page.getByLabel('Repita a nova senha').fill(NEW_PASSWORD);
+    await page.getByRole('button', { name: 'Salvar e entrar' }).click();
+    await page
+      .getByRole('navigation', { name: 'Navegação principal' })
+      .first()
+      .waitFor({ timeout: 15000 });
+    await expectText(page, /Novato/);
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session(NEW_EMAIL, MOBILE, NEW_PASSWORD);
+  const who = 'novo';
+  await step(page, who, 'Entra normalmente com a senha nova', async () => {
+    await expectText(page, /Novato/);
+    if (await page.getByRole('heading', { name: 'Defina sua senha' }).count())
+      throw new Error('pediu para definir a senha de novo');
+  });
+  await step(
+    page,
+    who,
+    'Configurações: trocar senha (confere a atual)',
+    async () => {
+      await page.goto(`${BASE}/configuracoes`);
+      await page.getByLabel('Senha atual').fill('senhaerrada123');
+      await page.getByLabel('Nova senha', { exact: true }).fill(NEXT_PASSWORD);
+      await page.getByLabel('Repita a nova senha').fill(NEXT_PASSWORD);
+      await page.getByRole('button', { name: 'Trocar senha' }).click();
+      await expectText(page, 'A senha atual está incorreta.');
+      await page.getByLabel('Senha atual').fill(NEW_PASSWORD);
+      await page.getByLabel('Nova senha', { exact: true }).fill(NEXT_PASSWORD);
+      await page.getByLabel('Repita a nova senha').fill(NEXT_PASSWORD);
+      await page.getByRole('button', { name: 'Trocar senha' }).click();
+      await expectText(page, 'Senha alterada.');
+    },
+    { expectApiErrors: true },
+  );
+  await context.close();
+}
+
+{
+  const { context, page } = await session(NEW_EMAIL, MOBILE, NEXT_PASSWORD);
+  await step(page, 'novo', 'Entra com a senha trocada em Configurações', async () => {
+    await expectText(page, /Novato/);
   });
   await context.close();
 }

@@ -217,14 +217,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"phone": string | null,"status": string,"updated_at": string
+                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"must_change_password": boolean,"phone": string | null,"status": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -425,11 +425,17 @@ isOneToOne: false
 "is_active_member":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"complete_password_change":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
 "my_permissions":
 { Args: Record<PropertyKey, never>; Returns: string[]
                            },
 "restore_song_version":
 { Args: { "version_id": string }; Returns: undefined
+                           },
+"setup_new_member":
+{ Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": number[],"p_user_id": string }; Returns: undefined
                            },
 "search_songs":
 { Args: { "q": string }; Returns: {
