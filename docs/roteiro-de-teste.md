@@ -1,5 +1,10 @@
 # Roteiro de teste das telas de leitura (fase E)
 
+> **Automatizado:** a maior parte deste roteiro roda sozinha em todo PR no workflow
+> **E2E (dados reais)** (`e2e/varredura.mjs`, `e2e/fluxos.mjs` e `e2e/api-checks.mjs`; ver
+> README). Este documento continua valendo para a conferência manual e para o que não é
+> automatizado (rede lenta/offline, Safari do iPhone, instalação do app).
+
 Para rodar com dados reais: `npx supabase db start`, criar no painel os 3 usuários de
 `supabase/demo-users.sql` (admin, líder e integrante), rodar o script e abrir o app com
 `npm run dev`. Faça cada roteiro **no celular (ou com a janela estreita) e no computador**.
@@ -96,11 +101,11 @@ Marque ✅/❌ e anote o que estranhar.
 
 ## Menu "Mais" (celular)
 
-| #   | Passo                | Integrante                                             | Admin                    |
-| --- | -------------------- | ------------------------------------------------------ | ------------------------ |
-| 1   | Tocar em "Mais"      | Abre painel com Notificações, Comunicados, Integrantes | Idem + **Configurações** |
-| 2   | Esc / tocar fora / ✕ | Fecha e o foco volta ao botão "Mais"                   | Idem                     |
-| 3   | Estar em Comunicados | "Mais" aparece como ativo na barra                     | Idem                     |
+| #   | Passo                | Integrante                                                                                                          | Admin |
+| --- | -------------------- | ------------------------------------------------------------------------------------------------------------------- | ----- |
+| 1   | Tocar em "Mais"      | Abre painel com Notificações, Comunicados, Integrantes e Configurações (tela pessoal: perfil, tema, instalar, sair) | Idem  |
+| 2   | Esc / tocar fora / ✕ | Fecha e o foco volta ao botão "Mais"                                                                                | Idem  |
+| 3   | Estar em Comunicados | "Mais" aparece como ativo na barra                                                                                  | Idem  |
 
 ## Estados comuns (todas as telas)
 

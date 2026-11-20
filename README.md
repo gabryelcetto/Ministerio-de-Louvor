@@ -53,6 +53,35 @@ npx supabase test db     # testes pgTAP de RLS e triggers
 
 O `npx supabase start` mostra a URL e a chave pública locais para o `.env.local`.
 
+Tipos do banco (sempre que criar uma migration):
+
+```bash
+npx supabase gen types typescript --local > src/types/database.types.ts
+```
+
+`database.types.ts` é gerado (não edite). Os tipos de domínio e o estreitamento das colunas com
+CHECK ficam em `src/types/app.types.ts`.
+
+### Teste de ponta a ponta com dados reais (CI)
+
+O workflow **E2E (dados reais)** (`.github/workflows/e2e.yml`) roda em todo PR: sobe o Supabase
+local no runner, roda o pgTAP, gera os tipos, cria os usuários demo (senha aleatória),
+executa `supabase/demo-users.sql`, confere as permissões chamando a API direto
+(`e2e/api-checks.mjs`) e percorre o app com Playwright nos 3 perfis, no celular e no
+computador (`e2e/varredura.mjs` e `e2e/fluxos.mjs`). As capturas de tela e o relatório ficam no
+artefato **e2e-output** da execução.
+
+Para rodar na sua máquina (com o Supabase local no ar e `npm run dev`):
+
+```bash
+npm i --no-save playwright && npx playwright install chromium
+eval "$(npx supabase status -o env)"
+export DEMO_PASSWORD='uma-senha-só-de-teste'
+node e2e/create-demo-users.mjs
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/demo-users.sql
+node e2e/api-checks.mjs && node e2e/varredura.mjs && node e2e/fluxos.mjs
+```
+
 ## Configurar o Supabase (projeto na nuvem)
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (o plano gratuito basta).

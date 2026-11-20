@@ -486,3 +486,84 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
 - **`--linked --yes` + `SUPABASE_YES`:** explícitos para funcionar na CLI v2 e na v3 (que passou a
   tratar os comandos de banco como locais por padrão e pede confirmação para o projeto hospedado).
   Ver pendência 21.
+
+---
+
+## Validação com dados reais (20/11/2026)
+
+Objetivo: rodar o app inteiro contra um Supabase de verdade (migrations + seed + usuários demo) e
+corrigir o que quebrasse.
+
+### Como foi feito
+
+- O plano era usar o Supabase local nesta máquina, mas o disco C: lotou durante o download da
+  imagem do Postgres e o Docker Desktop ficou danificado (pendência 22). A validação foi movida
+  para o **GitHub Actions**, que roda o mesmo Supabase local em Docker num runner limpo.
+- Novo workflow `.github/workflows/e2e.yml` (**E2E (dados reais)**), em todo PR: sobe Postgres,
+  Auth, PostgREST e o gateway (`supabase start -x …` exclui o que o app não usa) → `supabase test
+db` → `supabase gen types` → cria os 3 usuários demo pela Auth admin API com **senha aleatória
+  da execução** (mascarada no log) → roda `supabase/demo-users.sql` → testes de API → sobe o
+  `npm run dev` apontando para o banco local → Playwright → envia capturas e relatórios como
+  artefato.
+
+### Arquivos criados/alterados
+
+- `.github/workflows/e2e.yml` — o workflow acima. Cada etapa de teste roda mesmo se a anterior
+  falhar (`if: !cancelled() && …`), para o relatório mostrar todos os problemas de uma vez.
+- `e2e/create-demo-users.mjs` — cria `admin@`, `lider@` e `integrante@demo.local` pela Auth
+  admin API (só em banco local; a chave `service_role` vem do `supabase status`).
+- `e2e/api-checks.mjs` — 12 verificações chamando o Supabase **direto**, sem a interface (como
+  alguém mexendo no console do navegador): integrante não edita cifra (upsert → 42501; update →
+  0 linhas), não restaura versão, não muda tom oficial, não lê `phone`, só vê as próprias
+  notificações, não cria evento; líder vê telefones e não se promove a admin.
+- `e2e/varredura.mjs` — entra com cada perfil, no celular (390×844) e no computador, abre 14
+  telas e procura erro de API (HTTP ≥ 400), erro de console, mensagem de erro na tela e **rolagem
+  lateral**. Salva captura de cada tela.
+- `e2e/fluxos.mjs` — o roteiro de `docs/roteiro-de-teste.md` em 29 passos: busca sem acento,
+  abrir no tom do dia, transpor, seletor de tom, editar letra, editar cifra, tom oficial,
+  histórico e restaurar, montar escala (validação + evento com 2 pessoas às 19:30), notificação
+  chegando, marcar como lidas, telefones só para quem pode, menu "Mais" (foco volta ao botão).
+- `src/types/database.types.ts` — agora é o arquivo **gerado** pelo Supabase.
+- `src/types/app.types.ts` — novo: tipos de domínio, `AppDatabase` (o gerado com as colunas de
+  CHECK estreitadas) e o formato do `get_dashboard`.
+- `src/lib/supabase.ts` e 16 arquivos de `src/features` — importam de `@/types/app.types`.
+- 8 telas (`dashboard`, `event-detail`, `members`, `settings`, `schedule-builder`, `song-editors`,
+  `song-history`, `app-shell`) — correção de layout (abaixo).
+- `.github/workflows/ci.yml` e `e2e.yml` — CLI do Supabase com versão fixa (`3.2.0`).
+- `docs/capturas/` — capturas das telas principais no celular, usadas no PR.
+- `README.md`, `CLAUDE.md`, `docs/roteiro-de-teste.md`, `docs/pendencias.md` — atualizados.
+
+### Erros encontrados e corrigidos
+
+1. **Início mais largo que o celular (617 px numa tela de 390 px).** Grades `grid` sem coluna
+   definida no celular criam uma coluna `auto`, que cresce até caber o maior texto, mesmo com
+   `truncate`. Os autores longos do seed ("Reginald Heber (1826), trad. João Gomes da Rocha…")
+   empurravam a página, e o botão "Mais" ficava fora da tela. Correção: `grid-cols-1`
+   (`minmax(0, 1fr)`) em todas as grades responsivas e `minmax(0,1fr)` na coluna de conteúdo do
+   layout do computador. **Lição:** em CSS Grid, item com texto que não quebra precisa de trilha
+   `minmax(0, …)` (ou `min-w-0`) para encolher.
+2. **A varredura não via a rolagem lateral.** Em modo celular o navegador alarga a janela junto
+   com a página (como o zoom automático do celular), então `scrollWidth > innerWidth` dava
+   falso. Agora compara com a largura configurada (390).
+3. **CI instável:** `setup-cli` com `version: latest` falhou por limite de requisições da API do
+   GitHub. Versão fixada.
+4. **Tipos à mão x gerados:** os nomes das FKs deduzidos estavam certos; a diferença era que o
+   gerador devolve `string` para colunas com CHECK. `app.types.ts` estreita essas colunas, e uma
+   checagem temporária com `@ts-expect-error` confirmou que os selects não viraram `any`.
+
+### O que funcionou de primeira com dados reais
+
+pgTAP (todos), RLS de `profiles`, selects aninhados com as FKs, `get_dashboard`, busca sem acento
+com filtro de categoria, contagem de não lidas, `read_at` com GRANT de coluna,
+`get_member_contacts`, recusas 42501 com mensagem em português e as notificações geradas por
+trigger.
+
+### Decisões
+
+- **E2E no CI em vez de só na máquina do dono:** o teste com dados reais passa a rodar em todo
+  PR, num ambiente limpo e igual para todos. É o mesmo princípio de DevOps de "a pipeline é a
+  fonte da verdade".
+- **Playwright fora do `package.json`** (`npm i --no-save` no CI): ninguém precisa baixar
+  navegador só para rodar `npm ci`.
+- **Senha dos usuários demo gerada a cada execução** e mascarada no log: nada de senha no
+  repositório, nem de teste.

@@ -32,7 +32,8 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Versão fixa: "latest" consulta a API do GitHub e falha por limite de requisições.
+          version: 3.2.0
 
       - name: Subir Supabase local (banco, Auth, API)
         run: >
