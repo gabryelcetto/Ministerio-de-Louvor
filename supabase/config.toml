@@ -35,8 +35,17 @@ enable_refresh_token_rotation = true
 # Cadastro público DESATIVADO: usuários entram só por convite / criados pelo painel.
 enable_signup = false
 enable_anonymous_sign_ins = false
-minimum_password_length = 8
+# Regra de senha (igual no app: src/lib/password.ts e na Edge Function). Na nuvem, configure o
+# mesmo no painel do Auth (ver README).
+minimum_password_length = 10
+password_requirements = "letters_digits"
 
 [auth.email]
 double_confirm_changes = true
 enable_confirmations = false
+
+# Edge Function de cadastro de integrantes: só aceita chamadas com JWT válido (o gateway confere
+# a assinatura; a função confere o usuário e a permissão no banco).
+[functions.invite-member]
+enabled = true
+verify_jwt = true

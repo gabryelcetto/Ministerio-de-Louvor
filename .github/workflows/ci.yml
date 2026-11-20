@@ -29,6 +29,13 @@ jobs:
       # Toda tabela nova precisa de GRANT explícito para authenticated (CLAUDE.md).
       - run: npm run check:grants
       - run: npm run typecheck
+
+      # Edge Functions (Deno): checagem de tipos com o próprio Deno.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Tipos da Edge Function (deno check)
+        run: deno check supabase/functions/invite-member/index.ts
       - run: npm test
       - name: Build
         run: npm run build
@@ -61,13 +68,20 @@ jobs:
 
       # A migration de GRANT precisa ser idempotente: no projeto da nuvem a correção foi feita à
       # mão antes do "Deploy banco". Simula uma correção manual mais larga que a nossa (grant all,
-      # inclusive para anon), reaplica a migration e confere que o resultado volta ao esperado.
+      # inclusive para anon), reaplica as migrations e confere que o resultado volta ao esperado.
       - name: Migration de GRANT é idempotente
         run: |
           docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres <<'SQL'
           grant all on all tables in schema public to anon, authenticated;
           grant all on all sequences in schema public to anon, authenticated;
           SQL
-          docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/migrations/20261120200000_explicit_grants.sql
-          docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/migrations/20261120200000_explicit_grants.sql
+          # Reaplica, em ordem e duas vezes, a migration de GRANT e todas as posteriores (cada uma
+          # precisa continuar idempotente; uma posterior pode reconceder colunas novas).
+          for round in 1 2; do
+            for f in $(ls supabase/migrations/*.sql | sort); do
+              [[ "$(basename "$f" | cut -c1-14)" < "20261120200000" ]] && continue
+              echo "== $round: $f"
+              docker exec -i supabase_db_ministerio-de-louvor psql -q -v ON_ERROR_STOP=1 -U postgres -d postgres < "$f"
+            done
+          done
           supabase test db

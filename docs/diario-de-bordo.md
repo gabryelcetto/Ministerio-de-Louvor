@@ -637,3 +637,106 @@ INSERT/UPDATE/DELETE e contava com o SELECT padrão do Supabase.
 - **Mantido o pedido "select/insert/update/delete em todas as tabelas"**, inclusive em
   `song_versions` e `audit_logs` (só inserção). Quem barra as escritas indevidas nelas é o RLS
   (sem policy de update/delete). Ver pendência 27.
+
+---
+
+## Cadastro de integrantes e primeiro acesso (20–21/11/2026)
+
+### Parte 1 (GRANTs) — já estava na `main`
+
+O pedido repetia a correção do 403 da nuvem, que entrou na `main` pelo PR #11:
+
+- migration `20261120200000_explicit_grants.sql` (idempotente; nada para `anon`);
+- CI e E2E simulando a nuvem (`supabase/ci/simular-nuvem.sql`);
+- `supabase/tests/privileges.test.sql`;
+- regra no `CLAUDE.md`, reforçada por `npm run check:grants`.
+
+Nesta entrega a regra foi seguida: a coluna nova ganhou GRANT só de leitura, o
+`privileges.test.sql` passou a cobri-la, e a prova de idempotência do CI agora reaplica **todas**
+as migrations a partir da de GRANT.
+
+### Como funciona
+
+1. Quem tem `members.manage` abre **Integrantes → Cadastrar integrante** e informa nome, e-mail,
+   funções e perfil.
+2. O app chama a **Edge Function `invite-member`** (Deno, roda no Supabase, não no navegador):
+   - valida o JWT;
+   - confere `has_permission('members.manage')` **chamando o banco como o próprio usuário**;
+   - só então usa a service role para `auth.admin.createUser` (e-mail confirmado, senha provisória
+     gerada no servidor);
+   - grava perfil e funções pela RPC `setup_new_member`, de novo como o usuário;
+   - devolve a senha uma única vez.
+3. A tela mostra a senha com "Copiar senha", "Copiar mensagem" e "Enviar pelo WhatsApp", e avisa
+   que ela não aparece de novo.
+4. A pessoa entra com a provisória e cai em **"Defina sua senha"**. Ao salvar, o app troca a senha
+   no Auth e chama `complete_password_change()`, e a flag `must_change_password` vira `false`.
+
+### Arquivos criados/alterados
+
+- `supabase/migrations/20261121090000_member_onboarding.sql`:
+  - coluna `profiles.must_change_password` (GRANT de **select** na coluna; nenhum update pela API);
+  - `is_active_member`/`has_permission` tratam a conta com senha provisória como **sem acesso**;
+  - RPC `setup_new_member` (`members.manage`; líder/admin só com `permissions.manage`; só contas
+    recém-criadas e que nunca entraram; registra em `audit_logs`);
+  - RPC `complete_password_change` (só o próprio usuário).
+- `supabase/functions/invite-member/index.ts` (+ `deno.json`) — a Edge Function.
+- `supabase/functions/_shared/password.ts` e `invite.ts` — regra de senha, gerador da senha
+  provisória e validação dos dados. TypeScript puro, **o mesmo código** roda no Deno (função) e
+  no navegador (app).
+- `supabase/config.toml` — senha com mínimo de 10 e "letters_digits"; `verify_jwt` da função.
+- `src/lib/password.ts` (+ teste) — reexporta a regra e monta o schema de "nova senha".
+- `src/features/integrantes/invite.ts` (+ teste) — chamada da função, mensagem de WhatsApp,
+  schema do formulário.
+- `src/features/integrantes/components/invite-member-page.tsx` — tela "Cadastrar integrante".
+- `src/features/integrantes/components/members-page.tsx` — botão (só com `members.manage`).
+- `src/features/auth/components/password-form.tsx` — formulário de senha (primeiro acesso e
+  Configurações; em Configurações confere a senha atual antes).
+- `src/features/auth/components/first-access-page.tsx` — "Defina sua senha".
+- `src/app/protected-route.tsx` — bloqueia o app inteiro enquanto `must_change_password`.
+- `src/features/configuracoes/components/settings-page.tsx` — card "Trocar senha".
+- `src/features/auth/api.ts` — lê a flag; `changePassword()`.
+- `src/features/auth/session-cache.ts` (+ teste) e `session-provider.tsx` — correção de bug
+  (abaixo).
+- `src/lib/errors.ts` (+ teste) — `UserFacingError` e mensagens do Auth (`same_password`,
+  `weak_password`).
+- `src/types/database.types.ts` — regenerado (cópia exata do gerado no CI).
+- `supabase/tests/members.test.sql` (24 testes) e `privileges.test.sql` (coluna nova).
+- `e2e/api-checks.mjs` (+11 verificações da função) e `e2e/fluxos.mjs` (+12 passos).
+- `.github/workflows/ci.yml`:
+  - `deno check` da função;
+  - prova de idempotência reaplicando as migrations a partir da de GRANT.
+- `.github/workflows/e2e.yml`:
+  - sobe o edge-runtime e confere que a função responde;
+  - senha demo com letras e números garantidos.
+- `README.md`, `docs/roteiro-de-teste.md`, `docs/pendencias.md`.
+
+### Decisões
+
+- **A service role só faz o que exige o Auth admin** (criar e, se algo falhar, apagar a conta).
+  Perfil, funções e a regra "líder/admin só com `permissions.manage`" ficam no banco, numa RPC
+  chamada **como o usuário logado**. Assim:
+  - a autorização continua no Postgres e testável no pgTAP;
+  - a função não depende de a service role ter GRANT nas tabelas (o mesmo tipo de surpresa do 403).
+- **Checagem dupla de permissão** (na função e na RPC): a da função evita criar uma conta à toa;
+  a da RPC é a que vale.
+- **Desfazer em caso de erro:** se `setup_new_member` falhar, a função apaga a conta recém-criada.
+- **Bloqueio também no banco:** com `must_change_password = true`, `is_active_member()` e
+  `has_permission()` devolvem `false`. Quem souber a senha provisória (inclusive quem cadastrou)
+  não lê nada pela API até a pessoa criar a própria senha.
+- **`setup_new_member` só em conta recém-criada** (até 10 min e sem login): a RPC não vira um
+  jeito de mudar perfil de quem já existe.
+- **Senha provisória:** 16 caracteres (≈ 92 bits) em 4 grupos (`Kp7m-Xq2r-8ZtA-w3Nd`), sem
+  caracteres que se confundem (0/O, 1/l/I). Resposta com `Cache-Control: no-store`.
+- **Regra de senha numa fonte só** (`_shared/password.ts`), igual à do Auth. O Auth só conta
+  A–Z como letra, por isso "ç" não vale como letra.
+- **Trocar senha confere a senha atual:** quem pegar o celular desbloqueado não troca a senha.
+
+### Bugs encontrados pelo E2E (e corrigidos)
+
+1. **"Trocar senha" desmontava a tela.** O `SessionProvider` limpava todo o cache em qualquer
+   `SIGNED_IN`. O Supabase emite esse evento também para o **mesmo usuário**: ao recarregar a
+   página e quando "Trocar senha" confere a senha atual com `signInWithPassword`. A tela voltava
+   para "Carregando…" e a mensagem "Senha alterada." nunca aparecia. Agora a função
+   `shouldClearCache` (com teste) só limpa ao sair ou quando entra **outra** pessoa.
+2. **Aviso "não será mostrada de novo" em colunas.** Texto e `<strong>` soltos dentro de um
+   contêiner flex viravam três colunas; agora ficam num único `<span>`.

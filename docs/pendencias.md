@@ -175,7 +175,34 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   order by 1, 2;
   ```
 
+### 29. Publicar o cadastro de integrantes na nuvem
+
+- **O quê:** migration `20261121090000_member_onboarding.sql`, Edge Function `invite-member` e
+  regra de senha do Auth ainda não estão no projeto da nuvem.
+- **O que fazer:** os comandos estão no PR "cadastro de integrantes" e no README (seção
+  "Cadastrar integrantes"). A regra de senha (10 caracteres, letras e números) é configurada no
+  painel do Auth.
+
+### 30. `complete_password_change()` não confere se a senha mudou de fato
+
+- **O quê:** o app troca a senha no Auth e depois chama a RPC. Alguém que chamasse só a RPC pelo
+  console liberaria a própria conta mantendo a senha provisória, que quem cadastrou conhece.
+  Só a própria pessoa consegue fazer isso.
+- **O que fazer (se quiser fechar):** fazer a troca numa Edge Function (`change-password`), que
+  chama `auth.admin.updateUserById` e limpa a flag na mesma operação.
+
+### 31. Senha provisória sem validade e sem "esqueci minha senha"
+
+- **O quê:** a senha provisória não expira. Também não há recuperação de senha por e-mail: isso
+  depende de SMTP, que ficou fora do protótipo.
+- **O que fazer:** depois do protótipo, (a) expirar contas com `must_change_password` que não
+  entraram em X dias; (b) uma ação "Gerar nova senha provisória" para `members.manage`, que pode
+  reaproveitar a Edge Function.
+
 ## Resolvidas recentemente
+
+- **Cadastro de integrantes** — Edge Function `invite-member`, tela, primeiro acesso e
+  "Trocar senha" (PR "cadastro de integrantes").
 
 - **403 em quase tudo no projeto da nuvem** — migration
   `20261120200000_explicit_grants.sql`; CI e E2E agora simulam a nuvem e testam os privilégios
@@ -198,8 +225,8 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   grau no tom de destino; `A/G` de E para G sai `C/Bb`.
 - **18. Configurações provisória** — tela de Configurações com perfil, tema, instalar e sair.
 
-## Situação em 20/11/2026
+## Situação em 21/11/2026
 
-- **Na `main`:** fases A a F, workflows CI, E2E (dados reais) e "Deploy banco", tipos gerados.
-- **PR "fix(banco): GRANT explícito":** migration de GRANT, simulação da nuvem no CI/E2E, testes
-  de privilégios e `check:grants`.
+- **Na `main`:** fases A a F, CI/E2E com simulação da nuvem, GRANT explícito, tipos gerados.
+- **PR "cadastro de integrantes" (aberto, sem merge):** Edge Function `invite-member`, primeiro
+  acesso com troca obrigatória de senha, "Trocar senha" em Configurações.

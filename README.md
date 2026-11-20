@@ -129,6 +129,42 @@ node e2e/api-checks.mjs && node e2e/varredura.mjs && node e2e/fluxos.mjs
 
 7. Em **Authentication → URL Configuration**, ponha o endereço onde o app vai rodar em "Site URL"
    (ex.: `http://localhost:5173` no desenvolvimento, o domínio da Cloudflare em produção).
+8. **Regra de senha** (a mesma do app e do `supabase/config.toml`): em **Authentication →
+   Providers → Email** (ou **Authentication → Policies**, conforme a versão do painel), defina
+   "Minimum password length" = **10** e "Password requirements" = **Letters and digits**.
+
+## Cadastrar integrantes (Edge Function `invite-member`)
+
+O cadastro público fica desligado. Quem tem a permissão `members.manage` cadastra pela tela
+**Integrantes → Cadastrar integrante**, que chama a Edge Function
+[`supabase/functions/invite-member`](supabase/functions/invite-member/index.ts):
+
+1. a função confere o login e a permissão **no banco, como o próprio usuário**;
+2. só então usa a service role (variável `SUPABASE_SERVICE_ROLE_KEY`, que o Supabase injeta
+   sozinho nas Edge Functions — **não** existe no frontend nem no repositório) para criar a conta
+   com e-mail confirmado e uma senha provisória gerada no servidor;
+3. grava nome, funções e perfil pela RPC `setup_new_member` (de novo como o usuário: líder e
+   admin só com `permissions.manage`) e devolve a senha **uma única vez**;
+4. no primeiro acesso, o app (e o banco) bloqueiam tudo até a pessoa definir a própria senha.
+
+### Publicar a função na nuvem
+
+```bash
+npx supabase login
+npx supabase link --project-ref SEU_PROJECT_REF   # se ainda não ligou
+npx supabase functions deploy invite-member
+```
+
+Não há segredo para configurar: `SUPABASE_URL`, `SUPABASE_ANON_KEY` e
+`SUPABASE_SERVICE_ROLE_KEY` já existem em toda Edge Function. A verificação de JWT fica ligada
+(`[functions.invite-member] verify_jwt = true` no `config.toml`). Para ver os logs:
+**Edge Functions → invite-member → Logs** no painel.
+
+### Rodar a função localmente
+
+`npx supabase start` sobe o edge-runtime e serve as funções de `supabase/functions` em
+`http://127.0.0.1:54321/functions/v1/<nome>` (se não servir, rode `npx supabase functions serve`).
+O código compartilhado com o app (regra de senha, validação) fica em `supabase/functions/_shared`.
 
 ## Deploy do banco pelo GitHub Actions
 

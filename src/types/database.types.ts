@@ -217,14 +217,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"phone": string | null,"status": string,"updated_at": string
+                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"must_change_password": boolean,"phone": string | null,"status": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -405,7 +405,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "current_change_type":
+            "complete_password_change":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
+"current_change_type":
 { Args: { "op": string }; Returns: string
                            },
 "get_dashboard":
@@ -451,7 +454,10 @@ isOneToOne: false
         to: "songs"
         isOneToOne: false
         isSetofReturn: true
-      } }
+      } },
+"setup_new_member":
+{ Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_user_id": string }; Returns: undefined
+                           }
           }
           Enums: {
             "access_role": "admin"|"leader"|"member"

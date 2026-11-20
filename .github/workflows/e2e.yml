@@ -43,7 +43,7 @@ jobs:
       - name: Subir Supabase local (banco, Auth, API)
         run: >
           supabase start -x
-          studio,edge-runtime,storage-api,imgproxy,logflare,vector,realtime,postgres-meta,supavisor,mailpit
+          studio,storage-api,imgproxy,logflare,vector,realtime,postgres-meta,supavisor,mailpit
 
       - name: Variáveis do Supabase local
         run: |
@@ -52,7 +52,8 @@ jobs:
           echo "ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "::add-mask::$SERVICE_ROLE_KEY"
           echo "SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
-          PASS="$(openssl rand -base64 18)"
+          # Aleatória a cada execução; letras e números garantidos (regra de senha do Auth).
+          PASS="Demo$(openssl rand -hex 12)Z9"
           echo "::add-mask::$PASS"
           echo "DEMO_PASSWORD=$PASS" >> "$GITHUB_ENV"
 
@@ -71,6 +72,19 @@ jobs:
         run: |
           node e2e/create-demo-users.mjs
           docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/demo-users.sql
+
+      # A Edge Function invite-member é servida pelo edge-runtime do `supabase start`. Se esta
+      # versão da CLI não servir sozinha, sobe com `supabase functions serve`.
+      - name: Edge Function no ar
+        if: ${{ !cancelled() && steps.users.outcome == 'success' }}
+        run: |
+          code() { curl -s -o /dev/null -w "%{http_code}" -X OPTIONS "$API_URL/functions/v1/invite-member"; }
+          if [ "$(code)" != "200" ]; then
+            supabase functions serve > e2e-output/functions.log 2>&1 &
+            for i in $(seq 1 60); do [ "$(code)" = "200" ] && break; sleep 2; done
+          fi
+          echo "invite-member OPTIONS: $(code)"
+          [ "$(code)" = "200" ]
 
       - name: Verificações de permissão pela API
         if: ${{ !cancelled() && steps.users.outcome == 'success' }}

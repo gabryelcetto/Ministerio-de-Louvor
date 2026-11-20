@@ -135,6 +135,126 @@ const leader = await login('lider@demo.local');
   check(error?.code === '42501', 'líder: não se promove a admin', error?.code ?? 'sem erro');
 }
 
+// ---------------------------------------------------------------- Edge Function invite-member
+const FN_URL = `${API_URL}/functions/v1/invite-member`;
+const newMember = {
+  fullName: 'Pessoa da API',
+  displayName: '',
+  email: 'api-cadastro@demo.local',
+  accessRole: 'member',
+  functionIds: [],
+};
+
+async function callInvite(client, body) {
+  const { data: s } = client ? await client.auth.getSession() : { data: { session: null } };
+  const res = await fetch(FN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: ANON_KEY,
+      ...(s.session ? { Authorization: `Bearer ${s.session.access_token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  let json = null;
+  try {
+    json = await res.json();
+  } catch {
+    // corpo vazio
+  }
+  return { status: res.status, json };
+}
+
+{
+  const r = await callInvite(null, newMember);
+  check(r.status === 401, 'sem login: invite-member responde 401', `${r.status}`);
+}
+{
+  const r = await callInvite(member, newMember);
+  check(
+    r.status === 403 && r.json?.error === 'Você não tem permissão para cadastrar integrantes.',
+    'integrante: invite-member recusa (403, mensagem em português)',
+    `${r.status} ${r.json?.error}`,
+  );
+}
+{
+  const r = await callInvite(leader, newMember);
+  check(r.status === 403, 'líder sem members.manage: invite-member recusa', `${r.status}`);
+}
+const admin = await login('admin@demo.local');
+{
+  const r = await callInvite(admin, { ...newMember, email: 'nao-e-email' });
+  check(
+    r.status === 400 && r.json?.error === 'Informe um e-mail válido.',
+    'dados inválidos: 400 com mensagem',
+    `${r.status} ${r.json?.error}`,
+  );
+}
+let created = null;
+{
+  const r = await callInvite(admin, newMember);
+  created = r.json;
+  check(
+    r.status === 201 &&
+      /^[A-Za-z2-9]{4}(-[A-Za-z2-9]{4}){3}$/.test(r.json?.temporaryPassword ?? ''),
+    'admin cadastra: 201 com senha provisória forte',
+    `${r.status}`,
+  );
+}
+{
+  const r = await callInvite(admin, newMember);
+  check(
+    r.status === 409 && r.json?.error === 'Já existe uma conta com este e-mail.',
+    'e-mail duplicado: 409 com mensagem',
+    `${r.status} ${r.json?.error}`,
+  );
+}
+if (created?.temporaryPassword) {
+  const fresh = createClient(API_URL, ANON_KEY, { auth: { persistSession: false } });
+  const { error: loginError } = await fresh.auth.signInWithPassword({
+    email: newMember.email,
+    password: created.temporaryPassword,
+  });
+  check(!loginError, 'pessoa nova entra com a senha provisória', loginError?.message ?? '');
+  {
+    const { data } = await fresh
+      .from('profiles')
+      .select('must_change_password, access_role')
+      .single();
+    check(
+      data?.must_change_password === true && data?.access_role === 'member',
+      'conta nova: must_change_password = true, perfil member',
+      JSON.stringify(data),
+    );
+  }
+  {
+    const { data } = await fresh.from('songs').select('id');
+    check(
+      (data ?? []).length === 0,
+      'senha provisória: não lê nada (bloqueio no banco)',
+      `${data?.length}`,
+    );
+  }
+  {
+    const { error } = await fresh
+      .from('profiles')
+      .update({ must_change_password: false })
+      .eq('id', created.userId)
+      .select('id');
+    check(Boolean(error), 'não limpa a flag por UPDATE direto', error?.code ?? 'sem erro');
+  }
+  {
+    const { error: e1 } = await fresh.auth.updateUser({ password: 'SenhaDaApi2026' });
+    const { error: e2 } = await fresh.rpc('complete_password_change');
+    const { data } = await fresh.from('songs').select('id');
+    check(
+      !e1 && !e2 && (data ?? []).length > 0,
+      'troca a senha + complete_password_change: acesso liberado',
+      e1?.message ?? e2?.message ?? `${data?.length} músicas`,
+    );
+  }
+}
+
 if (failures) {
   console.log(`\n${failures} verificação(ões) falharam.`);
   process.exit(1);
