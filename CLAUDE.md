@@ -62,4 +62,10 @@ npm run format:check
 - Botões dentro de `<form>` sempre com `type` explícito (`button` ou `submit`).
 - Cores só por tokens do tema (`src/index.css`); nada de cor fixa nos componentes.
 - Datas sempre no fuso `America/Sao_Paulo` (`src/lib/dates.ts`), o mesmo dos triggers do banco.
+- **Edge Functions** (`supabase/functions`, Deno): validar o JWT e conferir a permissão chamando o
+  banco **como o próprio usuário** antes de usar a service role. A service role
+  (`SUPABASE_SERVICE_ROLE_KEY`, variável padrão das funções) só para o que exige o Auth admin;
+  regras de negócio ficam em RPCs do banco. Erros em português no corpo `{ error }`. Código
+  compartilhado com o app (sem Deno/React) em `supabase/functions/_shared`. A CI roda
+  `deno check`; o E2E sobe o edge-runtime.
 - Registre cada fase em `docs/diario-de-bordo.md` e o que ficou em aberto em `docs/pendencias.md`.

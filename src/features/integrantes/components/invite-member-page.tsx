@@ -250,7 +250,10 @@ function InviteResultCard({ result, onAnother }: { result: InviteResult; onAnoth
           className="flex items-start gap-2 rounded-lg border border-accent bg-accent/15 p-3 text-sm"
         >
           <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-          Anote ou envie agora: esta senha provisória <strong>não será mostrada de novo</strong>.
+          {/* Um único span: dentro do flex, texto e <strong> soltos viravam colunas separadas. */}
+          <span>
+            Anote ou envie agora: esta senha provisória <strong>não será mostrada de novo</strong>.
+          </span>
         </p>
 
         <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-[9rem_1fr]">
