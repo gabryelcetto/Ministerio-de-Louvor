@@ -63,8 +63,15 @@ insert into public.events (id, type, title, starts_at) values
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 
-select is_empty('select id from public.songs', 'anônimo não lê músicas');
-select is_empty('select song_id from public.song_lyrics', 'anônimo não lê letras');
+-- Sem GRANT para anon (como num projeto novo da nuvem), o banco recusa antes do RLS.
+select throws_ok(
+  'select id from public.songs', '42501', null,
+  'anônimo não lê músicas (sem privilégio de tabela)'
+);
+select throws_ok(
+  'select song_id from public.song_lyrics', '42501', null,
+  'anônimo não lê letras (sem privilégio de tabela)'
+);
 select throws_ok(
   'select public.get_dashboard()', '42501', null,
   'anônimo não executa get_dashboard()'

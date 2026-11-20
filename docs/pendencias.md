@@ -147,7 +147,39 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   deploy command" e se as variáveis de build valem para todas as branches (ou desligar builds de
   branches não-produção, se não quiser prévias).
 
+### 27. Endurecer privilégios das tabelas só de inserção (opcional)
+
+- **O quê:** `song_versions` (gravada só por trigger) e `audit_logs` (só inserção) recebem
+  `update/delete` para `authenticated` como as demais; quem impede alterar é o RLS (sem policy).
+  Tirar o GRANT seria uma segunda barreira, mas muda a regra "S/I/U/D em todas as tabelas".
+- **O que fazer (se quiser):** migration com
+  `revoke update, delete on public.song_versions, public.audit_logs from authenticated;` (e
+  `insert` em `song_versions`) e ajustar o `privileges.test.sql`.
+
+### 28. Aplicar a migration de GRANT na nuvem
+
+- **O quê:** `20261120200000_explicit_grants.sql` ainda não foi aplicada pelo workflow; a nuvem
+  está com a correção manual. A migration é idempotente (o CI prova: aplica um `grant all`,
+  reaplica a migration duas vezes e roda o pgTAP).
+- **O que fazer:** depois do merge, Actions → **Deploy banco** → Run workflow (sem seed). Conferir
+  na prévia que só esta migration aparece. Depois, no SQL Editor da nuvem, a consulta abaixo deve
+  mostrar `DELETE, INSERT, SELECT, UPDATE` para `authenticated` em cada tabela (exceto
+  `profiles`, sem linha de tabela, e `notifications`, só `SELECT`) e **nenhuma** linha de
+  `anon`:
+
+  ```sql
+  select table_name, grantee, string_agg(privilege_type, ', ' order by privilege_type)
+  from information_schema.role_table_grants
+  where table_schema = 'public' and grantee in ('anon', 'authenticated')
+  group by 1, 2
+  order by 1, 2;
+  ```
+
 ## Resolvidas recentemente
+
+- **403 em quase tudo no projeto da nuvem** — migration
+  `20261120200000_explicit_grants.sql`; CI e E2E agora simulam a nuvem e testam os privilégios
+  (ver diário).
 
 - **4. pgTAP sem rodar com banco** — rodam no job `db` do CI e no workflow E2E; todos passam.
 - **5. Tipos escritos à mão** — `src/types/database.types.ts` agora é o gerado pelo Supabase
@@ -168,7 +200,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 ## Situação em 20/11/2026
 
-- **Na `main`:** fases A a F, dados de demonstração, Configurações/instalação/ícone, README e o
-  workflow "Deploy banco".
-- **PR "fix: validação com dados reais":** workflow E2E, tipos gerados, correção de layout no
-  celular e versão fixa da CLI.
+- **Na `main`:** fases A a F, workflows CI, E2E (dados reais) e "Deploy banco", tipos gerados.
+- **PR "fix(banco): GRANT explícito":** migration de GRANT, simulação da nuvem no CI/E2E, testes
+  de privilégios e `check:grants`.
