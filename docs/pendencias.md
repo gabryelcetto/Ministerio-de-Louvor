@@ -5,6 +5,16 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 ## Abertas
 
+### 32. Configurar o backup diário (repositório privado)
+
+- **O quê:** o repositório privado `gabryelcetto/ministerio-louvor-ops` já tem o workflow
+  `Backup do banco`, mas ele só funciona depois de cadastrar os secrets. Até lá, a execução
+  agendada falha com "Falta o secret …" (de propósito: backup que não roda tem que avisar).
+- **O que fazer:** seguir `ops/backup/README.md`: gerar o par de chaves `age` (a privada fica só
+  com você, fora do GitHub), cadastrar `SUPABASE_DB_URL` (Session pooler) e `AGE_PUBLIC_KEY`,
+  rodar uma vez pelo "Run workflow" e **testar uma restauração** num Supabase local.
+- **Lembrete:** os áudios do Storage não entram no backup do banco.
+
 ### 2. Vitest falha no Windows quando a pasta é aberta como `c:\` (minúsculo)
 
 - **O quê:** `npm test` acusa `Cannot read properties of undefined (reading 'config')`.
