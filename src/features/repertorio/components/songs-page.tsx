@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import { useSongCategories, useSongSearch, useSongsWithAudio, type SongListItem } from '../api';
+import { LABELS } from '@/lib/messages';
 
 /** Espera o usuário parar de digitar antes de consultar o banco. */
 function useDebounced<T>(value: T, delay = 250): T {
@@ -172,7 +173,9 @@ function SongListRow({ song, hasAudio }: { song: SongListItem; hasAudio: boolean
           className="size-4 shrink-0 text-muted-foreground"
         />
       )}
-      {key && <KeyChip value={key} label={song.official_key ? 'Tom oficial' : 'Tom original'} />}
+      {key && (
+        <KeyChip value={key} label={song.official_key ? LABELS.officialKey : 'Tom original'} />
+      )}
     </Link>
   );
 }

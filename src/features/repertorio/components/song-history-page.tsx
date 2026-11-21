@@ -42,9 +42,7 @@ export function SongHistoryPage() {
     const label = FIELD_LABEL[pending.field].toLowerCase();
     restore.mutate(pending.id, {
       onSuccess: () => {
-        setNotice(
-          `Versão restaurada: ${label}. A restauração entrou no histórico como nova versão.`,
-        );
+        setNotice(`Conteúdo restaurado: ${label}. Isso também ficou registrado no histórico.`);
         setPending(null);
       },
       // Fecha o diálogo e mostra o erro na página.
@@ -60,15 +58,15 @@ export function SongHistoryPage() {
           <p className="text-sm text-muted-foreground">
             Toda alteração de letra, cifra, tom oficial e dados fica registrada.
             {canRestore
-              ? ' Restaurar volta ao conteúdo daquela versão e também fica registrado.'
-              : ' Só a liderança pode restaurar versões.'}
+              ? ' Restaurar volta ao conteúdo daquela alteração e também fica registrado.'
+              : ' Só administradores podem restaurar alterações.'}
           </p>
         </header>
 
         <p role="status" aria-live="polite" className="text-sm font-medium text-primary">
           {notice}
         </p>
-        <FormError error={restore.error} fallback="Não foi possível restaurar a versão." />
+        <FormError error={restore.error} fallback="Não foi possível restaurar. Tente de novo." />
 
         <div role="group" aria-label="Filtrar por campo" className="flex flex-wrap gap-2">
           {FILTERS.map((value) => (
@@ -125,7 +123,7 @@ export function SongHistoryPage() {
 
         <ConfirmDialog
           open={pending !== null}
-          title="Restaurar esta versão?"
+          title="Restaurar esta alteração?"
           confirmLabel="Restaurar"
           busy={restore.isPending}
           onConfirm={confirmRestore}
@@ -166,7 +164,7 @@ function VersionCard({
         <span className="font-medium">{CHANGE_LABEL[v.changeType]}</span>
         {v.isCurrent && (
           <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-            versão atual
+            atual
           </span>
         )}
       </div>
@@ -185,7 +183,7 @@ function VersionCard({
       {isText && (
         <div className="flex flex-col gap-1">
           {v.changeType !== 'create' && <ValueDetails label="Valor anterior" value={v.oldValue} />}
-          <ValueDetails label="Conteúdo desta versão" value={v.newValue} />
+          <ValueDetails label="Como ficou" value={v.newValue} />
         </div>
       )}
       {v.field === 'metadata' && v.oldValue === null && (

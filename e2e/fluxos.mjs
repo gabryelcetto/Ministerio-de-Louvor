@@ -301,12 +301,12 @@ const expectText = async (page, text, timeout = 8000) => {
     await expectText(page, 'Tom oficial salvo.');
   });
 
-  await step(page, who, 'Histórico: restaurar uma versão', async () => {
+  await step(page, who, 'Histórico: restaurar uma alteração', async () => {
     await page.goto(`${BASE}/repertorio/${SONG}/historico`);
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: 'Restaurar' }).first().click();
     await page.getByRole('dialog').getByRole('button', { name: 'Restaurar' }).click();
-    await expectText(page, /Versão restaurada/);
+    await expectText(page, /Conteúdo restaurado/);
   });
 
   await step(page, who, 'Integrantes com telefone', async () => {
@@ -540,7 +540,7 @@ let newSongPath = '';
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: 'Restaurar' }).first().click();
     await page.getByRole('dialog').getByRole('button', { name: 'Restaurar' }).click();
-    await expectText(page, /Versão restaurada/);
+    await expectText(page, /Conteúdo restaurado/);
   });
 
   await step(page, who, 'Arquivar música (só admin)', async () => {

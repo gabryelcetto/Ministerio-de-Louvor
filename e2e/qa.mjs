@@ -508,7 +508,7 @@ async function edgeCases() {
     await lyricsField(page).fill(text);
     await context.setOffline(true);
     await page.getByRole('button', { name: 'Salvar letra' }).click();
-    const message = page.getByText(/Sem conexão com o servidor/);
+    const message = page.getByText(/Sem conexão/);
     const shown = await message.waitFor({ timeout: 15000 }).then(
       () => true,
       () => false,
@@ -580,7 +580,7 @@ async function edgeCases() {
           problem: {
             passos: 'Ensaio → Gravar → Parar → ficar sem internet → Enviar',
             tipo: 'mensagem genérica sem internet ao enviar áudio',
-            esperado: '"Sem conexão com o servidor…" e a gravação continua no aparelho',
+            esperado: '"Sem conexão. Tente de novo." e a gravação continua no aparelho',
             obtido: text.slice(0, 200),
             gravidade: 'médio',
           },

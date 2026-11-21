@@ -136,8 +136,9 @@ describe('gravar na tela da música', () => {
     fake.reset({ ...fake.state, tables: fake.state.tables });
     FakeUploadXhr.status = 0;
     await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
-    // Hoje a tela mostra a mensagem genérica (pendência: mostrar a do envio, ex. "Sem conexão").
-    expect(await screen.findByText(/Não foi possível enviar o áudio/)).toBeTruthy();
+    // A mensagem do envio chega à tela (pendência 47) e o arquivo continua para tentar de novo.
+    expect(await screen.findByText('Sem conexão. Tente de novo.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeTruthy();
   });
 
   it('com 3 áudios, gravar e enviar ficam travados', async () => {

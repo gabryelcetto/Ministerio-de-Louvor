@@ -48,6 +48,7 @@ import {
 import { ChordSheet } from './chord-sheet';
 import { ArchiveSongDialog, SongDataEditor } from './song-data-editor';
 import { ChordsEditor, LyricsEditor, OfficialKeyEditor } from './song-editors';
+import { LABELS } from '@/lib/messages';
 
 /** Tela da música ("modo tocar"). */
 export function SongPage() {
@@ -163,7 +164,7 @@ function SongView({ song }: { song: SongDetail }) {
 
   const subtitle = [
     song.official_key
-      ? `Tom oficial ${song.official_key}`
+      ? `${LABELS.officialKey} ${song.official_key}`
       : song.original_key
         ? `Tom original ${song.original_key}`
         : null,
@@ -292,7 +293,7 @@ function SongView({ song }: { song: SongDetail }) {
                     role="note"
                     className="rounded-lg bg-accent p-3 text-sm text-accent-foreground"
                   >
-                    Cifra enviada por um integrante e <strong>aguardando revisão</strong>.
+                    Cifra enviada por um integrante · <strong>{LABELS.pending}</strong>.
                   </p>
                 )}
                 <ChordSheet

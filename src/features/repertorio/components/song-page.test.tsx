@@ -180,12 +180,33 @@ describe('música: menu ⋯', () => {
     const field = screen.getByRole('textbox', { name: 'Letra' });
     await user.clear(field);
     await user.type(field, 'Nova letra');
-    await user.click(screen.getByRole('button', { name: 'Salvar letra' }));
+    // Duplo clique grava uma vez só (pendência 44).
+    await user.dblClick(screen.getByRole('button', { name: 'Salvar letra' }));
     expect(await screen.findByText('Letra salva.')).toBeTruthy();
     expect(fake.writes('song_lyrics', 'upsert')).toEqual([
       { song_id: SONG_ID, content: 'Nova letra' },
     ]);
     expect(screen.getByRole('region', { name: 'Controles da música' })).toBeTruthy();
+  });
+
+  it('sem internet ao salvar a letra: "Sem conexão. Tente de novo." e o texto continua', async () => {
+    const { user } = open();
+    await findHeading('Grande é o Senhor');
+    await user.click(await menuItem(user, 'Editar letra'));
+    const field = screen.getByRole('textbox', { name: 'Letra' });
+    await user.clear(field);
+    await user.type(field, 'Texto que não pode sumir');
+    // O mesmo erro que o cliente devolve quando o fetch falha (sem rede ou tempo esgotado).
+    fake.fail('from', 'song_lyrics', { message: 'TypeError: Failed to fetch' }, 'upsert');
+    await user.click(screen.getByRole('button', { name: 'Salvar letra' }));
+    expect(await screen.findByText('Sem conexão. Tente de novo.')).toBeTruthy();
+    expect((screen.getByRole('textbox', { name: 'Letra' }) as HTMLTextAreaElement).value).toBe(
+      'Texto que não pode sumir',
+    );
+    // Dá para tentar de novo: a trava foi liberada depois do erro.
+    fake.reset({ ...fake.state, tables: fake.state.tables });
+    await user.click(screen.getByRole('button', { name: 'Salvar letra' }));
+    expect(await screen.findByText('Letra salva.')).toBeTruthy();
   });
 
   it('cancelar com alteração pede confirmação', async () => {
@@ -306,7 +327,7 @@ describe('histórico da música', () => {
     for (const button of within(filters).getAllByRole('button')) await user.click(button);
     await user.click(within(filters).getAllByRole('button')[0]!);
     await user.click(screen.getAllByRole('button', { name: /Restaurar/ })[0]!);
-    const dialog = await screen.findByRole('dialog', { name: 'Restaurar esta versão?' });
+    const dialog = await screen.findByRole('dialog', { name: 'Restaurar esta alteração?' });
     await user.click(within(dialog).getByRole('button', { name: 'Restaurar' }));
     await waitFor(() =>
       expect(fake.calls.some((c) => c.name === 'restore_song_version')).toBe(true),

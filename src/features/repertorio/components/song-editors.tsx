@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { allKeys, convertPastedChords } from '@/lib/chords';
+import { useSingleFlight } from '@/hooks/use-single-flight';
 import { cn } from '@/lib/utils';
 import { useSaveChords, useSaveLyrics, useSetOfficialKey } from '../editing';
 import { chordSheetWarnings } from '../editor-checks';
@@ -69,6 +70,7 @@ export function LyricsEditor({ songId, initial, onDone }: EditorProps) {
   const id = useId();
   const [value, setValue] = useState(initial);
   const save = useSaveLyrics(songId);
+  const once = useSingleFlight({ keepLockedOnSuccess: true });
   const dirty = value !== initial;
   const guard = useUnsavedGuard(dirty && !save.isSuccess);
 
@@ -77,7 +79,11 @@ export function LyricsEditor({ songId, initial, onDone }: EditorProps) {
       className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
-        save.mutate(value, { onSuccess: () => onDone(true) });
+        // Duplo clique em "Salvar letra" grava uma vez só (pendência 44).
+        void once(async () => {
+          await save.mutateAsync(value);
+          onDone(true);
+        }).catch(() => undefined); // o erro aparece pelo save.error
       }}
     >
       <Label htmlFor={id}>Letra</Label>
@@ -108,10 +114,15 @@ export function ChordsEditor({ songId, initial, onDone }: EditorProps) {
   const [value, setValue] = useState(initial);
   const [view, setView] = useState<'editar' | 'previa'>('editar');
   const save = useSaveChords(songId);
+  const once = useSingleFlight({ keepLockedOnSuccess: true });
   const dirty = value !== initial;
   const guard = useUnsavedGuard(dirty && !save.isSuccess);
   const warnings = chordSheetWarnings(value);
-  const submit = () => save.mutate(value, { onSuccess: () => onDone(true) });
+  const submit = () =>
+    void once(async () => {
+      await save.mutateAsync(value);
+      onDone(true);
+    }).catch(() => undefined); // o erro aparece pelo save.error
 
   return (
     <form
@@ -229,6 +240,7 @@ export function OfficialKeyEditor({
   const id = useId();
   const [value, setValue] = useState(current ?? '');
   const save = useSetOfficialKey(songId);
+  const once = useSingleFlight({ keepLockedOnSuccess: true });
   const next = value || null;
 
   return (
@@ -236,7 +248,10 @@ export function OfficialKeyEditor({
       className="flex flex-col gap-3 rounded-lg border p-4"
       onSubmit={(e) => {
         e.preventDefault();
-        save.mutate(next, { onSuccess: () => onDone(true) });
+        void once(async () => {
+          await save.mutateAsync(next);
+          onDone(true);
+        }).catch(() => undefined); // o erro aparece pelo save.error
       }}
     >
       <div className="flex flex-wrap items-end gap-3">

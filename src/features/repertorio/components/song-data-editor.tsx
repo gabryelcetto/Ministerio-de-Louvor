@@ -12,6 +12,7 @@ import {
   type SongDataValues,
 } from '../song-data';
 import { SongDataFields } from './song-data-fields';
+import { useSingleFlight } from '@/hooks/use-single-flight';
 
 type SongLike = Parameters<typeof songDataDefaults>[0] & { id: string };
 
@@ -25,6 +26,7 @@ export function SongDataEditor({
 }) {
   const categories = useSongCategories();
   const save = useUpdateSongData(song.id);
+  const once = useSingleFlight({ keepLockedOnSuccess: true });
   const {
     register,
     handleSubmit,
@@ -37,7 +39,12 @@ export function SongDataEditor({
   return (
     <form
       noValidate
-      onSubmit={handleSubmit((values) => save.mutate(values, { onSuccess: () => onDone(true) }))}
+      onSubmit={handleSubmit((values) => {
+        void once(async () => {
+          await save.mutateAsync(values);
+          onDone(true);
+        }).catch(() => undefined); // o erro aparece pelo save.error
+      })}
       className="flex flex-col gap-4 rounded-lg border p-4"
     >
       <h2 className="font-semibold">Editar dados da música</h2>

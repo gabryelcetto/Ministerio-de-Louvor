@@ -21,9 +21,9 @@ export interface ActivityItem {
 export const ACTIVITY_LIMIT = 150;
 
 const ACTION_LABEL: Record<string, string> = {
-  archive_song: 'Arquivou a música',
-  unarchive_song: 'Desarquivou a música',
-  restore_version: 'Restaurou uma versão',
+  archive_song: 'Excluiu a música',
+  unarchive_song: 'Restaurou a música',
+  restore_version: 'Restaurou uma alteração',
 };
 
 const FIELD_TEXT: Record<VersionField, string> = {
@@ -33,7 +33,7 @@ const FIELD_TEXT: Record<VersionField, string> = {
   metadata: 'os dados',
 };
 
-/** Frase curta: "Editou a cifra", "Cadastrou os dados", "Restaurou uma versão (cifra)". */
+/** Frase curta: "Editou a cifra", "Cadastrou os dados", "Restaurou uma alteração (cifra)". */
 export function describeActivity(
   item: Pick<ActivityItem, 'kind' | 'field' | 'changeType' | 'action'>,
 ): string {

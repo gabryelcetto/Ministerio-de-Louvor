@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { friendlyError, UserFacingError } from '../errors';
 import { UploadError, uploadErrorMessage, uploadWithProgress } from './upload';
 
 /** XMLHttpRequest de mentira: guarda o que o código fez e deixa o teste decidir a resposta. */
@@ -116,7 +117,7 @@ describe('envio com progresso (Storage REST)', () => {
     FakeXhr.last.onerror?.();
     await expect(offline).rejects.toMatchObject({
       status: 0,
-      message: 'Sem conexão com o servidor. Verifique a internet e tente de novo.',
+      message: 'Sem conexão. Tente de novo.',
     });
 
     const controller = new AbortController();
@@ -126,11 +127,60 @@ describe('envio com progresso (Storage REST)', () => {
     expect(xhr.aborted).toBe(true);
     await expect(cancelled).rejects.toMatchObject({ message: 'Envio cancelado.', status: 0 });
   });
+
+  it('sem internet: falha na hora, sem abrir conexão (pendência 46)', async () => {
+    const before = FakeXhr.last;
+    const done = uploadWithProgress({ ...base, isOffline: () => true });
+    await expect(done).rejects.toMatchObject({ status: 0, message: 'Sem conexão. Tente de novo.' });
+    expect(FakeXhr.last).toBe(before);
+  });
+
+  it('envio parado (sem progresso) desiste com "Sem conexão"; o progresso reinicia a espera', async () => {
+    vi.useFakeTimers();
+    try {
+      const done = uploadWithProgress({ ...base, stallTimeoutMs: 1000, isOffline: () => false });
+      const xhr = FakeXhr.last;
+      vi.advanceTimersByTime(900);
+      xhr.upload.onprogress?.({ lengthComputable: true, loaded: 1, total: 4 });
+      vi.advanceTimersByTime(900);
+      expect(xhr.aborted).toBe(false);
+      vi.advanceTimersByTime(200);
+      expect(xhr.aborted).toBe(true);
+      await expect(done).rejects.toMatchObject({
+        status: 0,
+        message: 'Sem conexão. Tente de novo.',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('resposta antes do tempo limite: o temporizador é desarmado', async () => {
+    vi.useFakeTimers();
+    try {
+      const done = uploadWithProgress({ ...base, stallTimeoutMs: 1000, isOffline: () => false });
+      const xhr = FakeXhr.last;
+      xhr.respond(200);
+      vi.advanceTimersByTime(5000);
+      expect(xhr.aborted).toBe(false);
+      await expect(done).resolves.toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a mensagem do envio chega à tela pelo friendlyError (pendência 47)', async () => {
+    const done = uploadWithProgress(base);
+    FakeXhr.last.respond(413);
+    const error = await done.catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(UserFacingError);
+    expect(friendlyError(error, 'genérica')).toBe('O arquivo passou do limite de 45 MB.');
+  });
 });
 
 describe('uploadErrorMessage', () => {
   it.each([
-    [0, '', 'Sem conexão com o servidor. Verifique a internet e tente de novo.'],
+    [0, '', 'Sem conexão. Tente de novo.'],
     [400, 'The object exceeded the maximum allowed size', 'O arquivo passou do limite de 45 MB.'],
     [400, 'File too large', 'O arquivo passou do limite de 45 MB.'],
     [413, '', 'O arquivo passou do limite de 45 MB.'],
@@ -141,14 +191,14 @@ describe('uploadErrorMessage', () => {
       'Tipo de arquivo não aceito: envie um arquivo de áudio.',
     ],
     [400, 'format not supported', 'Tipo de arquivo não aceito: envie um arquivo de áudio.'],
-    [401, '', 'Você não tem permissão para enviar este áudio.'],
-    [403, '', 'Você não tem permissão para enviar este áudio.'],
+    [401, '', 'Você não tem permissão para isso. Fale com um administrador.'],
+    [403, '', 'Você não tem permissão para isso. Fale com um administrador.'],
     [
       400,
       'new row violates row-level security policy',
-      'Você não tem permissão para enviar este áudio.',
+      'Você não tem permissão para isso. Fale com um administrador.',
     ],
-    [400, 'Unauthorized', 'Você não tem permissão para enviar este áudio.'],
+    [400, 'Unauthorized', 'Você não tem permissão para isso. Fale com um administrador.'],
     [409, '', 'Já existe um arquivo com este nome. Tente de novo.'],
     [400, 'The resource already exists', 'Já existe um arquivo com este nome. Tente de novo.'],
     [400, 'duplicate key', 'Já existe um arquivo com este nome. Tente de novo.'],

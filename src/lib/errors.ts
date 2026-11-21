@@ -1,7 +1,9 @@
 /**
  * Erros do Supabase/Postgres → mensagens em português para a interface. Único lugar do app que
- * traduz erro: telas e mutações chamam `friendlyError(error)`.
+ * traduz erro: telas e mutações chamam `friendlyError(error)`. Os textos gerais vêm de
+ * src/lib/messages.ts.
  */
+import { MESSAGES } from './messages';
 
 /**
  * O RLS não dá erro num UPDATE/DELETE sem permissão: só afeta 0 linhas. Quem altera dados pede
@@ -27,9 +29,9 @@ export function requireAffected<T>(rows: T[] | null | undefined): T[] {
   return rows;
 }
 
-const PERMISSION = 'Você não tem permissão para fazer essa alteração.';
-const NETWORK = 'Sem conexão com o servidor. Verifique a internet e tente de novo.';
-const FALLBACK = 'Não foi possível concluir a operação. Tente de novo.';
+const PERMISSION = MESSAGES.noPermission;
+const NETWORK = MESSAGES.offline;
+const FALLBACK = MESSAGES.generic;
 
 /** Mensagens por nome de constraint (aparece na mensagem do Postgres). */
 const CONSTRAINT_MESSAGES: Record<string, string> = {
@@ -74,18 +76,20 @@ function sentence(message: string): string {
 
 export function friendlyError(error: unknown, fallback: string = FALLBACK): string {
   if (error instanceof NoRowsAffectedError) {
-    return 'Nada foi salvo: você não tem permissão para isso ou o registro não existe mais.';
+    return MESSAGES.nothingSaved;
   }
   if (error instanceof UserFacingError) return error.message;
   const { code, message, details } = readError(error);
   const text = `${message} ${details}`;
 
   // Rede (fetch falhou antes de chegar ao banco).
-  if (/failed to fetch|networkerror|load failed|network request failed/i.test(text)) return NETWORK;
+  // Também o tempo limite e o "sem internet" do src/lib/network.ts.
+  if (/failed to fetch|networkerror|load failed|network request failed|timeouterror/i.test(text))
+    return NETWORK;
 
   // Sessão / autenticação.
   if (code === 'PGRST301' || code === 'PGRST303' || /jwt expired/i.test(text)) {
-    return 'Sua sessão expirou. Entre de novo.';
+    return MESSAGES.sessionExpired;
   }
   if (/invalid login credentials/i.test(text)) return 'E-mail ou senha incorretos.';
   if (/email not confirmed/i.test(text)) return 'E-mail ainda não confirmado.';
