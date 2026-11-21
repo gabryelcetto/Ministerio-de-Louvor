@@ -53,19 +53,23 @@ export function ChordSheet({
             return (
               <p key={key} className="flex flex-wrap items-end">
                 {units.map((unit, unitIndex) => (
-                  <span key={unitIndex} className="inline-flex flex-col whitespace-pre">
+                  // max-w-full + quebra "anywhere" no texto: uma palavra maior que a tela quebra
+                  // dentro dela (antes, empurrava a página para o lado no celular).
+                  <span key={unitIndex} className="inline-flex max-w-full flex-col">
                     {hasChord && (
                       <span
                         className={cn(
                           // Tamanho em em: acompanha o tamanho da letra escolhido na tela.
-                          'min-h-[1.25em] pr-1 font-mono text-[0.85em] font-bold text-chord',
+                          'min-h-[1.25em] pr-1 font-mono text-[0.85em] font-bold whitespace-pre text-chord',
                           !unit.chord && 'select-none',
                         )}
                       >
                         {unit.chord ?? ' '}
                       </span>
                     )}
-                    <span>{unit.text === '' && hasChord ? ' ' : unit.text}</span>
+                    <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+                      {unit.text === '' && hasChord ? ' ' : unit.text}
+                    </span>
                   </span>
                 ))}
               </p>
