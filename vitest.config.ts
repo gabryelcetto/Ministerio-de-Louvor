@@ -5,6 +5,10 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  // A mutação (Stryker) roda os testes numa cópia do projeto com node_modules ligado de fora:
+  // sem isto, o Vite recusa servir arquivos importados com ?url de lá (ex.: processador do
+  // SoundTouch). Só vale para os testes; o build usa o vite.config.ts.
+  server: { fs: { strict: false } },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
     // Padrão sem DOM (rápido). Testes de tela pedem o DOM no topo do arquivo:

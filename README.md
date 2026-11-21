@@ -42,6 +42,8 @@ npm run lint        # ESLint
 npm run typecheck   # TypeScript
 npm test            # Vitest
 npm run build       # build de produção em dist/
+npm run test:coverage   # Vitest com cobertura e limites (ver "Qualidade")
+npm run test:arch       # testes de arquitetura (dependency-cruiser)
 ```
 
 ### Banco local (opcional, com Docker)
@@ -93,6 +95,45 @@ node e2e/create-demo-users.mjs
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/demo-users.sql
 node e2e/api-checks.mjs && node e2e/varredura.mjs && node e2e/fluxos.mjs
 ```
+
+## Qualidade
+
+Quatro camadas automáticas, todas no CI. As três primeiras rodam na sua máquina sem banco nem
+Docker.
+
+| O quê                                      | Comando                 | O que mede                                                                                                                                                                                                                     | Onde reprova                                                                                                                   |
+| ------------------------------------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Cobertura (teste estrutural, caixa-branca) | `npm run test:coverage` | Quanto do código os testes executam: statements, branches (cada lado de um `if`/`?:`), functions e lines                                                                                                                       | Projeto < 70% de linhas; `src/lib` < 90% de linhas ou < 85% de branches                                                        |
+| Arquitetura                                | `npm run test:arch`     | As regras de dependência entre pastas (dependency-cruiser, `.dependency-cruiser.cjs`)                                                                                                                                          | `src/lib` importando React, Supabase ou camadas de cima; uma feature importando arquivo interno de outra; dependência circular |
+| Mutação                                    | `npm run test:mutation` | Se os testes **percebem** quando o código muda: o Stryker altera o código ("mutantes") e confere se algum teste falha                                                                                                          | Score < 65% (limites: alto 85, baixo 70, quebra 65)                                                                            |
+| QA automatizado                            | `npm run qa`            | Todas as telas em Chromium, WebKit (Safari/iPhone) e Firefox, em 375x667, 390x844, 768x1024 e 1440x900, com admin e integrante: acessibilidade (axe), console, respostas da API, largura da tela, tema escuro e casos de borda | Problema crítico ou alto                                                                                                       |
+
+**Cobertura.** Relatório em `coverage/index.html` (no CI: artefato **cobertura** e resumo no
+job). Os testes de tela usam happy-dom e Testing Library com um Supabase de mentira
+(`src/test/fake-supabase.ts`, dados em `src/test/fixtures.ts`), sem rede nem banco. Para um
+arquivo de teste usar o DOM, comece com `// @vitest-environment happy-dom`.
+
+**Arquitetura.** Camadas: `src/lib` (TypeScript puro), `src/services` (cliente Supabase),
+`src/hooks` (hooks React genéricos), `src/components`, `src/features/<x>` e `src/app`. Uma
+feature usa outra só por `@/features/<outra>` (o `index.ts` dela).
+
+**Mutação.** Mira `src/lib/**` e os módulos puros das features (lista em `stryker.config.mjs`).
+A execução completa leva de 30 a 50 min num notebook; o relatório fica em
+`reports/mutation/index.html`. Depois de uma completa, `npm run test:mutation:incremental` testa
+só o que mudou. No CI, o job **Mutação** roda incremental nos PRs que mexem nesses arquivos e
+completo toda segunda às 03:00 (artefato **mutacao** e score no resumo). No Windows, rode no
+PowerShell aberto em `C:\` (com `C` maiúsculo), como o Vitest (pendência 2).
+
+**QA.** Precisa do Supabase local com os usuários demo e do app rodando, como no E2E acima:
+
+```bash
+npm i --no-save playwright && npx playwright install chromium webkit firefox
+BASE=http://127.0.0.1:5173 node e2e/qa.mjs
+# Mais rápido: QA_BROWSERS=chromium QA_SIZES=390x844 QA_SKIP_EDGE=1 node e2e/qa.mjs
+```
+
+O resultado fica em `qa-output/` (`qa-results.json`, `resumo.md` e prints). O relatório de cada
+rodada comentada fica em `docs/qa/`.
 
 ## Configurar o Supabase (projeto na nuvem)
 
