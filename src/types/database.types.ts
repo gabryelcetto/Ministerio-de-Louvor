@@ -417,14 +417,14 @@ isOneToOne: false
 "get_dashboard":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
-"get_recent_activity":
-{ Args: { "p_actor"?: string,"p_limit"?: number,"p_song"?: string }; Returns: {
-              "action": string,"actor_id": string,"actor_name": string,"change_type": string,"field": string,"kind": string,"occurred_at": string,"song_id": string,"song_title": string,"version_id": string
-            }[]
-                           },
 "get_member_contacts":
 { Args: Record<PropertyKey, never>; Returns: {
               "id": string,"phone": string
+            }[]
+                           },
+"get_recent_activity":
+{ Args: { "p_actor"?: string,"p_limit"?: number,"p_song"?: string }; Returns: {
+              "action": string,"actor_id": string,"actor_name": string,"change_type": string,"field": string,"kind": string,"occurred_at": string,"song_id": string,"song_title": string,"version_id": string
             }[]
                            },
 "has_permission":
