@@ -17,9 +17,9 @@ export function AgendaPage() {
   const [filter, setFilter] = useState<Filter>('todos');
 
   return (
-    <section className="mx-auto flex max-w-3xl flex-col gap-6">
+    <section className="mx-auto flex max-w-[45rem] flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Agenda</h1>
+        <h1 className="text-screen-title">Agenda</h1>
         <p className="text-sm text-muted-foreground">
           Cultos, ensaios e eventos dos próximos {AGENDA_DAYS} dias.
         </p>

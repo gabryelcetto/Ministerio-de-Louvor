@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Trash2, UserMinus } from 'lucide-react';
+import { Plus, Trash2, UserMinus } from 'lucide-react';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
@@ -30,6 +30,7 @@ import {
   type EventDraft,
   type SchedulingData,
 } from '../manage';
+import { ScreenHeader } from '@/components/layout/screen-header';
 
 const selectClass =
   'h-11 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -57,32 +58,26 @@ export function ScheduleBuilderPage() {
   const data = useSchedulingData();
 
   return (
-    <section className="mx-auto flex max-w-3xl flex-col gap-6">
-      <Button asChild variant="ghost" size="sm" className="self-start">
-        <Link to="/escalas">
-          <ArrowLeft aria-hidden="true" />
-          Escalas
-        </Link>
-      </Button>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Montar escala</h1>
+    <>
+      <ScreenHeader title="Montar escala" back="/escalas" />
+      <section className="mx-auto flex max-w-[45rem] flex-col gap-6">
         <p className="text-sm text-muted-foreground">
           Cada pessoa incluída ou removida recebe uma notificação.
         </p>
-      </header>
 
-      {!canSchedule ? (
-        <p role="alert" className="rounded-xl border p-4 text-sm">
-          Você não tem permissão para montar escalas. Fale com a liderança.
-        </p>
-      ) : data.isPending ? (
-        <LoadingState label="Carregando eventos e integrantes…" />
-      ) : data.isError ? (
-        <ErrorState onRetry={() => void data.refetch()} />
-      ) : (
-        <Builder data={data.data} />
-      )}
-    </section>
+        {!canSchedule ? (
+          <p role="alert" className="rounded-xl border p-4 text-sm">
+            Você não tem permissão para montar escalas. Fale com a liderança.
+          </p>
+        ) : data.isPending ? (
+          <LoadingState label="Carregando eventos e integrantes…" />
+        ) : data.isError ? (
+          <ErrorState onRetry={() => void data.refetch()} />
+        ) : (
+          <Builder data={data.data} />
+        )}
+      </section>
+    </>
   );
 }
 

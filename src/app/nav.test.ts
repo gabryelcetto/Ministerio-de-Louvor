@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as nav from './nav';
 
-describe('navegação do celular', () => {
+describe('navegação', () => {
   it('reconhece a rota ativa, inclusive subpáginas', () => {
     expect(nav.isPathActive('/', '/')).toBe(true);
     expect(nav.isPathActive('/agenda', '/')).toBe(false);
@@ -9,10 +9,36 @@ describe('navegação do celular', () => {
     expect(nav.isPathActive('/repertorio-antigo', '/repertorio')).toBe(false);
   });
 
-  it('a barra tem no máximo 4 itens + "Mais"; o excedente vai para o menu', () => {
-    const items = ['a', 'b', 'c', 'd', 'e'].map((to) => ({ to, mobile: 'bar' as const }));
-    const { bar, more } = nav.splitMobileNav([...items, { to: 'x', mobile: 'more' as const }]);
-    expect(bar.map((i) => i.to)).toEqual(['a', 'b', 'c', 'd']);
-    expect(more.map((i) => i.to)).toEqual(['e', 'x']);
+  it('barra de baixo: 5 itens na ordem do design; lateral com 3 atalhos a mais', () => {
+    expect(nav.PRIMARY_PATHS).toEqual(['/', '/escalas', '/repertorio', '/agenda', '/mais']);
+    expect(nav.DESKTOP_EXTRA_PATHS).toEqual(['/integrantes', '/comunicados', '/configuracoes']);
+  });
+
+  it.each([
+    ['/', '/'],
+    ['/escalas/abc', '/escalas'],
+    ['/escalas/montar', '/escalas'],
+    ['/repertorio/nova', '/repertorio'],
+    ['/agenda', '/agenda'],
+    ['/mais', '/mais'],
+    ['/integrantes/funcoes', '/mais'],
+    ['/configuracoes', '/mais'],
+    ['/comunicados', '/mais'],
+    ['/instalar', '/mais'],
+    ['/atividade', '/mais'],
+    ['/notificacoes', null],
+    ['/nada', null],
+  ])('%s marca %s', (path, item) => {
+    expect(nav.activePrimary(path)).toBe(item);
+  });
+
+  it('telas principais têm o topo do app; as outras, voltar + título', () => {
+    for (const path of ['/', '/escalas', '/repertorio', '/agenda', '/mais', '/repertorio/']) {
+      expect(nav.isMainScreen(path), path).toBe(true);
+    }
+    for (const path of ['/repertorio/123', '/notificacoes', '/configuracoes', '/escalas/x']) {
+      expect(nav.isMainScreen(path), path).toBe(false);
+    }
+    expect(nav.isMainScreen('')).toBe(true);
   });
 });

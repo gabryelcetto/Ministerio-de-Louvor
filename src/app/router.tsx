@@ -18,6 +18,7 @@ import { SongHistoryPage } from '@/features/repertorio/components/song-history-p
 import { SongPage } from '@/features/repertorio/components/song-page';
 import { SongsPage } from '@/features/repertorio/components/songs-page';
 import { AppShell } from './app-shell';
+import { MorePage } from './more-page';
 import { NotFoundPage } from './not-found-page';
 import { ProtectedRoute } from './protected-route';
 
@@ -48,6 +49,7 @@ export const routes: RouteObject[] = [
           { path: 'integrantes/funcoes', element: <FunctionsPage /> },
           { path: 'configuracoes', element: <SettingsPage /> },
           { path: 'instalar', element: <InstallPage /> },
+          { path: 'mais', element: <MorePage /> },
         ],
       },
     ],

@@ -9,6 +9,7 @@ import { buildMembers, matchesName, ROLE_LABEL, telHref, useMembers, type Member
 import { canResetPassword, type ResetActor } from '../reset';
 import { SECTION_BADGE } from '../sections';
 import { ResetPasswordButton } from './reset-password-button';
+import { ScreenHeader } from '@/components/layout/screen-header';
 
 /** Integrantes: nome e funções; telefone só para quem tem members.view_contacts. */
 export function MembersPage() {
@@ -29,78 +30,80 @@ export function MembersPage() {
   const inactive = canManage ? filtered.filter((m) => !m.active) : [];
 
   return (
-    <section className="mx-auto flex max-w-3xl flex-col gap-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Integrantes</h1>
-          <p className="text-sm text-muted-foreground">
-            Quem faz parte do ministério e em que funções.
-            {canViewContacts && ' Você pode ver os telefones.'}
-          </p>
-        </div>
-        {/* Só aparece com members.manage; quem decide de verdade é a Edge Function + o banco. */}
-        {canManage && (
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link to="/integrantes/cadastrar">
-                <UserPlus aria-hidden="true" />
-                Cadastrar integrante
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/integrantes/funcoes">
-                <ListChecks aria-hidden="true" />
-                Funções do ministério
-              </Link>
-            </Button>
+    <>
+      <ScreenHeader title="Integrantes" back="/mais" />
+      <section className="mx-auto flex max-w-[45rem] flex-col gap-5">
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-muted-foreground">
+              Quem faz parte do ministério e em que funções.
+              {canViewContacts && ' Você pode ver os telefones.'}
+            </p>
           </div>
-        )}
-      </header>
-
-      <div className="relative">
-        <Search
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          type="search"
-          aria-label="Buscar integrante"
-          placeholder="Buscar pelo nome…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          className="h-11 pl-9 text-base"
-        />
-      </div>
-
-      {canViewContacts && contacts.isError && (
-        <ErrorState
-          message="Não foi possível carregar os telefones."
-          onRetry={() => void contacts.refetch()}
-        />
-      )}
-
-      {members.isPending ? (
-        <LoadingState label="Carregando integrantes…" />
-      ) : members.isError ? (
-        <ErrorState onRetry={() => void members.refetch()} />
-      ) : active.length === 0 && inactive.length === 0 ? (
-        <EmptyState>
-          {text.trim() ? 'Ninguém encontrado com esse nome.' : 'Nenhum integrante cadastrado.'}
-        </EmptyState>
-      ) : (
-        <>
-          <MemberList members={active} showPhone={canViewContacts} me={me} />
-          {inactive.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <h2 className="text-sm font-semibold text-muted-foreground">
-                Inativos ({inactive.length})
-              </h2>
-              <MemberList members={inactive} showPhone={canViewContacts} me={me} />
+          {/* Só aparece com members.manage; quem decide de verdade é a Edge Function + o banco. */}
+          {canManage && (
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link to="/integrantes/cadastrar">
+                  <UserPlus aria-hidden="true" />
+                  Cadastrar integrante
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/integrantes/funcoes">
+                  <ListChecks aria-hidden="true" />
+                  Funções do ministério
+                </Link>
+              </Button>
             </div>
           )}
-        </>
-      )}
-    </section>
+        </header>
+
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            aria-label="Buscar integrante"
+            placeholder="Buscar pelo nome…"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="h-11 pl-9 text-base"
+          />
+        </div>
+
+        {canViewContacts && contacts.isError && (
+          <ErrorState
+            message="Não foi possível carregar os telefones."
+            onRetry={() => void contacts.refetch()}
+          />
+        )}
+
+        {members.isPending ? (
+          <LoadingState label="Carregando integrantes…" />
+        ) : members.isError ? (
+          <ErrorState onRetry={() => void members.refetch()} />
+        ) : active.length === 0 && inactive.length === 0 ? (
+          <EmptyState>
+            {text.trim() ? 'Ninguém encontrado com esse nome.' : 'Nenhum integrante cadastrado.'}
+          </EmptyState>
+        ) : (
+          <>
+            <MemberList members={active} showPhone={canViewContacts} me={me} />
+            {inactive.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <h2 className="text-sm font-semibold text-muted-foreground">
+                  Inativos ({inactive.length})
+                </h2>
+                <MemberList members={inactive} showPhone={canViewContacts} me={me} />
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </>
   );
 }
 

@@ -1,49 +1,39 @@
-import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScreenHeader } from '@/components/layout/screen-header';
 import { ThemeOptions } from '@/components/theme/theme-options';
 import { PasswordForm, useMyProfile, useSession } from '@/features/auth';
 import { StorageUsageCard } from '@/features/audio';
 import { InstallButton } from '@/features/instalar';
-import { ROLE_LABEL } from '@/features/integrantes';
-import { supabase } from '@/services/supabase';
+import { ROLE_LABEL, useMyFunctions } from '@/features/integrantes';
+import { useScrollToHash } from '@/hooks/use-scroll-to-hash';
 import { useTheme } from '@/hooks/use-theme';
-
-async function fetchMyFunctions(userId: string): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('member_functions')
-    .select('function:ministry_functions(name, sort_order)')
-    .eq('user_id', userId);
-  if (error) throw error;
-  return data
-    .map((row) => row.function)
-    .filter((f): f is { name: string; sort_order: number } => f !== null)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((f) => f.name);
-}
 
 /**
  * Configurações pessoais: aparência (tema), minha conta (perfil e senha), instalação do app e
  * espaço dos áudios (admin). Sair fica só em Mais, no fim da lista.
  */
 export function SettingsPage() {
+  useScrollToHash();
   return (
-    <section className="mx-auto flex max-w-2xl flex-col gap-5">
-      <h1 className="text-screen-title">Configurações</h1>
-      <ThemeCard />
-      <ProfileCard />
-      <Section title="Trocar senha">
-        <PasswordForm askCurrent submitLabel="Trocar senha" />
-      </Section>
-      <Section title="Aplicativo">
-        <p className="text-sm text-muted-foreground">
-          Instale para abrir pelo ícone na tela inicial, em tela cheia.
-        </p>
-        <InstallButton variant="outline" className="self-start" />
-      </Section>
-      <StorageUsageCard />
-    </section>
+    <>
+      <ScreenHeader title="Configurações" back="/mais" />
+      <section className="mx-auto flex max-w-2xl flex-col gap-5">
+        <ThemeCard />
+        <ProfileCard />
+        <Section title="Trocar senha">
+          <PasswordForm askCurrent submitLabel="Trocar senha" />
+        </Section>
+        <Section title="Aplicativo">
+          <p className="text-sm text-muted-foreground">
+            Instale para abrir pelo ícone na tela inicial, em tela cheia.
+          </p>
+          <InstallButton variant="outline" className="self-start" />
+        </Section>
+        <StorageUsageCard />
+      </section>
+    </>
   );
 }
 
@@ -60,13 +50,9 @@ function Section({ title, id, children }: { title: string; id?: string; children
 
 function ProfileCard() {
   const { session } = useSession();
-  const userId = session?.user.id;
   const profile = useMyProfile();
-  const functions = useQuery({
-    queryKey: ['me', 'functions', userId],
-    queryFn: () => fetchMyFunctions(userId as string),
-    enabled: Boolean(userId),
-  });
+  const myFunctions = useMyFunctions();
+  const functionNames = myFunctions.data?.map((f) => f.name) ?? [];
 
   return (
     <Section title="Minha conta" id="minha-conta">
@@ -98,21 +84,21 @@ function ProfileCard() {
           )}
           <dt className="text-muted-foreground">Funções</dt>
           <dd>
-            {functions.isPending ? (
+            {myFunctions.isPending ? (
               <span className="text-muted-foreground">Carregando…</span>
-            ) : functions.isError ? (
+            ) : myFunctions.isError ? (
               <button
                 type="button"
-                onClick={() => void functions.refetch()}
+                onClick={() => void myFunctions.refetch()}
                 className="rounded text-destructive underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Não foi possível carregar. Tentar de novo
               </button>
-            ) : functions.data.length === 0 ? (
+            ) : functionNames.length === 0 ? (
               <span className="text-muted-foreground">Nenhuma função definida</span>
             ) : (
               <span className="flex flex-wrap gap-1.5">
-                {functions.data.map((fn) => (
+                {functionNames.map((fn) => (
                   <span
                     key={fn}
                     className="rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground"

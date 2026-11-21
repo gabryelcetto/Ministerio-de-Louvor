@@ -48,7 +48,7 @@ describe('tela da música', () => {
   it('edita e salva a letra', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(screen.getByRole('button', { name: 'Editar letra' }));
+    await user.click(await screen.findByRole('button', { name: 'Editar letra' }));
     const field = screen.getByRole('textbox', { name: 'Letra' });
     await user.clear(field);
     await user.type(field, 'Nova letra');
@@ -62,7 +62,7 @@ describe('tela da música', () => {
   it('cancelar com alteração pede confirmação; continuar editando mantém o texto', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(screen.getByRole('button', { name: 'Editar letra' }));
+    await user.click(await screen.findByRole('button', { name: 'Editar letra' }));
     await user.type(screen.getByRole('textbox', { name: 'Letra' }), ' mais');
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
     const dialog = await screen.findByRole('dialog', { name: 'Descartar alterações?' });
@@ -83,7 +83,7 @@ describe('tela da música', () => {
   it('edita a cifra com pré-visualização, avisos e conversão', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(screen.getByRole('button', { name: 'Editar cifra' }));
+    await user.click(await screen.findByRole('button', { name: 'Editar cifra' }));
     const field = screen.getByLabelText('Cifra (ChordPro)');
     await user.clear(field);
     // Acordes sobre a letra: o botão converte para ChordPro.
@@ -103,7 +103,7 @@ describe('tela da música', () => {
   it('define o tom oficial e mostra erro do banco em português', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(screen.getByRole('button', { name: 'Definir tom oficial' }));
+    await user.click(await screen.findByRole('button', { name: 'Definir tom oficial' }));
     await user.selectOptions(screen.getByLabelText('Tom oficial'), 'C');
     fake.fail(
       'from',
@@ -118,7 +118,7 @@ describe('tela da música', () => {
   it('edita os dados e arquiva/desarquiva', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(screen.getByRole('button', { name: 'Editar dados' }));
+    await user.click(await screen.findByRole('button', { name: 'Editar dados' }));
     const title = screen.getByLabelText('Título');
     await user.clear(title);
     await user.type(title, 'Grande é o Senhor (nova)');
@@ -144,7 +144,7 @@ describe('tela da música', () => {
     await findHeading('Música sem cifra');
     expect(screen.queryByRole('button', { name: 'Arquivar' })).toBeNull();
     expect(screen.getByText('Esta música ainda não tem letra.')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Adicionar cifra' }));
+    await user.click(await screen.findByRole('button', { name: 'Adicionar cifra' }));
     expect(router.state.location.search).toContain('aba=cifra');
   });
 

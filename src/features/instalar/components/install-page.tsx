@@ -1,43 +1,35 @@
-import { ArrowLeft, EllipsisVertical, Share, SquarePlus } from 'lucide-react';
+import { EllipsisVertical, Share, SquarePlus } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
-import { Button } from '@/components/ui/button';
 import { useInstallState } from '@/hooks/use-install-state';
 import { InstallButton } from './install-button';
+import { ScreenHeader } from '@/components/layout/screen-header';
 
 /** Como instalar o app: botão no Android/Chrome; passo a passo no iPhone (Safari). */
 export function InstallPage() {
   const install = useInstallState();
 
   return (
-    <section className="mx-auto flex max-w-xl flex-col gap-6">
-      <Button asChild variant="ghost" size="sm" className="self-start">
-        <Link to="/configuracoes">
-          <ArrowLeft aria-hidden="true" />
-          Configurações
-        </Link>
-      </Button>
-
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Instalar o app</h1>
+    <>
+      <ScreenHeader title="Instalar o app" back="/mais" />
+      <section className="mx-auto flex max-w-xl flex-col gap-6">
         <p className="text-sm text-muted-foreground">
           Instalado, o app abre pelo ícone na tela inicial, em tela cheia, como um aplicativo.
         </p>
-      </header>
 
-      {install.installed ? (
-        <InstallButton />
-      ) : install.platform === 'ios' ? (
-        <IosSteps />
-      ) : install.canPrompt ? (
-        <div className="flex flex-col gap-3">
-          <p>Toque no botão e confirme na janela que o navegador abrir.</p>
-          <InstallButton size="lg" className="self-start" />
-        </div>
-      ) : (
-        <OtherBrowserSteps android={install.platform === 'android'} />
-      )}
-    </section>
+        {install.installed ? (
+          <InstallButton />
+        ) : install.platform === 'ios' ? (
+          <IosSteps />
+        ) : install.canPrompt ? (
+          <div className="flex flex-col gap-3">
+            <p>Toque no botão e confirme na janela que o navegador abrir.</p>
+            <InstallButton size="lg" className="self-start" />
+          </div>
+        ) : (
+          <OtherBrowserSteps android={install.platform === 'android'} />
+        )}
+      </section>
+    </>
   );
 }
 

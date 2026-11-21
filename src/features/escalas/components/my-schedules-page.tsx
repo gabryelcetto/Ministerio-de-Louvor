@@ -15,10 +15,10 @@ export function MySchedulesPage() {
   const canSchedule = usePermission('schedules.manage');
 
   return (
-    <section className="mx-auto flex max-w-3xl flex-col gap-6">
+    <section className="mx-auto flex max-w-[45rem] flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">Minhas escalas</h1>
+          <h1 className="text-screen-title">Minhas escalas</h1>
           <p className="text-sm text-muted-foreground">
             Eventos em que você está escalado(a) e a sua função em cada um.
           </p>
