@@ -647,6 +647,9 @@ isOneToOne: false
                            },
 "setup_new_member":
 { Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_user_id": string }; Returns: undefined
+                           },
+"update_member":
+{ Args: { "p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_phone": string,"p_user_id": string }; Returns: undefined
                            }
           }
           Enums: {

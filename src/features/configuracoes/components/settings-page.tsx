@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScreenHeader } from '@/components/layout/screen-header';
@@ -6,7 +7,8 @@ import { ThemeOptions } from '@/components/theme/theme-options';
 import { PasswordForm, useMyProfile, useSession } from '@/features/auth';
 import { StorageUsageCard } from '@/features/audio';
 import { InstallButton } from '@/features/instalar';
-import { ROLE_LABEL, useMyFunctions } from '@/features/integrantes';
+import { ROLE_LABEL, useMyFunctions, useMyPhone } from '@/features/integrantes';
+import { MyAccountForm } from './my-account-form';
 import { useScrollToHash } from '@/hooks/use-scroll-to-hash';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -53,6 +55,9 @@ function ProfileCard() {
   const profile = useMyProfile();
   const myFunctions = useMyFunctions();
   const functionNames = myFunctions.data?.map((f) => f.name) ?? [];
+  const phone = useMyPhone();
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   return (
     <Section title="Minha conta" id="minha-conta">
@@ -60,6 +65,18 @@ function ProfileCard() {
         <LoadingState label="Carregando perfil…" />
       ) : profile.isError ? (
         <ErrorState onRetry={() => void profile.refetch()} />
+      ) : editing ? (
+        <MyAccountForm
+          initial={{
+            fullName: profile.data.full_name,
+            displayName: profile.data.display_name ?? '',
+            phone: phone.data ?? '',
+          }}
+          onDone={() => {
+            setEditing(false);
+            setSaved(true);
+          }}
+        />
       ) : (
         <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-[10rem_1fr]">
           <dt className="text-muted-foreground">Nome</dt>
@@ -70,6 +87,8 @@ function ProfileCard() {
               <dd className="font-medium">{profile.data.display_name}</dd>
             </>
           )}
+          <dt className="text-muted-foreground">Telefone</dt>
+          <dd className="font-medium">{phone.data || '—'}</dd>
           {session?.user.email && (
             <>
               <dt className="text-muted-foreground">E-mail</dt>
@@ -111,8 +130,25 @@ function ProfileCard() {
           </dd>
         </dl>
       )}
+      {!editing && profile.data && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setSaved(false);
+              setEditing(true);
+            }}
+          >
+            Editar meus dados
+          </Button>
+          <p role="status" aria-live="polite" className="text-sm font-medium text-brand-text">
+            {saved ? 'Dados salvos.' : ''}
+          </p>
+        </div>
+      )}
       <p className="text-xs text-muted-foreground">
-        Para mudar nome ou funções, fale com a liderança.
+        Funções e perfil de acesso: fale com um administrador.
       </p>
     </Section>
   );

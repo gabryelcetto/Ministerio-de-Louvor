@@ -324,6 +324,7 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
       save_announcement: 'an-novo',
       create_event_with_team: ['ev-novo'],
       get_song_stats: [],
+      update_member: null,
       get_song_plays: { total: 0, recent: [] },
       duplicate_event: 'ev-dup',
       mark_announcement_read: null,

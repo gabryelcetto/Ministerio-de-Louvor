@@ -5,6 +5,8 @@ export {
   ROLE_LABEL,
   useMembers,
   useMyFunctions,
+  useMyPhone,
+  useUpdateMyAccount,
   type Member,
   type MyFunction,
 } from './api';

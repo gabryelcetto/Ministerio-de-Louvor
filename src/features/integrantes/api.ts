@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { requireAffected } from '@/lib/errors';
 import { displayName } from '@/features/escalas';
 import { usePermission, useSession } from '@/features/auth';
 import { supabase } from '@/services/supabase';
@@ -138,6 +139,126 @@ export function useMyFunctions() {
   return useQuery({
     queryKey: ['members', 'my-functions', userId],
     queryFn: () => fetchMyFunctions(userId as string),
+    enabled: Boolean(userId),
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fase G (itens 10 e 11): editar integrante, perfil de acesso, ativar/desativar, Minha conta.
+// As proteções (dono, a si mesmo, último admin) ficam no banco (trigger em profiles).
+// ---------------------------------------------------------------------------------------------
+
+export interface MemberEditValues {
+  fullName: string;
+  displayName: string;
+  phone: string;
+  functionIds: number[];
+}
+
+export async function updateMember(userId: string, values: MemberEditValues): Promise<void> {
+  const { error } = await supabase.rpc('update_member', {
+    p_user_id: userId,
+    p_full_name: values.fullName,
+    p_display_name: values.displayName,
+    p_phone: values.phone,
+    p_function_ids: values.functionIds,
+  });
+  if (error) throw error;
+}
+
+export async function setMemberRole(userId: string, role: 'admin' | 'member'): Promise<void> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ access_role: role })
+    .eq('id', userId)
+    .select('id');
+  if (error) throw error;
+  requireAffected(data);
+}
+
+export async function setMemberActive(userId: string, active: boolean): Promise<void> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ status: active ? 'active' : 'inactive' })
+    .eq('id', userId)
+    .select('id');
+  if (error) throw error;
+  requireAffected(data);
+}
+
+/** Minha conta: a pessoa edita o próprio nome, apelido e telefone (o resto o banco barra). */
+export async function updateMyAccount(
+  userId: string,
+  values: Pick<MemberEditValues, 'fullName' | 'displayName' | 'phone'>,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      full_name: values.fullName.trim(),
+      display_name: values.displayName.trim() || null,
+      phone: values.phone.trim() || null,
+    })
+    .eq('id', userId)
+    .select('id');
+  if (error) throw error;
+  requireAffected(data);
+}
+
+function useInvalidateMembers() {
+  const client = useQueryClient();
+  return () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: ['members'] }),
+      client.invalidateQueries({ queryKey: ['me'] }),
+    ]);
+}
+
+export function useUpdateMember(userId: string) {
+  const invalidate = useInvalidateMembers();
+  return useMutation({
+    mutationFn: (values: MemberEditValues) => updateMember(userId, values),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetMemberRole(userId: string) {
+  const invalidate = useInvalidateMembers();
+  return useMutation({
+    mutationFn: (role: 'admin' | 'member') => setMemberRole(userId, role),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetMemberActive(userId: string) {
+  const invalidate = useInvalidateMembers();
+  return useMutation({
+    mutationFn: (active: boolean) => setMemberActive(userId, active),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateMyAccount() {
+  const { session } = useSession();
+  const invalidate = useInvalidateMembers();
+  return useMutation({
+    mutationFn: (values: Pick<MemberEditValues, 'fullName' | 'displayName' | 'phone'>) =>
+      updateMyAccount(session?.user.id as string, values),
+    onSuccess: invalidate,
+  });
+}
+
+/** Telefone da própria pessoa (get_member_contacts sempre devolve o próprio). */
+export async function fetchMyPhone(userId: string): Promise<string> {
+  const map = await fetchContacts();
+  return map.get(userId) ?? '';
+}
+
+export function useMyPhone() {
+  const { session } = useSession();
+  const userId = session?.user.id;
+  return useQuery({
+    queryKey: ['members', 'my-phone', userId],
+    queryFn: () => fetchMyPhone(userId as string),
     enabled: Boolean(userId),
   });
 }
