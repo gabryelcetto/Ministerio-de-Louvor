@@ -33,7 +33,8 @@ export type PermissionKey =
   | 'permissions.manage'
   | 'history.restore'
   | 'history.view_all'
-  | 'songs.manage';
+  | 'songs.manage'
+  | 'media.manage';
 
 // ---------------------------------------------------------------------------------------------
 // Estreitamento das colunas com CHECK

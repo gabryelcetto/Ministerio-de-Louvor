@@ -1,7 +1,9 @@
 // Confere pela API (sem a interface) que o banco recusa o que cada perfil não pode fazer.
 // Simula alguém chamando o Supabase direto pelo console do navegador.
 // Uso: API_URL=... ANON_KEY=... DEMO_PASSWORD=... node e2e/api-checks.mjs
+import { execSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
+import { makeWav } from './wav.mjs';
 
 const { API_URL, ANON_KEY, DEMO_PASSWORD } = process.env;
 const SONG = '00000000-0000-4000-8000-000000000001';
@@ -321,6 +323,196 @@ if (created?.temporaryPassword) {
       e1?.message ?? e2?.message ?? `${data?.length} músicas`,
     );
   }
+}
+
+// ---------------------------------------------------------------- áudios (Storage)
+{
+  const ENSAIO = '10000000-0000-4000-8000-000000000001'; // "Ensaio geral" do seed
+  const CULTO = '10000000-0000-4000-8000-000000000002';
+  const wav = makeWav({ seconds: 2 });
+  const isa = (await member.auth.getUser()).data.user.id;
+  const bucket = (c) => c.storage.from('audios');
+
+  // Integrante envia áudio de referência e registra
+  const refPath = `reference/${SONG}/api-${Date.now()}.wav`;
+  {
+    const { error } = await bucket(member).upload(refPath, wav, { contentType: 'audio/wav' });
+    const { error: e2 } = await member
+      .from('media_files')
+      .insert({
+        kind: 'reference',
+        song_id: SONG,
+        storage_path: refPath,
+        mime_type: 'audio/wav',
+        size_bytes: wav.length,
+        duration_seconds: 2,
+        created_by: isa,
+      })
+      .select('id');
+    check(
+      !error && !e2,
+      'áudio: integrante envia e registra referência',
+      error?.message ?? e2?.message ?? '',
+    );
+  }
+  {
+    const { error } = await bucket(member).upload(
+      `reference/${SONG}/texto.txt`,
+      Buffer.from('não é áudio'),
+      {
+        contentType: 'text/plain',
+      },
+    );
+    check(
+      Boolean(error),
+      'áudio: bucket recusa arquivo que não é audio/*',
+      error?.message ?? 'aceitou',
+    );
+  }
+  {
+    const grande = makeWav({ minBytes: 46 * 1024 * 1024 });
+    const { error } = await bucket(member).upload(`reference/${SONG}/grande.wav`, grande, {
+      contentType: 'audio/wav',
+    });
+    check(
+      Boolean(error),
+      'áudio: bucket recusa arquivo acima de 45 MB',
+      error?.message ?? 'aceitou',
+    );
+  }
+  {
+    const { error } = await bucket(member).upload(`outra/${Date.now()}.wav`, wav, {
+      contentType: 'audio/wav',
+    });
+    check(
+      Boolean(error),
+      'áudio: bucket recusa pasta fora de rehearsal/reference',
+      error?.message ?? 'aceitou',
+    );
+  }
+  {
+    const path = `rehearsal/${CULTO}/api.wav`;
+    const { error } = await member
+      .from('media_files')
+      .insert({
+        kind: 'rehearsal',
+        event_id: CULTO,
+        storage_path: path,
+        mime_type: 'audio/wav',
+        size_bytes: wav.length,
+        created_by: isa,
+      })
+      .select('id');
+    check(
+      error?.code === '42501',
+      'áudio: gravação só em evento do tipo ensaio',
+      error?.code ?? 'aceitou',
+    );
+  }
+  // Outro integrante (Lucas) não apaga o áudio da Isa — nem o arquivo, nem o registro
+  {
+    const { data, error } = await bucket(leader).remove([refPath]);
+    const { data: still } = await bucket(member).download(refPath);
+    check(
+      !error && (data ?? []).length === 0 && Boolean(still),
+      'áudio: outro integrante NÃO apaga o arquivo da Isa (API do Storage)',
+      error?.message ?? `${data?.length} removidos`,
+    );
+    const { data: rows } = await leader
+      .from('media_files')
+      .delete()
+      .eq('storage_path', refPath)
+      .select('id');
+    check(
+      (rows ?? []).length === 0,
+      'áudio: outro integrante NÃO apaga o registro da Isa',
+      `${rows?.length}`,
+    );
+  }
+  {
+    const { error } = await member.rpc('get_storage_usage');
+    check(
+      error?.code === '42501',
+      'áudio: integrante não vê o espaço usado',
+      error?.code ?? 'sem erro',
+    );
+    const { data, error: e2 } = await admin.rpc('get_storage_usage');
+    check(
+      !e2 && Number(data?.total_bytes) > 0 && Number(data?.limit_bytes) === 1073741824,
+      'áudio: admin vê o espaço usado do 1 GB',
+      e2?.message ?? JSON.stringify(data),
+    );
+  }
+  // A autora apaga o próprio áudio (arquivo pela API do Storage + registro)
+  {
+    const { data, error } = await bucket(member).remove([refPath]);
+    const { data: rows } = await member
+      .from('media_files')
+      .delete()
+      .eq('storage_path', refPath)
+      .select('id');
+    check(
+      !error && data?.length === 1 && rows?.length === 1,
+      'áudio: autora apaga o próprio áudio',
+      error?.message ?? `${data?.length}/${rows?.length}`,
+    );
+  }
+
+  // Limpeza automática: gravação de ensaio "com 100 dias" some; referência fica.
+  const oldPath = `rehearsal/${ENSAIO}/antiga-${Date.now()}.wav`;
+  const keepPath = `reference/${SONG}/fica-${Date.now()}.wav`;
+  for (const [path, kind] of [
+    [oldPath, 'rehearsal'],
+    [keepPath, 'reference'],
+  ]) {
+    await bucket(member).upload(path, wav, { contentType: 'audio/wav' });
+    await member.from('media_files').insert({
+      kind,
+      event_id: kind === 'rehearsal' ? ENSAIO : null,
+      song_id: kind === 'reference' ? SONG : null,
+      storage_path: path,
+      mime_type: 'audio/wav',
+      size_bytes: wav.length,
+      created_by: isa,
+    });
+  }
+  execSync(
+    'docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres',
+    {
+      input: `update public.media_files set created_at = now() - interval '100 days' where storage_path = '${oldPath}';`,
+    },
+  );
+  const purgeUrl = `${API_URL}/functions/v1/purge-old-recordings`;
+  {
+    const res = await fetch(purgeUrl, { method: 'POST', headers: { 'x-cron-secret': 'errado' } });
+    check(res.status === 401, 'limpeza: sem o segredo certo responde 401', `${res.status}`);
+  }
+  {
+    const res = await fetch(purgeUrl, {
+      method: 'POST',
+      headers: { 'x-cron-secret': process.env.CRON_SECRET ?? '' },
+    });
+    const body = await res.json().catch(() => ({}));
+    const { data: oldFile } = await bucket(member).download(oldPath);
+    const { data: keepFile } = await bucket(member).download(keepPath);
+    const { data: rows } = await member
+      .from('media_files')
+      .select('storage_path')
+      .in('storage_path', [oldPath, keepPath]);
+    check(
+      res.status === 200 &&
+        body.removedFiles >= 1 &&
+        !oldFile &&
+        Boolean(keepFile) &&
+        rows?.length === 1 &&
+        rows[0].storage_path === keepPath,
+      'limpeza: apaga gravação de ensaio com mais de 90 dias (pela API do Storage) e mantém a referência',
+      `${res.status} ${JSON.stringify(body)}`,
+    );
+  }
+  // Tira o áudio de referência do teste
+  await bucket(member).remove([keepPath]);
+  await member.from('media_files').delete().eq('storage_path', keepPath);
 }
 
 if (failures) {

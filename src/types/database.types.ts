@@ -141,6 +141,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"media_files": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"duration_seconds": number | null,"event_id": string | null,"id": string,"kind": string,"mime_type": string,"size_bytes": number,"song_id": string | null,"storage_path": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"duration_seconds"?: number | null,"event_id"?: string | null,"id"?: string,"kind": string,"mime_type": string,"size_bytes": number,"song_id"?: string | null,"storage_path": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"duration_seconds"?: number | null,"event_id"?: string | null,"id"?: string,"kind"?: string,"mime_type"?: string,"size_bytes"?: number,"song_id"?: string | null,"storage_path"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "media_files_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "media_files_event_id_fkey"
+      columns: ["event_id"]
+isOneToOne: false
+      referencedRelation: "events"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "media_files_song_id_fkey"
+      columns: ["song_id"]
+isOneToOne: false
+      referencedRelation: "songs"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"member_functions": {
                   Row: {
                     "function_id": number,"user_id": string
@@ -405,7 +437,12 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "complete_password_change":
+            "audio_files_to_purge":
+{ Args: { "p_days"?: number }; Returns: {
+              "reason": string,"storage_path": string
+            }[]
+                           },
+"complete_password_change":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "create_song":
@@ -426,6 +463,9 @@ isOneToOne: false
 { Args: { "p_actor"?: string,"p_limit"?: number,"p_song"?: string }; Returns: {
               "action": string,"actor_id": string,"actor_name": string,"change_type": string,"field": string,"kind": string,"occurred_at": string,"song_id": string,"song_title": string,"version_id": string
             }[]
+                           },
+"get_storage_usage":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "has_permission":
 { Args: { "p": string }; Returns: boolean

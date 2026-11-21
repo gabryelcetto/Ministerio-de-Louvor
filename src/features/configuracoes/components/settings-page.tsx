@@ -6,6 +6,7 @@ import { ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { signOut } from '@/features/auth/api';
+import { StorageUsageCard } from '@/features/audio/components/storage-usage-card';
 import { PasswordForm } from '@/features/auth/components/password-form';
 import { useMyProfile } from '@/features/auth/hooks/use-me';
 import { useSession } from '@/features/auth/session-context';
@@ -44,6 +45,7 @@ export function SettingsPage() {
         </p>
         <InstallButton variant="outline" className="self-start" />
       </Section>
+      <StorageUsageCard />
       <SignOutCard />
     </section>
   );

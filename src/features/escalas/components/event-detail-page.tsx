@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useSession } from '@/features/auth/session-context';
 import { CancelledBadge, EventTypeBadge } from '@/features/agenda/event-type-badge';
+import { RehearsalRecordings } from '@/features/audio/components/rehearsal-recordings';
 import { formatDayLabel, formatTimeRange } from '@/lib/dates';
 import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
@@ -91,6 +92,8 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
         <TeamCard team={team} eventId={event.id} />
         <SongsCard songs={songs} />
       </div>
+
+      {event.type === 'ensaio' && <RehearsalRecordings eventId={event.id} />}
     </>
   );
 }

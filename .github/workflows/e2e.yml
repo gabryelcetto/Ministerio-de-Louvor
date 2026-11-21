@@ -40,12 +40,20 @@ jobs:
       - name: Simular privilégios da nuvem
         run: cp supabase/ci/simular-nuvem.sql supabase/migrations/00000000000000_simular_nuvem.sql
 
-      - name: Subir Supabase local (banco, Auth, API)
+      # Segredo da limpeza de gravações (purge-old-recordings), lido pelo config.toml
+      # ([edge_runtime.secrets]). Aleatório a cada execução.
+      - name: Segredo da limpeza de gravações
+        run: |
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$secret"
+          echo "CRON_SECRET=$secret" >> "$GITHUB_ENV"
+
+      - name: Subir Supabase local (banco, Auth, API, Storage, Edge Functions)
         # O registro de imagens (public.ecr.aws) às vezes limita downloads ("Data limit
         # exceeded"): tenta de novo com espera antes de desistir.
         run: |
           for attempt in 1 2 3 4; do
-            supabase start -x studio,storage-api,imgproxy,logflare,vector,realtime,postgres-meta,supavisor,mailpit && exit 0
+            supabase start -x studio,imgproxy,logflare,vector,realtime,postgres-meta,supavisor,mailpit && exit 0
             echo "::warning::supabase start falhou (tentativa $attempt); nova tentativa em $((attempt * 60))s"
             supabase stop --no-backup || true
             sleep $((attempt * 60))

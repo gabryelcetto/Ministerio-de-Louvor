@@ -28,6 +28,8 @@ import {
 } from '../song-key';
 import { chordProToLyrics } from '../editor-checks';
 import { ChordSheet } from './chord-sheet';
+import { ReferenceAudios } from '@/features/audio/components/reference-audios';
+import { shortestSemitones } from '@/lib/audio/semitones';
 import { ArchiveSongButton, SongDataEditor } from './song-data-editor';
 import { ChordsEditor, LyricsEditor, OfficialKeyEditor } from './song-editors';
 
@@ -309,6 +311,14 @@ function SongView({ song }: { song: SongDetail }) {
             <p className="text-muted-foreground">Esta música ainda não tem letra.</p>
           )
         }
+      />
+
+      {/* O áudio de referência está no tom ORIGINAL: o player muda o tom pela diferença até o tom
+          que está na tela (caminho mais curto, −6 a +5). */}
+      <ReferenceAudios
+        songId={song.id}
+        followSemitones={shortestSemitones(song.original_key ?? baseKey, shownKey)}
+        shownKey={shownKey}
       />
 
       {tab === 'cifra' && song.chords && !editing && (

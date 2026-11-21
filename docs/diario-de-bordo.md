@@ -854,3 +854,59 @@ as migrations a partir da de GRANT.
 3. Testes de tela contavam o link "Nova música" como música, e achavam nomes dentro de
    `<option>` de filtro. Ajustados os seletores.
 4. Título "Ministério de Louvor · ADVOP" cortado no topo do celular: fonte menor no celular.
+
+---
+
+## Áudios: gravação de ensaio, referência e player com tom e velocidade (21/11/2026)
+
+### Arquivos criados/alterados
+
+- `supabase/migrations/20261123090000_audio.sql` (idempotente):
+  - bucket privado `audios` (45 MB, só `audio/*`);
+  - permissão `media.manage` (admin);
+  - tabela `media_files` com GRANT, RLS e CHECKs (tipo/alvo, caminho, tamanho, `audio/*`);
+  - policies de `storage.objects`;
+  - `get_storage_usage()` (admin);
+  - `audio_files_to_purge()` (só service_role).
+- `supabase/functions/purge-old-recordings/`: limpeza diária pela API do Storage, protegida por
+  `CRON_SECRET` (comparação em tempo constante); `?dry_run=1` só lista.
+- `.github/workflows/purge-recordings.yml`: chamada diária (e manual, com dry run).
+- `supabase/config.toml`: `verify_jwt = false` para a limpeza; `CRON_SECRET` do ambiente.
+- `src/lib/audio/` (+ testes):
+  - `format.ts`: formato por navegador;
+  - `limits.ts`: 45 MB, avisos e formatação;
+  - `semitones.ts`: diferença de tom pelo caminho mais curto;
+  - `recording-store.ts`: IndexedDB;
+  - `upload.ts`: envio com progresso;
+  - `soundtouch.ts`: SoundTouch no AudioWorklet.
+- `src/features/audio/`:
+  - `api.ts`: listar com link assinado, enviar, apagar, espaço usado;
+  - `use-recorder.ts`: gravador;
+  - `audio-player.tsx`, `media-list.tsx`, `rehearsal-recordings.tsx`, `reference-audios.tsx`,
+    `storage-usage-card.tsx`.
+- Integração: detalhe do evento (ensaio), tela da música, Configurações.
+- Testes:
+  - `supabase/tests/media.test.sql` (22);
+  - `e2e/wav.mjs` (áudio fictício gerado no teste);
+  - verificações de API (Storage, limites, quem apaga, limpeza com e sem segredo);
+  - fluxos de tela (enviar, tocar, velocidade, tom acompanhando a cifra, gravar, pausar,
+    recarregar no meio, permissões, espaço).
+
+### Decisões
+
+- **Velocidade pelo `playbackRate` do `<audio>`, tom pelo SoundTouch** (recomendação da
+  própria biblioteca): o arquivo toca em fluxo, sem decodificar tudo na memória — uma gravação de
+  ensaio de 1 h viraria centenas de MB de PCM.
+- **Licenças:** SoundTouchJS em AudioWorklet é MPL-2.0 (pode ser usada sem "contaminar" o resto
+  do código). Rubber Band (GPL) foi descartado. O processador sai como arquivo separado no build.
+- **Pedaços de 5 s no IndexedDB:** é o máximo que se perde se o app for morto. Gravar tudo só na
+  memória perderia o ensaio inteiro.
+- **Envio por XHR à API REST do Storage** (e não pelo supabase-js): é o jeito de ter barra de
+  progresso. A permissão continua sendo a policy do bucket (token do usuário).
+- **Apagar sempre pela API do Storage**, nunca `delete from storage.objects`: o Storage precisa
+  saber, para liberar o espaço do arquivo de verdade.
+- **Limpeza por Edge Function + GitHub Actions** (não pg_cron): quem apaga é a API do Storage, e o
+  agendamento fica visível no GitHub. Segredo próprio, separado da service role.
+- **"Arquivos órfãos"** (upload terminou, registro não) também são limpos depois de 1 dia.
+- **service_role com GRANT explícito** em `media_files`: em projeto novo nem ela tem privilégio
+  garantido em `public` (mesma lição do 403).

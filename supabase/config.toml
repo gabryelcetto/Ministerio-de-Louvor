@@ -49,3 +49,13 @@ enable_confirmations = false
 [functions.invite-member]
 enabled = true
 verify_jwt = true
+
+# Limpeza diária de gravações de ensaio (> 90 dias). Chamada pelo GitHub Actions, sem usuário
+# logado: protegida pelo segredo próprio CRON_SECRET (cabeçalho x-cron-secret), não por JWT.
+[functions.purge-old-recordings]
+enabled = true
+verify_jwt = false
+
+# Segredos das Edge Functions no ambiente LOCAL (na nuvem: supabase secrets set CRON_SECRET=...).
+[edge_runtime.secrets]
+CRON_SECRET = "env(CRON_SECRET)"
