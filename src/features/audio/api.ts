@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { displayName } from '@/features/escalas/schedule-utils';
+import { displayName } from '@/features/escalas';
 import { readPublicEnv } from '@/lib/env';
 import { requireAffected, UserFacingError } from '@/lib/errors';
 import { baseMimeType } from '@/lib/audio/format';
 import { uploadWithProgress } from '@/lib/audio/upload';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 
 export const AUDIO_BUCKET = 'audios';
 /** Validade do link de reprodução (o bucket é privado). */

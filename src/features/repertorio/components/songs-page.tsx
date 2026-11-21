@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePermission } from '@/lib/permissions';
+import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import { useSongCategories, useSongSearch, type SongListItem } from '../api';
 

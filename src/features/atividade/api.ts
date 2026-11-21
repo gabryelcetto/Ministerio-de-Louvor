@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import type { ChangeType, VersionField } from '@/types/app.types';
 
 /**

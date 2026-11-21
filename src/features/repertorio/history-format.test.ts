@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { changedMetadata, parseMetadata, summarizeChange } from './history-format';
 import { chordProToLyrics, chordSheetWarnings } from './editor-checks';
 
-vi.mock('@/lib/supabase', () => ({ supabase: {} }));
+vi.mock('@/services/supabase', () => ({ supabase: {} }));
 const { markCurrent } = await import('./editing');
 
 const meta = (o: Record<string, string | null>) =>

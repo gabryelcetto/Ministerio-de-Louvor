@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/supabase', () => ({ supabase: {} }));
+vi.mock('@/services/supabase', () => ({ supabase: {} }));
 
 const { labelProblem, LABEL_SUGGESTIONS, mediaTitle, normalizeLabel, storageLevel } =
   await import('./api');

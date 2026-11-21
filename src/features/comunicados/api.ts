@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { displayName } from '@/features/escalas/schedule-utils';
-import { supabase } from '@/lib/supabase';
+import { displayName } from '@/features/escalas';
+import { supabase } from '@/services/supabase';
 
 /** Quantos comunicados a tela mostra (os mais recentes). */
 export const ANNOUNCEMENTS_LIMIT = 50;

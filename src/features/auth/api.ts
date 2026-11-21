@@ -1,5 +1,5 @@
 import { UserFacingError } from '@/lib/errors';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import type { ProfileRow } from '@/types/app.types';
 
 /** Colunas legíveis de profiles (phone NÃO: só via get_member_contacts). */

@@ -1,4 +1,4 @@
-import { useMyPermissions } from '@/features/auth/hooks/use-me';
+import { useMyPermissions } from './hooks/use-me';
 import type { PermissionKey } from '@/types/app.types';
 
 /**

@@ -2,7 +2,7 @@ import { HardDrive, TriangleAlert } from 'lucide-react';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatBytes } from '@/lib/audio/limits';
-import { usePermission } from '@/lib/permissions';
+import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import { storageLevel, useStorageUsage } from '../api';
 

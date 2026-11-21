@@ -6,7 +6,7 @@ import { FormError } from '@/components/common/form-error';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { formatShortDate, formatTime } from '@/lib/dates';
-import { usePermission } from '@/lib/permissions';
+import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import type { VersionField } from '@/types/app.types';
 import { useSong } from '../api';

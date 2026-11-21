@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { formatTimeRange } from '@/lib/dates';
 import { cn } from '@/lib/utils';
-import type { EventSummary } from '@/features/escalas/schedule-utils';
+import type { EventSummary } from '@/features/escalas';
 import { CancelledBadge, EventTypeBadge } from '../event-type-badge';
 import { EVENT_TYPE_STYLES } from '../event-type';
 

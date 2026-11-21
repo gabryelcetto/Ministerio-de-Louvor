@@ -1,6 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { UserFacingError } from '@/lib/errors';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 
 /** Erro de uma Edge Function já em português (o corpo é `{ error: "..." }`). */
 export class EdgeFunctionError extends UserFacingError {

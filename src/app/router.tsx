@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, type RouteObject } from 'react-router';
 import { AgendaPage } from '@/features/agenda/components/agenda-page';
 import { LoginPage } from '@/features/auth/components/login-page';
 import { AnnouncementsPage } from '@/features/comunicados/components/announcements-page';
@@ -21,7 +21,8 @@ import { AppShell } from './app-shell';
 import { NotFoundPage } from './not-found-page';
 import { ProtectedRoute } from './protected-route';
 
-export const router = createBrowserRouter([
+/** Rotas do app (exportadas para os testes montarem o app num roteador em memória). */
+export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
   {
     element: <ProtectedRoute />,
@@ -52,4 +53,6 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '*', element: <NotFoundPage /> },
-]);
+];
+
+export const router = createBrowserRouter(routes);

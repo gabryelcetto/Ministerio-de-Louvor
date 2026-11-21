@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import type { AppDatabase } from '@/types/app.types';
-import { readPublicEnv } from './env';
+import { readPublicEnv } from '@/lib/env';
 
 /**
  * Cliente Supabase ÚNICO da aplicação. Importe sempre daqui.

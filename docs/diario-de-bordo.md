@@ -997,3 +997,39 @@ as migrations a partir da de GRANT.
 - **Teste do componente sem DOM:** `renderToStaticMarkup` do React, sem instalar jsdom (o disco
   desta máquina está quase cheio).
 - **Sem `db push`:** a senha do banco mudou; o comando ficou para o dono (pendência 42).
+
+## Teste estrutural, mutação e QA automatizado (21/11/2026)
+
+### Arquivos criados/alterados
+
+- **Cobertura:** `vitest.config.ts` (provider v8, limites, `happy-dom` por arquivo),
+  `scripts/coverage-summary.mjs` (resumo no job), `src/test/` (Supabase de mentira, dados de
+  exemplo, montagem do app, gravador/microfone/envio de mentira) e testes de tela de todas as
+  rotas e fluxos principais. Projeto de 29% para 95% de linhas; `src/lib` de 73% para 98,6%
+  de linhas e 90% de branches.
+- **Arquitetura:** `.dependency-cruiser.cjs` e `npm run test:arch`. Para cumprir as regras:
+  `src/lib/supabase.ts` → `src/services/supabase.ts`; hooks de tema e instalação →
+  `src/hooks/`; `usePermission` → feature `auth`; um `index.ts` por feature usada por outra.
+- **Mutação:** `stryker.config.mjs`, `.github/workflows/mutation.yml`,
+  `scripts/mutation-summary.mjs`. Score inicial: 78,95% (2262 mutantes).
+- **QA:** `e2e/qa.mjs` (Chromium, WebKit e Firefox × 375x667, 390x844, 768x1024, 1440x900 ×
+  admin e integrante; tema escuro no Chromium; axe; console; API; largura; 16 casos de borda)
+  e o passo no workflow E2E. Relatório: `docs/qa/relatorio-qa-2026-11-21.md`.
+- **Correções (um commit cada):** SoundTouch só carrega ao tocar (o app quebrava sem
+  AudioWorklet); Nova música pede confirmação antes de perder o que foi digitado; nome
+  acessível dos botões A−/A+ e ±10 s; palavra longa na cifra quebra dentro da tela.
+
+### Decisões
+
+- **Testes de tela sem banco:** um Supabase de mentira em memória (filtros, escritas, RPCs,
+  Auth, Storage, Edge Functions) cobre a interface sem Docker; o comportamento do banco
+  continua no pgTAP e no E2E.
+- **happy-dom só onde precisa** (comentário no topo do arquivo): os testes puros seguem no
+  ambiente Node, mais rápido, e o IndexedDB falso guarda `Blob` de verdade.
+- **API pública por `index.ts`** em vez de mover código entre features: muda só os imports e
+  deixa a regra fácil de seguir.
+- **Mutação mirando só código puro:** nos componentes, a mutação mediria mais o Supabase de
+  mentira do que a regra de negócio.
+- **QA reprova só com crítico ou alto;** médios e baixos ficam nas pendências.
+- **Sem instalar navegadores nesta máquina** (disco com 0,5 a 2 GB livres): QA e mutação
+  completa rodam no CI; a mutação de referência rodou localmente pelo PowerShell em `C:\`.

@@ -1,5 +1,3 @@
-import { useCallback, useState } from 'react';
-
 /**
  * Tema escolhido pela pessoa. "system" segue o aparelho. Fica só neste navegador (preferência
  * pessoal de tela, não precisa ir para o banco). O index.html aplica antes da primeira pintura.
@@ -33,14 +31,4 @@ export function saveThemePref(pref: ThemePref): void {
   } catch {
     // Sem armazenamento (aba anônima): o tema vale até fechar a página.
   }
-}
-
-export function useThemePref(): [ThemePref, (pref: ThemePref) => void] {
-  const [pref, setPref] = useState(readThemePref);
-  const update = useCallback((next: ThemePref) => {
-    setPref(next);
-    saveThemePref(next);
-    applyTheme(next);
-  }, []);
-  return [pref, update];
 }
