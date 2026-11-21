@@ -111,6 +111,16 @@ export interface DashboardAnnouncement {
   pinned?: boolean;
 }
 
+/** "Precisa de atenção" (só para quem monta escala). */
+export interface DashboardAttention {
+  id: string;
+  title: string;
+  type: EventType;
+  starts_at: string;
+  no_team: boolean;
+  no_songs: boolean;
+}
+
 export interface Dashboard {
   next_service: EventRow | null;
   next_rehearsal: EventRow | null;
@@ -118,4 +128,6 @@ export interface Dashboard {
   next_service_songs: DashboardSong[];
   recent_announcements: DashboardAnnouncement[];
   unread_notifications: number;
+  attention: DashboardAttention[];
+  attention_total: number;
 }

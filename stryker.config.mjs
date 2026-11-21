@@ -17,6 +17,7 @@ export default {
     'src/features/escalas/schedule-utils.ts',
     'src/features/escalas/share-text.ts',
     'src/features/escalas/setlist.ts',
+    'src/features/escalas/pending.ts',
     'src/features/integrantes/sections.ts',
     'src/features/repertorio/editor-checks.ts',
     'src/features/repertorio/history-format.ts',

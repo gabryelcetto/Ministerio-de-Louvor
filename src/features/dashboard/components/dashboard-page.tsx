@@ -1,4 +1,13 @@
-import { CalendarDays, ChevronRight, Clock, MapPin, Megaphone, Pin, Music } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  ChevronRight,
+  Clock,
+  MapPin,
+  Megaphone,
+  Pin,
+  Music,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ErrorState, LoadingState } from '@/components/common/states';
@@ -79,6 +88,10 @@ function DashboardContent({ data }: { data: Dashboard }) {
           </span>
           <ChevronRight aria-hidden="true" className="size-5 text-muted-foreground" />
         </Link>
+      )}
+
+      {data.attention.length > 0 && (
+        <Attention items={data.attention} total={data.attention_total} />
       )}
 
       {announcements.length > 0 && (
@@ -206,5 +219,55 @@ function Info({
       <dt className="sr-only">{label}</dt>
       <dd>{children}</dd>
     </div>
+  );
+}
+
+/** "Precisa de atenção" (quem monta escala): até 3 eventos dos próximos 14 dias com pendência. */
+function Attention({ items, total }: { items: Dashboard['attention']; total: number }) {
+  return (
+    <section aria-labelledby="inicio-atencao" className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <h2 id="inicio-atencao" className="section-label">
+          Precisa de atenção
+        </h2>
+        <Link
+          to="/escalas?ver=todas&pendencia=1"
+          className="rounded-lg px-2 py-2 text-sm font-semibold text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {total > items.length ? `Ver todas (${total})` : 'Ver todas'}
+        </Link>
+      </div>
+      <ul className="flex flex-col gap-2">
+        {items.map((item) => (
+          <li key={item.id}>
+            <Link
+              to={`/escalas/${item.id}`}
+              className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <AlertTriangle aria-hidden="true" className="size-5 shrink-0 text-brand-text" />
+              <span className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="font-semibold">{item.title}</span>
+                <span className="text-caption text-muted-foreground">
+                  {formatDayLabel(item.starts_at)} · {formatTime(item.starts_at)}
+                </span>
+                <span className="flex flex-wrap gap-1.5">
+                  {item.no_team && <IssueChip>Sem equipe</IssueChip>}
+                  {item.no_songs && <IssueChip>Sem repertório</IssueChip>}
+                </span>
+              </span>
+              <ChevronRight aria-hidden="true" className="size-5 text-muted-foreground" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function IssueChip({ children }: { children: string }) {
+  return (
+    <span className="rounded-md bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand-text">
+      {children}
+    </span>
   );
 }

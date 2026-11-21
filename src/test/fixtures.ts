@@ -337,6 +337,8 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
       ],
       search_songs: songs,
       get_dashboard: {
+        attention: [],
+        attention_total: 0,
         next_service: events[0],
         next_rehearsal: events[1],
         my_assignments: [

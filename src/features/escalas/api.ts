@@ -89,3 +89,40 @@ export async function fetchEventDetail(eventId: string): Promise<EventDetail | n
     songs,
   };
 }
+
+export interface ScheduleOverview {
+  event: EventSummary;
+  teamCount: number;
+  songCount: number;
+}
+
+/**
+ * "Todas" as escalas (quem monta escala): próximas (do mais perto ao mais longe) ou anteriores
+ * (dos últimos PAST_DAYS dias, do mais recente), com o tamanho da equipe e do repertório.
+ */
+export async function fetchAllSchedules(
+  period: 'proximas' | 'anteriores',
+  now: Date = new Date(),
+): Promise<ScheduleOverview[]> {
+  const nowIso = now.toISOString();
+  const since = new Date(now.getTime() - PAST_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const base = supabase
+    .from('events')
+    .select(
+      'id, type, title, starts_at, ends_at, location, status, event_assignments(id), event_songs(id)',
+    );
+  const { data, error } =
+    period === 'proximas'
+      ? await base.gte('starts_at', nowIso).order('starts_at').limit(60)
+      : await base
+          .lt('starts_at', nowIso)
+          .gte('starts_at', since)
+          .order('starts_at', { ascending: false })
+          .limit(60);
+  if (error) throw error;
+  return data.map(({ event_assignments, event_songs, ...event }) => ({
+    event,
+    teamCount: event_assignments.length,
+    songCount: event_songs.length,
+  }));
+}

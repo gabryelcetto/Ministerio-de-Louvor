@@ -302,7 +302,7 @@ describe('início, agenda, comunicados, escalas e instalar', () => {
 
   it('minhas escalas e detalhe do evento com repertório no tom do dia', async () => {
     const { user, router } = renderApp('/escalas', { as: 'member' });
-    await findHeading('Minhas escalas');
+    await findHeading('Escalas');
     await user.click((await screen.findAllByRole('link', { name: /Culto de domingo/ }))[0]!);
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/escalas\/c0/));
     expect(await screen.findByText('Abre o culto')).toBeTruthy();
@@ -321,7 +321,7 @@ describe('início, agenda, comunicados, escalas e instalar', () => {
         s.tables!.event_assignments = [];
       },
     });
-    await findHeading('Minhas escalas');
+    await findHeading('Escalas');
     expect(await screen.findByText(/Nenhuma|não está escalad/i)).toBeTruthy();
   });
 
