@@ -1,103 +1,105 @@
 @import 'tailwindcss';
 
 /*
- * TEMA PROVISÓRIO — troque as cores só aqui.
- * Paleta: azul-marinho (primária), roxo discreto (secundária), branco (fundo), dourado (detalhe).
- * Os componentes usam apenas os tokens (bg-primary, text-muted-foreground…), nunca cores fixas.
+ * DESIGN "LOUVOR ADVOP" — troque as cores só aqui.
+ *
+ * 1) Tokens do design (--ds-*): os valores aprovados, claro em :root e escuro em .dark.
+ *    A classe .dark vai no <html> (script do index.html antes do React; depois, ThemeProvider).
+ * 2) Variáveis do shadcn (--background, --primary…): apontam para os tokens do design.
+ * 3) @theme inline: expõe tudo ao Tailwind (bg-surface, text-ink, bg-brand-soft, text-chord…).
+ *
+ * Contraste (WCAG AA, texto ≥ 4.5:1), conferido no design e no axe do QA:
+ *   claro: ink/bg 16:1 · muted/bg 5.9:1 · accent-text/accent-soft 7:1 · branco/accent 5.2:1 ·
+ *          chord/surface 5.6:1 · branco/rec 4.8:1
+ *   escuro: ink/bg 17:1 · muted/surface 7:1 · accent-text/accent-soft 9:1 · accent-ink/accent 7.6:1 ·
+ *          chord/surface 7:1
+ * Os componentes usam só estes tokens, nunca cores fixas.
  */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.24 0.05 264);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.05 264);
-  --primary: oklch(0.3 0.07 264); /* azul-marinho */
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.93 0.03 300); /* roxo discreto */
-  --secondary-foreground: oklch(0.35 0.09 300);
-  --accent: oklch(0.8 0.13 85); /* dourado */
-  --accent-foreground: oklch(0.25 0.05 264);
-  --muted: oklch(0.96 0.01 264);
-  --muted-foreground: oklch(0.48 0.03 264);
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.015 264);
-  --input: oklch(0.9 0.015 264);
-  --ring: oklch(0.8 0.13 85);
-  --radius: 0.75rem;
-  /* Tipos de evento (agenda, escalas, painel): cor de destaque + fundo suave. */
-  --event-culto: oklch(0.42 0.12 264); /* azul */
-  --event-culto-soft: oklch(0.94 0.03 264);
-  --event-ensaio: oklch(0.45 0.14 300); /* roxo */
-  --event-ensaio-soft: oklch(0.94 0.035 300);
-  --event-evento: oklch(0.5 0.11 70); /* dourado escuro, legível sobre branco */
-  --event-evento-soft: oklch(0.95 0.05 85);
-  /* Acordes na cifra: dourado escurecido para ter contraste sobre o branco. */
-  --chord: oklch(0.52 0.12 70);
-  /* Fundo escurecido atrás de menus e diálogos. */
-  --overlay: oklch(0.15 0.03 264 / 0.5);
-}
-
-/*
- * Tema escuro. A escolha da pessoa (Configurações) fica em <html data-theme="light|dark">;
- * sem escolha ("sistema"), vale o tema do aparelho. Os dois blocos têm AS MESMAS cores.
- */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --background: oklch(0.18 0.03 264);
-    --foreground: oklch(0.96 0.01 264);
-    --card: oklch(0.22 0.04 264);
-    --card-foreground: oklch(0.96 0.01 264);
-    --primary: oklch(0.82 0.08 264);
-    --primary-foreground: oklch(0.2 0.05 264);
-    --secondary: oklch(0.3 0.06 300);
-    --secondary-foreground: oklch(0.92 0.03 300);
-    --accent: oklch(0.82 0.13 85);
-    --accent-foreground: oklch(0.2 0.05 264);
-    --muted: oklch(0.26 0.03 264);
-    --muted-foreground: oklch(0.72 0.03 264);
-    --border: oklch(0.32 0.04 264);
-    --input: oklch(0.32 0.04 264);
-    --event-culto: oklch(0.8 0.1 264);
-    --event-culto-soft: oklch(0.28 0.06 264);
-    --event-ensaio: oklch(0.8 0.11 300);
-    --event-ensaio-soft: oklch(0.28 0.06 300);
-    --event-evento: oklch(0.84 0.13 85);
-    --event-evento-soft: oklch(0.3 0.05 85);
-    --chord: oklch(0.84 0.14 85);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --background: oklch(0.18 0.03 264);
-  --foreground: oklch(0.96 0.01 264);
-  --card: oklch(0.22 0.04 264);
-  --card-foreground: oklch(0.96 0.01 264);
-  --primary: oklch(0.82 0.08 264);
-  --primary-foreground: oklch(0.2 0.05 264);
-  --secondary: oklch(0.3 0.06 300);
-  --secondary-foreground: oklch(0.92 0.03 300);
-  --accent: oklch(0.82 0.13 85);
-  --accent-foreground: oklch(0.2 0.05 264);
-  --muted: oklch(0.26 0.03 264);
-  --muted-foreground: oklch(0.72 0.03 264);
-  --border: oklch(0.32 0.04 264);
-  --input: oklch(0.32 0.04 264);
-  --event-culto: oklch(0.8 0.1 264);
-  --event-culto-soft: oklch(0.28 0.06 264);
-  --event-ensaio: oklch(0.8 0.11 300);
-  --event-ensaio-soft: oklch(0.28 0.06 300);
-  --event-evento: oklch(0.84 0.13 85);
-  --event-evento-soft: oklch(0.3 0.05 85);
-  --chord: oklch(0.84 0.14 85);
-  color-scheme: dark;
-}
-
-:root[data-theme='light'] {
+  --ds-bg: #f6f5f2;
+  --ds-surface: #ffffff;
+  --ds-ink: #17171a;
+  --ds-muted: #5c5f66;
+  --ds-line: #e4e2dd;
+  --ds-chip: #eeece7;
+  --ds-accent: #c2410c;
+  --ds-accent-ink: #ffffff;
+  --ds-accent-soft: #fdebdd;
+  --ds-accent-text: #9a3412;
+  --ds-chord: #b4400b;
+  --ds-rec: #dc2626;
+  --ds-rec-ring: #fecaca;
   color-scheme: light;
 }
 
+.dark {
+  --ds-bg: #121214;
+  --ds-surface: #1c1c20;
+  --ds-ink: #f4f3ef;
+  --ds-muted: #a3a3ab;
+  --ds-line: #2c2c32;
+  --ds-chip: #26262b;
+  --ds-accent: #f97316;
+  --ds-accent-ink: #121214;
+  --ds-accent-soft: #3a2416;
+  --ds-accent-text: #fdba74;
+  --ds-chord: #fb923c;
+  --ds-rec: #ef4444;
+  --ds-rec-ring: #4c1d1d;
+  color-scheme: dark;
+}
+
+/* Variáveis do shadcn/ui → tokens do design (valem para os dois temas). */
+:root {
+  --background: var(--ds-bg);
+  --foreground: var(--ds-ink);
+  --card: var(--ds-surface);
+  --card-foreground: var(--ds-ink);
+  --primary: var(--ds-accent);
+  --primary-foreground: var(--ds-accent-ink);
+  --secondary: var(--ds-chip);
+  --secondary-foreground: var(--ds-ink);
+  /* "accent" do shadcn = destaque suave (selos, avisos, item ativo). */
+  --accent: var(--ds-accent-soft);
+  --accent-foreground: var(--ds-accent-text);
+  --muted: var(--ds-chip);
+  --muted-foreground: var(--ds-muted);
+  --destructive: var(--ds-rec);
+  --destructive-foreground: #ffffff;
+  --border: var(--ds-line);
+  --input: var(--ds-line);
+  --ring: var(--ds-accent);
+  --radius: 0.75rem;
+  /* Tipos de evento: só tons da paleta (sem azul, roxo ou dourado). */
+  --event-culto: var(--ds-accent-text);
+  --event-culto-soft: var(--ds-accent-soft);
+  --event-ensaio: var(--ds-ink);
+  --event-ensaio-soft: var(--ds-chip);
+  --event-evento: var(--ds-muted);
+  --event-evento-soft: var(--ds-chip);
+  /* Acordes na cifra. */
+  --chord: var(--ds-chord);
+  /* Fundo escurecido atrás de menus e diálogos. */
+  --overlay: rgb(18 18 20 / 0.55);
+}
+
+/* Tailwind v4: dark: segue a classe .dark (e não só o tema do aparelho). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Tokens do design, com nomes próprios */
+  --color-surface: var(--ds-surface);
+  --color-ink: var(--ds-ink);
+  --color-line: var(--ds-line);
+  --color-chip: var(--ds-chip);
+  --color-brand: var(--ds-accent);
+  --color-brand-ink: var(--ds-accent-ink);
+  --color-brand-soft: var(--ds-accent-soft);
+  --color-brand-text: var(--ds-accent-text);
+  --color-rec: var(--ds-rec);
+  --color-rec-ring: var(--ds-rec-ring);
+  /* shadcn */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -123,23 +125,49 @@
   --color-event-evento-soft: var(--event-evento-soft);
   --color-chord: var(--chord);
   --color-overlay: var(--overlay);
+  /* Raios: chips 8, campos e botões 12, cards 16. */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Escala de tipo do design. */
+@utility text-screen-title {
+  font-size: 1.375rem; /* 22px */
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+@utility text-card-title {
+  font-size: 1.0625rem; /* 17px */
+  line-height: 1.3;
+  font-weight: 700;
+}
+@utility section-label {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.3;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ds-muted);
+}
+@utility text-caption {
+  font-size: 0.75rem; /* 12px */
+  line-height: 1.35;
+  font-weight: 500;
+}
+
 @layer base {
   * {
     @apply border-border;
   }
+  html {
+    background-color: var(--ds-bg);
+  }
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family:
-      system-ui,
-      -apple-system,
-      'Segoe UI',
-      Roboto,
-      sans-serif;
+    @apply bg-background font-sans text-foreground antialiased;
+    font-size: 0.9375rem; /* 15px */
+    line-height: 1.5;
   }
 }
