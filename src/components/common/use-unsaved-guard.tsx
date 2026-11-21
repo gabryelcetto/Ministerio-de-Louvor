@@ -3,7 +3,8 @@ import { useBlocker } from 'react-router';
 import { ConfirmDialog } from './confirm-dialog';
 
 /**
- * Enquanto `dirty`, impede sair da tela sem querer: navegação interna abre uma confirmação e
+ * Enquanto `dirty`, impede sair da tela sem querer: navegação interna (inclusive o Voltar do
+ * navegador) abre uma confirmação e
  * fechar/recarregar a aba usa o aviso do próprio navegador.
  */
 export function useUnsavedGuard(dirty: boolean) {

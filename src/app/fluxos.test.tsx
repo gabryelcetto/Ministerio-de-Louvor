@@ -152,6 +152,35 @@ describe('repertório', () => {
   });
 });
 
+describe('nova música: não perde o que foi digitado', () => {
+  it('sair (Voltar/menu) com algo digitado pede confirmação', async () => {
+    const { user, router } = renderApp('/repertorio/nova', { as: 'member' });
+    await findHeading('Nova música');
+    // Sem nada digitado, sai sem perguntar.
+    await router.navigate('/repertorio');
+    await findHeading('Repertório');
+    await router.navigate('/repertorio/nova');
+    await findHeading('Nova música');
+    fireEvent.change(screen.getByLabelText('Cifra (opcional)'), {
+      target: { value: 'G D Santo' },
+    });
+    await router.navigate('/repertorio');
+    const dialog = await screen.findByRole('dialog', { name: 'Sair sem salvar?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Continuar editando' }));
+    expect(router.state.location.pathname).toBe('/repertorio/nova');
+    expect((screen.getByLabelText('Cifra (opcional)') as HTMLTextAreaElement).value).toContain(
+      'Santo',
+    );
+    await router.navigate('/repertorio');
+    await user.click(
+      within(await screen.findByRole('dialog', { name: 'Sair sem salvar?' })).getByRole('button', {
+        name: 'Sair sem salvar',
+      }),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/repertorio'));
+  });
+});
+
 describe('integrantes', () => {
   it('admin redefine a senha de uma integrante e vê a senha provisória', async () => {
     fake.onInvoke(async () => ({ data: null, error: null }));

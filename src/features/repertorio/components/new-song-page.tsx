@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft, Music, Wand2 } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router';
 import { FormError } from '@/components/common/form-error';
 import { LoadingState } from '@/components/common/states';
+import { useUnsavedGuard } from '@/components/common/use-unsaved-guard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -85,6 +86,18 @@ function NewSongForm({ canSetKey }: { canSetKey: boolean }) {
     },
   });
   const originalKey = useWatch({ control, name: 'originalKey' });
+  // Algo digitado/colado? Voltar do navegador ou sair pelo menu pede confirmação (antes, a cifra
+  // colada se perdia sem aviso). Depois de salvar, a ida para a música nova não é bloqueada.
+  const fields = useWatch({ control });
+  const typed =
+    Object.values(fields).some((v) => typeof v === 'string' && v.trim() !== '') ||
+    Boolean(pasted.trim() || lyrics.trim() || officialKey);
+  // Salvou: guarda o id e só navega depois (no efeito abaixo), quando o guarda já liberou.
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const guard = useUnsavedGuard(typed && !savedId);
+  useEffect(() => {
+    if (savedId) void navigate(`/repertorio/${savedId}`);
+  }, [savedId, navigate]);
 
   const converted = useMemo(() => convertPastedChords(pasted), [pasted]);
   const detectedKey = useMemo(
@@ -114,7 +127,7 @@ function NewSongForm({ canSetKey }: { canSetKey: boolean }) {
         lyrics: finalLyrics,
         chords: chordpro,
       },
-      { onSuccess: (songId) => void navigate(`/repertorio/${songId}`) },
+      { onSuccess: (songId) => setSavedId(songId) },
     );
   });
 
@@ -244,6 +257,7 @@ function NewSongForm({ canSetKey }: { canSetKey: boolean }) {
           <Link to="/repertorio">Cancelar</Link>
         </Button>
       </div>
+      {guard}
     </form>
   );
 }
