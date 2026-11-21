@@ -23,16 +23,70 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "announcements": {
+            "announcement_reads": {
                   Row: {
-                    "audience": string,"body": string,"created_at": string,"created_by": string | null,"id": string,"published_at": string,"title": string
+                    "announcement_id": string,"read_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "audience"?: string,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"published_at"?: string,"title": string
+                    "announcement_id": string,"read_at"?: string,"user_id"?: string
                   }
                   Update: {
-                    "audience"?: string,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"published_at"?: string,"title"?: string
+                    "announcement_id"?: string,"read_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "announcement_reads_announcement_id_fkey"
+      columns: ["announcement_id"]
+isOneToOne: false
+      referencedRelation: "announcements"
+      referencedColumns: ["id"]
+    },
+                    {
+      foreignKeyName: "announcement_reads_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"announcement_recipients": {
+                  Row: {
+                    "announcement_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "announcement_id": string,"user_id": string
+                  }
+                  Update: {
+                    "announcement_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "announcement_recipients_announcement_id_fkey"
+      columns: ["announcement_id"]
+isOneToOne: false
+      referencedRelation: "announcements"
+      referencedColumns: ["id"]
+    },
+                    {
+      foreignKeyName: "announcement_recipients_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"announcements": {
+                  Row: {
+                    "audience": string,"audience_filter": NonNullable<Json>,"body": string,"created_at": string,"created_by": string | null,"id": string,"last_reminder_at": string | null,"pinned_until": string | null,"published_at": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -456,6 +510,12 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"announcement_audience":
+{ Args: { "p_filter": Json }; Returns: string[]
+                           },
+"announcement_visible":
+{ Args: { "p_id": string }; Returns: boolean
+                           },
 "audio_files_to_purge":
 { Args: { "p_days"?: number }; Returns: {
               "reason": string,"storage_path": string
@@ -488,6 +548,14 @@ isOneToOne: false
 "current_change_type":
 { Args: { "op": string }; Returns: string
                            },
+"delete_announcement":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
+"get_announcement_audience_status":
+{ Args: { "p_id": string }; Returns: {
+              "display_name": string,"full_name": string,"read_at": string,"user_id": string
+            }[]
+                           },
 "get_dashboard":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -513,6 +581,9 @@ isOneToOne: false
 "is_active_member":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"mark_announcement_read":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
 "mark_password_reset":
 { Args: { "p_user_id": string }; Returns: undefined
                            },
@@ -524,8 +595,17 @@ isOneToOne: false
               "display_name": string,"email": string,"full_name": string
             }[]
                            },
+"preview_announcement_audience":
+{ Args: { "p_filter": Json }; Returns: number
+                           },
+"remind_announcement":
+{ Args: { "p_id": string }; Returns: number
+                           },
 "restore_song_version":
 { Args: { "version_id": string }; Returns: undefined
+                           },
+"save_announcement":
+{ Args: { "p_body": string,"p_filter": Json,"p_id": string,"p_pinned_until"?: string,"p_title": string }; Returns: string
                            },
 "search_songs":
 { Args: { "q": string }; Returns: {

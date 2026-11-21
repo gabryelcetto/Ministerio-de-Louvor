@@ -1,6 +1,8 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
 import { AgendaPage } from '@/features/agenda/components/agenda-page';
 import { LoginPage } from '@/features/auth/components/login-page';
+import { AnnouncementDetailPage } from '@/features/comunicados/components/announcement-detail-page';
+import { AnnouncementFormPage } from '@/features/comunicados/components/announcement-form-page';
 import { AnnouncementsPage } from '@/features/comunicados/components/announcements-page';
 import { SettingsPage } from '@/features/configuracoes/components/settings-page';
 import { DashboardPage } from '@/features/dashboard/components/dashboard-page';
@@ -43,6 +45,9 @@ export const routes: RouteObject[] = [
           { path: 'agenda', element: <AgendaPage /> },
           { path: 'notificacoes', element: <NotificationsPage /> },
           { path: 'comunicados', element: <AnnouncementsPage /> },
+          { path: 'comunicados/novo', element: <AnnouncementFormPage /> },
+          { path: 'comunicados/:announcementId', element: <AnnouncementDetailPage /> },
+          { path: 'comunicados/:announcementId/editar', element: <AnnouncementFormPage /> },
           { path: 'integrantes', element: <MembersPage /> },
           { path: 'atividade', element: <ActivityPage /> },
           { path: 'integrantes/cadastrar', element: <InviteMemberPage /> },

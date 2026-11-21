@@ -107,6 +107,8 @@ export interface DashboardAnnouncement {
   title: string;
   body: string;
   published_at: string;
+  /** "Fixar no topo" ainda valendo (vem primeiro). */
+  pinned?: boolean;
 }
 
 export interface Dashboard {

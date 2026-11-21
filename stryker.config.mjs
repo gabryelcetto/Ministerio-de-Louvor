@@ -20,6 +20,7 @@ export default {
     'src/features/repertorio/history-format.ts',
     'src/features/repertorio/song-key.ts',
     'src/features/auth/session-cache.ts',
+    'src/features/comunicados/audience.ts',
     'supabase/functions/_shared/password.ts',
     'supabase/functions/_shared/invite.ts',
     'supabase/functions/_shared/reset.ts',

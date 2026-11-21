@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, Clock, MapPin, Megaphone, Music } from 'lucide-react';
+import { CalendarDays, ChevronRight, Clock, MapPin, Megaphone, Pin, Music } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ErrorState, LoadingState } from '@/components/common/states';
@@ -96,17 +96,29 @@ function DashboardContent({ data }: { data: Dashboard }) {
           </div>
           <ul className="flex flex-col gap-2">
             {announcements.map((a) => (
-              <li key={a.id} className="flex gap-3 rounded-xl border bg-card p-4">
-                <Megaphone
-                  aria-hidden="true"
-                  className="mt-0.5 size-5 shrink-0 text-muted-foreground"
-                />
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="font-semibold">{a.title}</span>
-                  <p className="line-clamp-2 text-sm whitespace-pre-line text-muted-foreground">
-                    {a.body}
-                  </p>
-                </div>
+              <li key={a.id}>
+                <Link
+                  to={`/comunicados/${a.id}`}
+                  className="flex gap-3 rounded-xl border bg-card p-4 hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {a.pinned ? (
+                    <Pin aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-brand-text" />
+                  ) : (
+                    <Megaphone
+                      aria-hidden="true"
+                      className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+                    />
+                  )}
+                  <span className="flex min-w-0 flex-col gap-1">
+                    <span className="font-semibold">
+                      {a.title}
+                      {a.pinned && <span className="sr-only"> (fixado)</span>}
+                    </span>
+                    <span className="line-clamp-2 text-sm whitespace-pre-line text-muted-foreground">
+                      {a.body}
+                    </span>
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

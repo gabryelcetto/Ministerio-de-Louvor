@@ -16,6 +16,7 @@ on:
       - 'src/features/repertorio/history-format*'
       - 'src/features/repertorio/song-key*'
       - 'src/features/auth/session-cache*'
+      - 'src/features/comunicados/audience*'
       - 'supabase/functions/_shared/**'
       - 'stryker.config.mjs'
       - 'vitest.config.ts'

@@ -293,9 +293,12 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
           title: 'Bem-vindos ao app',
           body: 'Escalas e cifras ficam aqui.',
           published_at: inDays(-3),
+          pinned_until: null,
+          audience_filter: { type: 'all' },
           author: { full_name: admin.full_name, display_name: 'Ana' },
         },
       ],
+      announcement_reads: [],
       media_files: [
         {
           id: 'm1',
@@ -315,6 +318,20 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
     },
     rpc: {
       my_permissions: as === 'admin' ? ALL_PERMISSIONS : MEMBER_PERMISSIONS,
+      preview_announcement_audience: 3,
+      save_announcement: 'an-novo',
+      mark_announcement_read: null,
+      delete_announcement: null,
+      remind_announcement: 1,
+      get_announcement_audience_status: [
+        {
+          user_id: MEMBER_ID,
+          full_name: member.full_name,
+          display_name: 'Isa',
+          read_at: inDays(-1),
+        },
+        { user_id: OTHER_ID, full_name: other.full_name, display_name: null, read_at: null },
+      ],
       search_songs: songs,
       get_dashboard: {
         next_service: events[0],

@@ -27,6 +27,10 @@ select table_privs_are(
   case t.tablename
     when 'profiles' then array[]::text[] -- só privilégios de coluna (ver abaixo)
     when 'notifications' then array['SELECT']
+    -- comunicados: escrita só pelas RPCs save/delete_announcement; leituras: cada um insere a sua
+    when 'announcements' then array['SELECT']
+    when 'announcement_recipients' then array['SELECT']
+    when 'announcement_reads' then array['INSERT', 'SELECT']
     when 'media_files' then array['DELETE', 'INSERT', 'SELECT'] -- UPDATE só em label (abaixo)
     else array['DELETE', 'INSERT', 'SELECT', 'UPDATE']
   end::name[],
