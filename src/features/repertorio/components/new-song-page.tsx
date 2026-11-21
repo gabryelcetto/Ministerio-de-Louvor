@@ -1,61 +1,70 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Music, Wand2 } from 'lucide-react';
+import { ChevronDown, Music, Wand2 } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { FormError } from '@/components/common/form-error';
 import { LoadingState } from '@/components/common/states';
 import { useUnsavedGuard } from '@/components/common/use-unsaved-guard';
+import { ScreenHeader } from '@/components/layout/screen-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useMyPermissions } from '@/features/auth';
-import { convertPastedChords, guessKey, lyricsFromChordPro, withDeclaredKey } from '@/lib/chords';
+import { useSingleFlight } from '@/hooks/use-single-flight';
+import {
+  convertPastedChords,
+  firstChordKey,
+  lyricsFromChordPro,
+  withDeclaredKey,
+} from '@/lib/chords';
 import { useSongCategories } from '../api';
 import { chordSheetWarnings } from '../editor-checks';
-import { songDataSchema, useCreateSong, type SongDataValues } from '../song-data';
+import { isMediaUrl, newSongSchema, useCreateSong } from '../song-data';
 import { ChordSheet } from './chord-sheet';
-import { KeyOptions, selectClass, SongDataFields } from './song-data-fields';
+import { KeyOptions, selectClass } from './song-data-fields';
 
+/** O que o app entendeu do texto colado, em linguagem simples. */
 const FORMAT_LABEL = {
-  chordpro: 'ChordPro (acordes entre colchetes)',
-  'chords-over-lyrics': 'acordes em cima da letra (formato dos sites de cifra)',
-  'lyrics-only': 'sem acordes — será salvo como letra',
+  chordpro: 'cifra com os acordes entre colchetes',
+  'chords-over-lyrics': 'acordes em cima da letra (como nos sites de cifra)',
+  'lyrics-only': 'só a letra, sem acordes',
   empty: '',
 } as const;
 
-/** Nova música (songs.manage): dados + cifra colada (convertida e pré-visualizada) + letra. */
+type FormValues = {
+  title: string;
+  artist: string;
+  category: string;
+  originalKey: string;
+  mediaUrl: string;
+  notes: string;
+};
+
+/**
+ * Nova música (songs.manage), numa tela só e com a cifra primeiro:
+ * Título → "Cole a cifra ou a letra" (conversão automática e prévia) → Tom (sugerido pelo
+ * primeiro acorde) → "Mais detalhes" (recolhido). Só o título é obrigatório.
+ */
 export function NewSongPage() {
   const permissions = useMyPermissions();
-  if (permissions.isPending) return <LoadingState />;
   const canCreate = permissions.data?.includes('songs.manage') ?? false;
   const canSetKey = permissions.data?.includes('songs.set_official_key') ?? false;
 
   return (
-    <section className="mx-auto flex max-w-3xl flex-col gap-5">
-      <Link
-        to="/repertorio"
-        className="inline-flex items-center gap-2 self-start rounded-md px-2 py-1 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <ArrowLeft aria-hidden="true" className="size-4" />
-        Repertório
-      </Link>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Nova música</h1>
-        <p className="text-sm text-muted-foreground">
-          Cole a cifra como ela vem do site ou do caderno: o app converte, mostra como vai ficar e
-          sugere o tom.
-        </p>
-      </header>
-      {canCreate ? (
-        <NewSongForm canSetKey={canSetKey} />
-      ) : (
-        <p role="alert" className="rounded-lg border p-4">
+    <>
+      <ScreenHeader title="Nova música" back="/repertorio" />
+      {permissions.isPending ? (
+        <LoadingState />
+      ) : !canCreate ? (
+        <p role="alert" className="mx-auto max-w-[45rem] rounded-lg border p-4">
           Você não tem permissão para cadastrar músicas.
         </p>
+      ) : (
+        <NewSongForm canSetKey={canSetKey} />
       )}
-    </section>
+    </>
   );
 }
 
@@ -64,9 +73,11 @@ function NewSongForm({ canSetKey }: { canSetKey: boolean }) {
   const navigate = useNavigate();
   const categories = useSongCategories();
   const create = useCreateSong();
+  const once = useSingleFlight({ keepLockedOnSuccess: true });
   const [pasted, setPasted] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [officialKey, setOfficialKey] = useState('');
+  const [keyTouched, setKeyTouched] = useState(false);
 
   const {
     register,
@@ -74,8 +85,8 @@ function NewSongForm({ canSetKey }: { canSetKey: boolean }) {
     setValue,
     control,
     formState: { errors },
-  } = useForm<SongDataValues>({
-    resolver: zodResolver(songDataSchema),
+  } = useForm<FormValues>({
+    resolver: zodResolver(newSongSchema),
     defaultValues: {
       title: '',
       artist: '',
@@ -85,10 +96,27 @@ function NewSongForm({ canSetKey }: { canSetKey: boolean }) {
       notes: '',
     },
   });
-  const originalKey = useWatch({ control, name: 'originalKey' });
-  // Algo digitado/colado? Voltar do navegador ou sair pelo menu pede confirmação (antes, a cifra
-  // colada se perdia sem aviso). Depois de salvar, a ida para a música nova não é bloqueada.
   const fields = useWatch({ control });
+
+  const converted = useMemo(() => convertPastedChords(pasted), [pasted]);
+  // Tom sugerido pelo primeiro acorde; a pessoa pode trocar (aí vale a escolha dela).
+  const suggestedKey = useMemo(
+    () => (converted.chordpro ? firstChordKey(converted.chordpro) : null),
+    [converted.chordpro],
+  );
+  const chosenKey = keyTouched ? (fields.originalKey ?? '') : (suggestedKey ?? '');
+  const chordpro = converted.chordpro
+    ? chosenKey
+      ? withDeclaredKey(converted.chordpro, chosenKey)
+      : converted.chordpro
+    : '';
+  const warnings = chordpro
+    ? chordSheetWarnings(chordpro).filter((w) => !w.startsWith('Sem {key'))
+    : [];
+  const lyricsFromSheet = chordpro ? lyricsFromChordPro(chordpro) : '';
+  const linkIgnored = Boolean(fields.mediaUrl?.trim()) && !isMediaUrl(fields.mediaUrl ?? '');
+
+  // Algo digitado/colado? Voltar do navegador ou sair pelo menu pede confirmação.
   const typed =
     Object.values(fields).some((v) => typeof v === 'string' && v.trim() !== '') ||
     Boolean(pasted.trim() || lyrics.trim() || officialKey);
@@ -99,67 +127,153 @@ function NewSongForm({ canSetKey }: { canSetKey: boolean }) {
     if (savedId) void navigate(`/repertorio/${savedId}`);
   }, [savedId, navigate]);
 
-  const converted = useMemo(() => convertPastedChords(pasted), [pasted]);
-  const detectedKey = useMemo(
-    () => (converted.chordpro ? guessKey(converted.chordpro) : null),
-    [converted.chordpro],
-  );
-  // Cifra final: com {key} do tom original (o seletor de tom da música usa essa referência).
-  const keyForSheet = originalKey || detectedKey;
-  const chordpro = converted.chordpro
-    ? keyForSheet
-      ? withDeclaredKey(converted.chordpro, keyForSheet)
-      : converted.chordpro
-    : '';
-  const warnings = chordpro
-    ? chordSheetWarnings(chordpro).filter((w) => !w.startsWith('Sem {key'))
-    : [];
-  const lyricsFromSheet = chordpro ? lyricsFromChordPro(chordpro) : '';
-
   const onSubmit = handleSubmit((values) => {
     const finalLyrics =
       lyrics.trim() || (converted.format === 'lyrics-only' ? pasted.trim() : lyricsFromSheet);
-    create.mutate(
-      {
+    // Duplo toque em "Salvar": o segundo não grava de novo — nem no instante entre salvar e navegar.
+    void once(() =>
+      create.mutateAsync({
         ...values,
-        originalKey: values.originalKey || detectedKey || '',
+        originalKey: chosenKey,
         officialKey: canSetKey ? officialKey : '',
         lyrics: finalLyrics,
         chords: chordpro,
-      },
-      { onSuccess: (songId) => setSavedId(songId) },
-    );
+      }),
+    )
+      .then((songId) => songId && setSavedId(songId))
+      .catch(() => undefined); // o erro aparece pelo create.error
   });
 
+  const textField = (name: 'artist' | 'category' | 'notes', label: string) => (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={`${id}-${name}`}>{label}</Label>
+      {name === 'notes' ? (
+        <Textarea id={`${id}-${name}`} rows={3} className="text-base" {...register(name)} />
+      ) : (
+        <Input
+          id={`${id}-${name}`}
+          className="text-base"
+          list={name === 'category' ? `${id}-categorias` : undefined}
+          placeholder={name === 'category' ? 'Ex.: Louvor, Adoração, Hino' : undefined}
+          {...register(name)}
+        />
+      )}
+    </div>
+  );
+
   return (
-    <form noValidate onSubmit={onSubmit} className="flex flex-col gap-5">
-      <Card>
-        <CardContent className="flex flex-col gap-4 pt-5">
-          <SongDataFields
-            register={register}
-            errors={errors}
-            categories={categories.data ?? []}
-            keyHint={
-              detectedKey &&
-              detectedKey !== originalKey && (
-                <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  Tom detectado na cifra: <strong className="text-foreground">{detectedKey}</strong>
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0"
-                    onClick={() => setValue('originalKey', detectedKey, { shouldDirty: true })}
-                  >
-                    usar
-                  </Button>
-                </p>
-              )
-            }
+    <form noValidate onSubmit={onSubmit} className="mx-auto flex max-w-[45rem] flex-col gap-5">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${id}-title`}>Título</Label>
+        <Input
+          id={`${id}-title`}
+          className="text-base"
+          autoComplete="off"
+          aria-invalid={Boolean(errors.title)}
+          aria-describedby={errors.title ? `${id}-title-erro` : undefined}
+          {...register('title')}
+        />
+        {errors.title && (
+          <p id={`${id}-title-erro`} className="text-sm text-destructive">
+            {errors.title.message}
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={`${id}-cifra`}>Cole a cifra ou a letra</Label>
+        <Textarea
+          id={`${id}-cifra`}
+          aria-describedby={`${id}-cifra-dica`}
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          rows={12}
+          spellCheck={false}
+          className="font-mono text-sm"
+          placeholder={'G          D\nQuão grande és Tu…'}
+        />
+        <p id={`${id}-cifra-dica`} className="text-caption text-muted-foreground">
+          Do jeito que vem do site ou do caderno: acordes em cima da letra, ou só a letra. Partes
+          como [Refrão] e [Intro] G D são reconhecidas.
+        </p>
+        {converted.format !== 'empty' && (
+          <p className="text-sm" aria-live="polite">
+            O app entendeu: <strong>{FORMAT_LABEL[converted.format]}</strong>
+          </p>
+        )}
+        {warnings.length > 0 && (
+          <ul aria-label="Avisos da cifra" className="list-disc pl-5 text-sm text-destructive">
+            {warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        )}
+        {chordpro && (
+          <section aria-label="Pré-visualização" className="rounded-xl border bg-card p-4">
+            <h2 className="section-label mb-2">Como vai ficar</h2>
+            <ChordSheet content={chordpro} style={{ fontSize: '17px' }} />
+          </section>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5 sm:max-w-xs">
+        <Label htmlFor={`${id}-tom`}>Tom</Label>
+        <select
+          id={`${id}-tom`}
+          value={chosenKey}
+          aria-describedby={`${id}-tom-dica`}
+          onChange={(e) => {
+            setKeyTouched(true);
+            setValue('originalKey', e.target.value, { shouldDirty: true });
+          }}
+          className={selectClass}
+        >
+          <option value="">Não sei</option>
+          <KeyOptions />
+        </select>
+        <p id={`${id}-tom-dica`} className="text-caption text-muted-foreground">
+          {!keyTouched && suggestedKey
+            ? `Sugerido pelo primeiro acorde (${suggestedKey}). Pode trocar.`
+            : 'O tom em que a cifra foi escrita.'}
+        </p>
+      </div>
+
+      <details className="group rounded-xl border bg-card">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between rounded-xl px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          Mais detalhes
+          <ChevronDown
+            aria-hidden="true"
+            className="size-5 text-muted-foreground transition-transform group-open:rotate-180"
           />
+        </summary>
+        <div className="flex flex-col gap-4 border-t p-4">
+          {textField('artist', 'Artista / autor')}
+          {textField('category', 'Categoria')}
+          <datalist id={`${id}-categorias`}>
+            {(categories.data ?? []).map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`${id}-mediaUrl`}>Link de áudio ou vídeo</Label>
+            <Input
+              id={`${id}-mediaUrl`}
+              inputMode="url"
+              className="text-base"
+              placeholder="https://"
+              aria-describedby={linkIgnored ? `${id}-mediaUrl-aviso` : undefined}
+              {...register('mediaUrl')}
+            />
+            {linkIgnored && (
+              <p id={`${id}-mediaUrl-aviso`} className="text-caption text-muted-foreground">
+                Esse link não começa com https:// e não vai ser salvo.
+              </p>
+            )}
+          </div>
+          {textField('notes', 'Observações')}
           {canSetKey && (
             <div className="flex flex-col gap-1.5 sm:max-w-xs">
-              <Label htmlFor={`${id}-oficial`}>Tom oficial do ministério (opcional)</Label>
+              <Label htmlFor={`${id}-oficial`}>Tom oficial do ministério</Label>
               <select
                 id={`${id}-oficial`}
                 value={officialKey}
@@ -171,91 +285,50 @@ function NewSongForm({ canSetKey }: { canSetKey: boolean }) {
               </select>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="flex flex-col gap-3 pt-5">
-          <Label htmlFor={`${id}-cifra`} className="text-base">
-            Cifra (opcional)
-          </Label>
-          <p id={`${id}-cifra-dica`} className="text-sm text-muted-foreground">
-            Cole com os acordes em cima da letra (como nos sites de cifra) ou em ChordPro (
-            <code>[G]Santo</code>). Partes como <code>[Refrão]</code> e <code>[Intro] G D</code> são
-            reconhecidas.
-          </p>
-          <Textarea
-            id={`${id}-cifra`}
-            aria-describedby={`${id}-cifra-dica`}
-            value={pasted}
-            onChange={(e) => setPasted(e.target.value)}
-            rows={10}
-            spellCheck={false}
-            className="font-mono text-sm"
-          />
-          {converted.format !== 'empty' && (
-            <p className="text-sm" aria-live="polite">
-              Formato detectado: <strong>{FORMAT_LABEL[converted.format]}</strong>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label htmlFor={`${id}-letra`}>Letra (se for diferente da cifra)</Label>
+              {lyricsFromSheet && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLyrics(lyricsFromSheet)}
+                >
+                  <Wand2 aria-hidden="true" />
+                  Gerar letra a partir da cifra
+                </Button>
+              )}
+            </div>
+            <Textarea
+              id={`${id}-letra`}
+              value={lyrics}
+              onChange={(e) => setLyrics(e.target.value)}
+              rows={6}
+              className="text-base"
+            />
+            <p className="text-caption text-muted-foreground">
+              Em branco, a letra sai da própria cifra.
             </p>
-          )}
-          {warnings.length > 0 && (
-            <ul aria-label="Avisos da cifra" className="list-disc pl-5 text-sm text-destructive">
-              {warnings.map((w) => (
-                <li key={w}>{w}</li>
-              ))}
-            </ul>
-          )}
-          {chordpro && (
-            <section aria-label="Pré-visualização" className="rounded-lg border bg-muted/40 p-3">
-              <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Pré-visualização</h2>
-              <ChordSheet content={chordpro} className="text-base" />
-            </section>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="flex flex-col gap-3 pt-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label htmlFor={`${id}-letra`} className="text-base">
-              Letra (opcional)
-            </Label>
-            {lyricsFromSheet && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setLyrics(lyricsFromSheet)}
-              >
-                <Wand2 aria-hidden="true" />
-                Gerar letra a partir da cifra
-              </Button>
-            )}
           </div>
-          <Textarea
-            id={`${id}-letra`}
-            value={lyrics}
-            onChange={(e) => setLyrics(e.target.value)}
-            rows={8}
-            className="text-base"
-          />
-          {!lyrics.trim() && lyricsFromSheet && (
-            <p className="text-sm text-muted-foreground">
-              Se ficar vazia, a letra será gerada a partir da cifra.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </details>
 
       <FormError error={create.error} fallback="Não foi possível cadastrar a música." />
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" size="lg" disabled={create.isPending}>
-          <Music aria-hidden="true" />
-          {create.isPending ? 'Salvando…' : 'Salvar música'}
-        </Button>
-        <Button type="button" variant="outline" size="lg" asChild>
-          <Link to="/repertorio">Cancelar</Link>
-        </Button>
+      {/* Espaço para a barra fixa não cobrir o fim do formulário. */}
+      <div aria-hidden="true" className="h-20" />
+      <div className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 border-t bg-card px-4 py-3 md:bottom-0 md:left-60 md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="mx-auto max-w-[45rem]">
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={create.isPending || savedId !== null}
+          >
+            <Music aria-hidden="true" />
+            {create.isPending ? 'Salvando…' : 'Salvar música'}
+          </Button>
+        </div>
       </div>
       {guard}
     </form>

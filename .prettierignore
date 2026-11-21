@@ -10,3 +10,4 @@ reports
 .stryker-tmp
 qa-output
 e2e-output
+capturas-design

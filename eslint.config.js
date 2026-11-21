@@ -17,6 +17,7 @@ export default tseslint.config(
       'reports',
       '.stryker-tmp',
       'qa-output',
+      'capturas-design',
     ],
   },
   {

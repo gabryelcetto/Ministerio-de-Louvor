@@ -2,42 +2,78 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { detectPlatform, shouldOfferInstall } from './install';
-import { applyTheme, parseThemePref } from './theme';
+import { contrastRatio, parseHex, readTokens } from './contrast';
 
 // O Vitest não processa CSS (um import `?raw` de .css vem vazio): lê o arquivo do disco.
 const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
 
-describe('tema', () => {
-  it('só aceita claro/escuro; o resto é "sistema"', () => {
-    expect(parseThemePref('light')).toBe('light');
-    expect(parseThemePref('dark')).toBe('dark');
-    expect(parseThemePref('system')).toBe('system');
-    expect(parseThemePref(null)).toBe('system');
-    expect(parseThemePref('roxo')).toBe('system');
+describe('tokens do design (contraste WCAG AA)', () => {
+  const block = (selector: string) => {
+    const start = css.indexOf(`${selector} {`);
+    expect(start, selector).toBeGreaterThan(-1);
+    return readTokens(css.slice(start, css.indexOf('}', start)));
+  };
+  const light = block('.light');
+  const dark = block('.dark');
+
+  it('os dois temas definem os mesmos tokens, com os valores aprovados', () => {
+    expect(Object.keys(dark).sort()).toEqual(Object.keys(light).sort());
+    expect(light).toMatchObject({
+      'ds-bg': '#f6f5f2',
+      'ds-accent': '#c2410c',
+      'ds-chord': '#b4400b',
+      'ds-rec': '#dc2626',
+    });
+    expect(dark).toMatchObject({
+      'ds-bg': '#121214',
+      'ds-accent': '#f97316',
+      'ds-chord': '#fb923c',
+      'ds-rec': '#ef4444',
+    });
   });
 
-  it('marca o <html> com data-theme, ou tira a marca para seguir o sistema', () => {
-    const root = { dataset: {} as Record<string, string> } as unknown as HTMLElement;
-    applyTheme('dark', root);
-    expect(root.dataset.theme).toBe('dark');
-    applyTheme('system', root);
-    expect(root.dataset.theme).toBeUndefined();
+  it.each([
+    ['claro', light],
+    ['escuro', dark],
+  ])('tema %s: todo texto com contraste ≥ 4.5:1', (_name, t) => {
+    const pairs: [string, string][] = [
+      ['ds-ink', 'ds-bg'],
+      ['ds-ink', 'ds-surface'],
+      ['ds-ink', 'ds-chip'],
+      ['ds-muted', 'ds-bg'],
+      ['ds-muted', 'ds-surface'],
+      ['ds-muted', 'ds-chip'],
+      ['ds-accent-ink', 'ds-accent'],
+      ['ds-accent-text', 'ds-accent-soft'],
+      ['ds-accent-text', 'ds-surface'],
+      ['ds-chord', 'ds-surface'],
+      ['ds-chord', 'ds-bg'],
+    ];
+    for (const [fg, bg] of pairs) {
+      expect(contrastRatio(t[fg]!, t[bg]!), `${fg} sobre ${bg}`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
-  it('os dois blocos do tema escuro (sistema e escolha manual) têm as mesmas cores', () => {
-    const block = (selector: string) => {
-      const start = css.indexOf(selector);
-      expect(start, selector).toBeGreaterThan(-1);
-      const body = css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
-      return body
-        .split('\n')
-        .map((l) => l.trim())
-        .filter(Boolean);
-    };
-    const system = block(":root:not([data-theme='light'])");
-    const manual = block(":root[data-theme='dark']");
-    expect(manual).toEqual(system);
-    expect(system).toContain('color-scheme: dark;');
+  it('sem azul-marinho, roxo nem dourado antigos', () => {
+    for (const old of ['#1b2a4a', '#d4a83a', 'oklch(0.3 0.07 264)', 'oklch(0.8 0.13 85)']) {
+      expect(css).not.toContain(old);
+    }
+  });
+});
+
+describe('contraste (fórmula WCAG)', () => {
+  it('preto sobre branco é 21:1 e a ordem não importa', () => {
+    expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 5);
+    expect(contrastRatio('#fff', '#000')).toBeCloseTo(21, 5);
+    expect(contrastRatio('#777777', '#777777')).toBe(1);
+  });
+
+  it('valores conhecidos e cores inválidas', () => {
+    expect(contrastRatio('#767676', '#ffffff')).toBeCloseTo(4.54, 2);
+    expect(parseHex('#0aF')).toEqual([0, 170, 255]);
+    expect(() => parseHex('#12')).toThrow('Cor inválida');
+    expect(() => parseHex('azul')).toThrow('Cor inválida');
+    expect(readTokens('--a: #ABC; --b: red; --c:#123456;')).toEqual({ a: '#abc', c: '#123456' });
   });
 });
 
@@ -59,5 +95,21 @@ describe('instalação do app', () => {
     expect(shouldOfferInstall({ ...base, canPrompt: true })).toBe(true); // Android/Chrome
     expect(shouldOfferInstall({ ...base, platform: 'ios' })).toBe(true); // iPhone: passo a passo
     expect(shouldOfferInstall({ ...base, platform: 'ios', installed: true })).toBe(false);
+  });
+});
+
+describe('hover e vermelho sem perder contraste (axe do QA)', () => {
+  const button = readFileSync(new URL('../components/ui/button.tsx', import.meta.url), 'utf8');
+  it('botões cheios escurecem (claro) ou clareiam (escuro) no hover, sem transparência', () => {
+    expect(button).not.toMatch(/hover:bg-(primary|destructive)\/\d+/);
+    expect(button).toContain('hover:bg-primary-hover');
+    expect(button).toContain('hover:bg-destructive-hover');
+    expect(css).toMatch(/--primary-hover: color-mix\(in oklab, var\(--primary\) 88%, black\)/);
+    expect(css).toMatch(/--primary-hover: color-mix\(in oklab, var\(--primary\) 88%, white\)/);
+  });
+  it('no escuro, o texto sobre o vermelho é escuro (branco sobre #EF4444 dá 3,76:1)', () => {
+    expect(contrastRatio('#ffffff', '#EF4444')).toBeLessThan(4.5);
+    expect(contrastRatio('#121214', '#EF4444')).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain('--destructive-foreground: var(--ds-bg);');
   });
 });

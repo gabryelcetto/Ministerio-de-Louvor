@@ -1,45 +1,37 @@
-import { Bell, ChevronRight, Clock, MapPin, Megaphone } from 'lucide-react';
+import { CalendarDays, ChevronRight, Clock, MapPin, Megaphone, Music } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
-import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { EVENT_TYPE_STYLES, CancelledBadge, EventTypeBadge } from '@/features/agenda';
+import { ErrorState, LoadingState } from '@/components/common/states';
+import { Button } from '@/components/ui/button';
 import { useMyProfile } from '@/features/auth';
+import { SongRow, useEventDetail } from '@/features/escalas';
 import { InstallTip } from '@/features/instalar';
-import { unreadLabel } from '@/features/notificacoes';
-import { SongRow } from '@/features/escalas';
-import { brand } from '@/config/brand';
-import { formatDayLabel, formatShortDate, formatTimeRange, greeting } from '@/lib/dates';
-import { cn } from '@/lib/utils';
-import type { Dashboard, EventRow } from '@/types/app.types';
+import { useMyFunctions } from '@/features/integrantes';
+import { formatDayLabel, formatTime, formatTimeRange, greeting } from '@/lib/dates';
+import type { Dashboard } from '@/types/app.types';
 import { groupDashboardAssignments, useDashboard, type DashboardScheduleItem } from '../api';
+import { describeMyRole } from '../my-role';
 
-/** Tela inicial: tudo vem de uma única chamada a get_dashboard(). */
+/**
+ * Início: saudação, "Sua próxima escala" em destaque com o repertório no tom do dia, o
+ * próximo ensaio e até 2 comunicados. As notificações ficam só no sino do topo.
+ */
 export function DashboardPage() {
   const { data: profile } = useMyProfile();
   const query = useDashboard();
   const name = profile?.display_name || profile?.full_name;
 
   return (
-    <section className="mx-auto flex max-w-5xl flex-col gap-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col">
-          {/* No celular, o nome da igreja fica acima da saudação (no computador já está na lateral). */}
-          <p className="text-sm font-semibold tracking-wide text-muted-foreground uppercase md:hidden">
-            {brand.churchName}
-          </p>
-          <h1 className="text-2xl font-semibold">
-            {greeting()}
-            {name ? `, ${name}` : ''}!
-          </h1>
-        </div>
-        {query.data && <UnreadBadge count={query.data.unread_notifications} />}
-      </header>
+    <section className="mx-auto flex max-w-[45rem] flex-col gap-6">
+      <h1 className="text-screen-title">
+        {greeting()}
+        {name ? `, ${name}` : ''}
+      </h1>
 
       <InstallTip />
 
       {query.isPending ? (
-        <LoadingState label="Carregando o painel…" />
+        <LoadingState label="Carregando o início…" />
       ) : query.isError ? (
         <ErrorState onRetry={() => void query.refetch()} />
       ) : (
@@ -49,228 +41,158 @@ export function DashboardPage() {
   );
 }
 
-function UnreadBadge({ count }: { count: number }) {
-  const label = unreadLabel(count);
-  return (
-    <Link
-      to="/notificacoes"
-      className={cn(
-        'inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        count > 0 && 'border-transparent bg-accent text-accent-foreground hover:bg-accent/80',
-      )}
-    >
-      <Bell aria-hidden="true" className="size-4" />
-      {label}
-    </Link>
-  );
-}
-
 function DashboardContent({ data }: { data: Dashboard }) {
-  const schedules = groupDashboardAssignments(data.my_assignments);
-  const myFunctionsIn = (eventId: string | undefined) =>
-    schedules.find((s) => s.eventId === eventId)?.functions ?? [];
+  const next = groupDashboardAssignments(data.my_assignments)[0];
+  const rehearsal =
+    data.next_rehearsal && data.next_rehearsal.id !== next?.eventId ? data.next_rehearsal : null;
+  const announcements = data.recent_announcements.slice(0, 2);
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <HighlightCard
-          heading="Próximo culto"
-          event={data.next_service}
-          myFunctions={myFunctionsIn(data.next_service?.id)}
-          emptyText="Nenhum culto agendado."
-        />
-        <HighlightCard
-          heading="Próximo ensaio"
-          event={data.next_rehearsal}
-          myFunctions={myFunctionsIn(data.next_rehearsal?.id)}
-          emptyText="Nenhum ensaio agendado."
-        />
-      </div>
+      {next ? (
+        <NextSchedule item={next} />
+      ) : (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-card p-6 text-center">
+          <CalendarDays aria-hidden="true" className="size-8 text-muted-foreground" />
+          <p className="font-semibold">Você não está em nenhuma escala por enquanto.</p>
+          <p className="text-sm text-muted-foreground">
+            Quando a liderança escalar você, ela aparece aqui e no sino.
+          </p>
+          <Button asChild variant="outline">
+            <Link to="/agenda">Ver a agenda</Link>
+          </Button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Section
-          title="Repertório do próximo culto"
-          action={
-            data.next_service && <SeeAll to={`/escalas/${data.next_service.id}`}>Ver evento</SeeAll>
-          }
+      {rehearsal && (
+        <Link
+          to={`/escalas/${rehearsal.id}`}
+          className="flex items-center gap-3 rounded-xl border bg-card p-4 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {data.next_service_songs.length === 0 ? (
-            <EmptyState>
-              {data.next_service ? 'Repertório ainda não definido.' : 'Nenhum culto agendado.'}
-            </EmptyState>
-          ) : (
-            <ol className="flex flex-col gap-1">
-              {data.next_service_songs.map((song) => (
-                <li key={`${song.position}-${song.song_id}`}>
-                  <SongRow
-                    song={{
-                      position: song.position,
-                      songId: song.song_id,
-                      title: song.title,
-                      artist: song.artist,
-                      key: song.key,
-                    }}
-                  />
-                </li>
-              ))}
-            </ol>
-          )}
-        </Section>
+          <span className="flex flex-1 flex-col gap-0.5">
+            <span className="section-label">Próximo ensaio</span>
+            <span className="text-card-title">{rehearsal.title}</span>
+            <span className="text-sm text-muted-foreground">
+              {formatDayLabel(rehearsal.starts_at)} · {formatTime(rehearsal.starts_at)}
+              {rehearsal.location ? ` · ${rehearsal.location}` : ''}
+            </span>
+          </span>
+          <ChevronRight aria-hidden="true" className="size-5 text-muted-foreground" />
+        </Link>
+      )}
 
-        <Section title="Minhas escalas" action={<SeeAll to="/escalas">Ver todas</SeeAll>}>
-          {schedules.length === 0 ? (
-            <EmptyState>Você não está escalado(a) nos próximos eventos.</EmptyState>
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {schedules.slice(0, 5).map((item) => (
-                <li key={item.eventId}>
-                  <ScheduleRow item={item} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-      </div>
-
-      <Section title="Comunicados recentes" action={<SeeAll to="/comunicados">Ver todos</SeeAll>}>
-        {data.recent_announcements.length === 0 ? (
-          <EmptyState>Nenhum comunicado por enquanto.</EmptyState>
-        ) : (
-          <ul className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {data.recent_announcements.map((a) => (
-              <li key={a.id} className="flex flex-col gap-1 rounded-lg border p-3">
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Megaphone aria-hidden="true" className="size-3.5" />
-                  <time dateTime={a.published_at}>{formatShortDate(a.published_at)}</time>
-                </span>
-                <span className="font-medium">{a.title}</span>
-                {a.body && (
-                  <p className="line-clamp-3 text-sm whitespace-pre-line text-muted-foreground">
+      {announcements.length > 0 && (
+        <section aria-labelledby="inicio-comunicados" className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h2 id="inicio-comunicados" className="section-label">
+              Comunicados
+            </h2>
+            <Link
+              to="/comunicados"
+              className="rounded-lg px-2 py-2 text-sm font-semibold text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Ver todos
+            </Link>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {announcements.map((a) => (
+              <li key={a.id} className="flex gap-3 rounded-xl border bg-card p-4">
+                <Megaphone
+                  aria-hidden="true"
+                  className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+                />
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="font-semibold">{a.title}</span>
+                  <p className="line-clamp-2 text-sm whitespace-pre-line text-muted-foreground">
                     {a.body}
                   </p>
-                )}
+                </div>
               </li>
             ))}
           </ul>
-        )}
-      </Section>
+        </section>
+      )}
     </>
   );
 }
 
-function HighlightCard({
-  heading,
-  event,
-  myFunctions,
-  emptyText,
-}: {
-  heading: string;
-  event: EventRow | null;
-  myFunctions: string[];
-  emptyText: string;
-}) {
-  if (!event) {
-    return (
-      <Card className="flex flex-col gap-2 p-5">
-        <h2 className="text-sm font-semibold text-muted-foreground">{heading}</h2>
-        <p className="text-sm text-muted-foreground">{emptyText}</p>
-      </Card>
-    );
-  }
+/** Card de destaque: claro = fundo ink com texto claro; escuro = surface com borda accent. */
+function NextSchedule({ item }: { item: DashboardScheduleItem }) {
+  const detail = useEventDetail(item.eventId);
+  const myFunctions = useMyFunctions();
+  const sectionOf = new Map((myFunctions.data ?? []).map((f) => [f.name, f.section] as const));
+  const role = describeMyRole(
+    item.functions.map((name) => ({ name, section: sectionOf.get(name) ?? null })),
+  );
+  const endsAt = detail.data?.event.ends_at ?? null;
+  const songs = detail.data?.songs ?? [];
 
   return (
-    <Link
-      to={`/escalas/${event.id}`}
-      className={cn(
-        'group flex flex-col gap-3 rounded-xl border border-l-4 bg-card p-5 shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        EVENT_TYPE_STYLES[event.type].bar,
-      )}
-    >
-      <div className="flex items-center justify-between gap-2 text-card-foreground">
-        <h2 className="text-sm font-semibold text-muted-foreground">{heading}</h2>
-        <span className="flex items-center gap-2">
-          {event.status === 'cancelled' && <CancelledBadge />}
-          <EventTypeBadge type={event.type} />
-        </span>
-      </div>
-      <div className="flex flex-col gap-1 text-card-foreground">
-        <span className="text-xl font-semibold">{event.title}</span>
-        <span className="text-sm font-medium">{formatDayLabel(event.starts_at)}</span>
-        <span className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <Clock aria-hidden="true" className="size-3.5" />
-            {formatTimeRange(event.starts_at, event.ends_at)}
-          </span>
-          {event.location && (
-            <span className="inline-flex items-center gap-1">
-              <MapPin aria-hidden="true" className="size-3.5" />
-              {event.location}
-            </span>
+    <div className="flex flex-col gap-3">
+      <article
+        aria-labelledby="proxima-escala"
+        className="flex flex-col gap-3 rounded-xl border border-ink bg-ink p-5 text-surface dark:border-brand dark:bg-surface dark:text-ink"
+      >
+        <p className="text-xs font-bold tracking-[0.06em] text-surface/75 uppercase dark:text-muted-foreground">
+          Sua próxima escala
+        </p>
+        <h2 id="proxima-escala" className="text-[1.375rem] leading-tight font-extrabold">
+          {item.title}
+        </h2>
+        <dl className="flex flex-col gap-1 text-sm text-surface/85 dark:text-muted-foreground">
+          <Info icon={CalendarDays} label="Data">
+            {formatDayLabel(item.startsAt)}
+          </Info>
+          <Info icon={Clock} label="Horário">
+            {formatTimeRange(item.startsAt, endsAt)}
+          </Info>
+          {item.location && (
+            <Info icon={MapPin} label="Local">
+              {item.location}
+            </Info>
           )}
-        </span>
-      </div>
-      <p className="text-sm text-card-foreground">
-        {myFunctions.length > 0 ? (
-          <>
-            Você está escalado(a): <strong>{myFunctions.join(', ')}</strong>
-          </>
-        ) : (
-          <span className="text-muted-foreground">Você não está escalado(a) neste.</span>
-        )}
-      </p>
-    </Link>
+        </dl>
+        <p className="text-[0.9375rem] font-bold">{role}</p>
+        <Button asChild className="self-start">
+          <Link to={`/escalas/${item.eventId}#repertorio`}>
+            <Music aria-hidden="true" />
+            Ver repertório
+          </Link>
+        </Button>
+      </article>
+
+      {songs.length > 0 && (
+        <section
+          aria-label={`Repertório de ${item.title}`}
+          className="rounded-xl border bg-card p-2"
+        >
+          <ol className="flex flex-col">
+            {songs.map((song) => (
+              <li key={song.id}>
+                <SongRow song={song} eventId={item.eventId} />
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+    </div>
   );
 }
 
-function ScheduleRow({ item }: { item: DashboardScheduleItem }) {
-  const { icon: Icon, text, label } = EVENT_TYPE_STYLES[item.type];
-  return (
-    <Link
-      to={`/escalas/${item.eventId}`}
-      className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className={cn('flex size-8 shrink-0 items-center justify-center', text)}>
-        <Icon aria-hidden="true" className="size-5" />
-        <span className="sr-only">{label}</span>
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate font-medium">{item.title}</span>
-        <span className="text-sm text-muted-foreground">
-          {formatShortDate(item.startsAt)} · {item.functions.join(', ')}
-        </span>
-      </span>
-      <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-    </Link>
-  );
-}
-
-function Section({
-  title,
-  action,
+function Info({
+  icon: Icon,
+  label,
   children,
 }: {
-  title: string;
-  action?: ReactNode;
+  icon: typeof Clock;
+  label: string;
   children: ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0">
-        <CardTitle>{title}</CardTitle>
-        {action}
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
-
-function SeeAll({ to, children }: { to: string; children: ReactNode }) {
-  return (
-    <Link
-      to={to}
-      className="rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      {children}
-    </Link>
+    <div className="flex items-center gap-2">
+      <Icon aria-hidden="true" className="size-4 shrink-0" />
+      <dt className="sr-only">{label}</dt>
+      <dd>{children}</dd>
+    </div>
   );
 }

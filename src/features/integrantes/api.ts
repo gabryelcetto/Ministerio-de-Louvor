@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { displayName } from '@/features/escalas';
-import { usePermission } from '@/features/auth';
+import { usePermission, useSession } from '@/features/auth';
 import { supabase } from '@/services/supabase';
 import type { AccessRole, ProfileStatus } from '@/types/app.types';
 import { sectionsOf, type Section } from './sections';
@@ -106,4 +106,38 @@ export function useMembers() {
     enabled: canViewContacts,
   });
   return { members, contacts, canViewContacts };
+}
+
+export interface MyFunction {
+  name: string;
+  sortOrder: number;
+  section: Section;
+}
+
+/** Funções da pessoa logada, na ordem do ministério (Configurações e tela Mais). */
+export async function fetchMyFunctions(userId: string): Promise<MyFunction[]> {
+  const { data, error } = await supabase
+    .from('member_functions')
+    .select('function:ministry_functions(name, sort_order, section)')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return data
+    .map((row) => row.function)
+    .filter((f): f is { name: string; sort_order: number; section: string } => f !== null)
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'pt-BR'))
+    .map((f) => ({
+      name: f.name,
+      sortOrder: f.sort_order,
+      section: f.section === 'vocal' ? 'vocal' : 'instrumental',
+    }));
+}
+
+export function useMyFunctions() {
+  const { session } = useSession();
+  const userId = session?.user.id;
+  return useQuery({
+    queryKey: ['members', 'my-functions', userId],
+    queryFn: () => fetchMyFunctions(userId as string),
+    enabled: Boolean(userId),
+  });
 }

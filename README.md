@@ -9,7 +9,7 @@ tocando.
 - **Repertório:** busca sem acento, letra e cifra (ChordPro) com troca de tom na hora, tom oficial
   e "tom do dia" de cada culto, histórico de alterações com restauração.
 - **Comunicados, integrantes e notificações.**
-- **Permissões por perfil** (admin, líder, integrante) e por pessoa, garantidas no banco (RLS).
+- **Permissões por perfil** (admin e integrante) e por pessoa, garantidas no banco (RLS).
 
 ## Stack
 
@@ -252,6 +252,28 @@ gh variable set SUPABASE_URL --env staging --body "https://SEU_PROJECT_REF.supab
 gh workflow run "Limpeza de gravações antigas" -f dry_run=true
 ```
 
+## Visual (Louvor ADVOP)
+
+- **Cores só por tokens** em [`src/index.css`](src/index.css): `:root` (claro) e `.dark`
+  (escuro) definem `bg`, `surface`, `ink`, `muted`, `line`, `chip`, `accent`, `accent-soft`,
+  `accent-text`, `chord`, `rec` e `rec-ring`. Os componentes usam as classes do Tailwind
+  (`bg-surface`, `text-chord`, `bg-brand-soft`…); nenhuma cor fixa nos componentes. Um teste
+  (`src/lib/theme-install.test.ts`) confere o contraste AA dos pares de texto nos dois temas.
+- **Fonte Inter auto-hospedada** (`@fontsource/inter`, pesos 400–800): nada de Google Fonts.
+- **Tipo:** título de tela 22/800 (`text-screen-title`), card 17/700 (`text-card-title`),
+  rótulo de seção 12–13/700 em maiúsculas (`section-label`), legenda 12/500 (`text-caption`).
+- **Tema claro, escuro ou automático** (segue o celular): `ThemeProvider` em
+  [`src/hooks/theme-provider.tsx`](src/hooks/theme-provider.tsx), regras puras em
+  [`src/lib/theme.ts`](src/lib/theme.ts), escolha guardada em `localStorage` (`louvor.theme`).
+  No primeiro acesso o app pergunta "Como você prefere ver o app?"; depois, **Mais →
+  Configurações → Aparência**. Um script no `index.html` aplica o tema antes de o React carregar
+  (sem piscar branco à noite). O login sempre segue o tema do celular.
+- **Navegação:** barra inferior no celular (Início, Escalas, Repertório, Agenda, Mais) e lateral
+  no computador. **Sair** fica só no fim da tela **Mais**; notificações, só pelo sino do topo.
+- **Mensagens para a pessoa** num lugar só: [`src/lib/messages.ts`](src/lib/messages.ts).
+- **Capturas do visual:** o workflow **E2E (dados reais)** gera prints 390×844 nos dois temas
+  (artefato `capturas-design`, `tests/e2e/capturas.spec.ts`).
+
 ## Identidade (nome da igreja)
 
 Nome da igreja e do app ficam em [`src/config/brand.ts`](src/config/brand.ts): título da aba,
@@ -394,11 +416,15 @@ O app não deve aparecer em buscadores: `public/robots.txt` bloqueia robôs e o 
 
 ## Ícones
 
-Os ícones do PWA são gerados por script, sem dependências:
+A chama do Louvor ADVOP (favicon, 192, 512, maskable 512 e apple-touch 180) é gerada por script
+a partir do SVG aprovado. Os PNGs ficam no Git; só rode quando o ícone mudar. O `sharp` é
+instalado sem salvar no `package.json`:
 
 ```bash
-node scripts/generate-icons.mjs
+npm i --no-save sharp && node scripts/generate-icons.mjs
 ```
+
+No app, o mesmo desenho é o componente `<FlameLogo>` (`src/components/brand/flame-logo.tsx`).
 
 ## Licença
 

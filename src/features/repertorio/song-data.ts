@@ -32,6 +32,37 @@ export const songDataSchema = z.object({
 
 export type SongDataValues = z.infer<typeof songDataSchema>;
 
+const lenient = (max: number) =>
+  z
+    .string()
+    .trim()
+    .transform((v) => v.slice(0, max));
+
+/** Link válido (http/https) ou vazio. */
+export function isMediaUrl(value: string): boolean {
+  return /^https?:\/\/\S+$/i.test(value.trim());
+}
+
+/**
+ * Nova música: só o título é obrigatório. O resto NUNCA impede o salvamento: texto longo
+ * demais é cortado, link que não começa com http(s) e tom desconhecido ficam de fora (a tela
+ * avisa embaixo do campo).
+ */
+export const newSongSchema = z.object({
+  title: z.string().trim().min(1, 'Informe o título.').max(200, 'Use até 200 caracteres.'),
+  artist: lenient(200),
+  category: lenient(60),
+  originalKey: z
+    .string()
+    .trim()
+    .transform((v) => (v && normalizeKey(v) ? v : '')),
+  mediaUrl: z
+    .string()
+    .trim()
+    .transform((v) => (isMediaUrl(v) ? v : '')),
+  notes: lenient(1000),
+});
+
 const orNull = (v: string) => (v.trim() === '' ? null : v.trim());
 
 export interface NewSongInput extends SongDataValues {

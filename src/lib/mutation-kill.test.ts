@@ -79,11 +79,9 @@ describe('friendlyError: todos os caminhos', () => {
   });
 
   it('texto solto, nulo e objetos sem os campos', () => {
-    expect(friendlyError('Failed to fetch')).toBe(
-      'Sem conexão com o servidor. Verifique a internet e tente de novo.',
-    );
+    expect(friendlyError('Failed to fetch')).toBe('Sem conexão. Tente de novo.');
     expect(friendlyError('Mensagem em português já pronta')).toBe(
-      'Não foi possível concluir a operação. Tente de novo.',
+      'Não foi possível concluir. Tente de novo.',
     );
     expect(friendlyError(null, 'Padrão.')).toBe('Padrão.');
     expect(friendlyError({ code: 42, message: 7, details: {} }, 'Padrão.')).toBe('Padrão.');
@@ -150,7 +148,7 @@ describe('friendlyError: todos os caminhos', () => {
   });
 
   it('42501: mensagem própria (com acento) passa; RLS e GRANT viram "sem permissão"', () => {
-    const permission = 'Você não tem permissão para fazer essa alteração.';
+    const permission = 'Você não tem permissão para isso. Fale com um administrador.';
     expect(friendlyError({ code: '42501', message: 'permission denied for table x' })).toBe(
       permission,
     );

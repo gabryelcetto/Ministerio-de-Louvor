@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { friendlyError, NoRowsAffectedError, requireAffected, UserFacingError } from './errors';
+import { MESSAGES } from './messages';
 
 describe('friendlyError', () => {
   it('RLS e GRANT viram "sem permissão"', () => {
@@ -8,9 +9,9 @@ describe('friendlyError', () => {
         code: '42501',
         message: 'new row violates row-level security policy for table "song_chords"',
       }),
-    ).toBe('Você não tem permissão para fazer essa alteração.');
+    ).toBe('Você não tem permissão para isso. Fale com um administrador.');
     expect(friendlyError({ code: '42501', message: 'permission denied for table profiles' })).toBe(
-      'Você não tem permissão para fazer essa alteração.',
+      'Você não tem permissão para isso. Fale com um administrador.',
     );
   });
 
@@ -31,7 +32,7 @@ describe('friendlyError', () => {
 
   it('mensagem técnica em inglês nunca chega ao usuário', () => {
     expect(friendlyError({ code: 'P0001', message: 'unexpected internal state' })).toBe(
-      'Não foi possível concluir a operação. Tente de novo.',
+      'Não foi possível concluir. Tente de novo.',
     );
     expect(friendlyError({ code: 'XX000', message: 'boom' }, 'Não foi possível salvar.')).toBe(
       'Não foi possível salvar.',
@@ -76,8 +77,8 @@ describe('friendlyError', () => {
   });
 
   it('valores estranhos usam o texto padrão', () => {
-    expect(friendlyError(undefined)).toBe('Não foi possível concluir a operação. Tente de novo.');
-    expect(friendlyError(42)).toBe('Não foi possível concluir a operação. Tente de novo.');
+    expect(friendlyError(undefined)).toBe('Não foi possível concluir. Tente de novo.');
+    expect(friendlyError(42)).toBe('Não foi possível concluir. Tente de novo.');
   });
 });
 
@@ -104,5 +105,21 @@ describe('troca de senha e cadastro de integrante', () => {
     expect(friendlyError(new UserFacingError('Já existe uma conta com este e-mail.'))).toBe(
       'Já existe uma conta com este e-mail.',
     );
+  });
+});
+
+describe('mensagens centralizadas (src/lib/messages.ts)', () => {
+  it('permissão, rede, sessão e genérica vêm de MESSAGES', () => {
+    expect(friendlyError({ code: '42501', message: 'new row violates row-level security' })).toBe(
+      MESSAGES.noPermission,
+    );
+    expect(friendlyError(new TypeError('Failed to fetch'))).toBe(MESSAGES.offline);
+    expect(friendlyError({ message: 'TimeoutError: signal timed out' })).toBe(MESSAGES.offline);
+    expect(friendlyError({ code: 'PGRST301', message: 'JWT' })).toBe(MESSAGES.sessionExpired);
+    expect(friendlyError({})).toBe(MESSAGES.generic);
+    expect(MESSAGES.noPermission).toBe(
+      'Você não tem permissão para isso. Fale com um administrador.',
+    );
+    expect(MESSAGES.offline).toBe('Sem conexão. Tente de novo.');
   });
 });

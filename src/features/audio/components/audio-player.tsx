@@ -1,5 +1,5 @@
 import { Minus, Pause, Play, Plus, RotateCcw, RotateCw } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatDuration } from '@/lib/audio/limits';
 import {
@@ -11,8 +11,8 @@ import {
   SPEED_MIN,
   SPEED_STEP,
 } from '@/lib/audio/semitones';
-import { attachSoundTouch, isSoundTouchSupported, type PitchChain } from '@/lib/audio/soundtouch';
 import { cn } from '@/lib/utils';
+import { useAudioEngine } from '../use-audio-engine';
 
 /**
  * Player com velocidade (50–100%, sem mudar o tom) e tom (−6 a +6 semitons, sem mudar o
@@ -35,78 +35,24 @@ export function AudioPlayer({
   followLabel?: string;
 }) {
   const id = useId();
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const chainRef = useRef<PitchChain | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [time, setTime] = useState(0);
-  const [duration, setDuration] = useState(durationSeconds ?? 0);
   const [speed, setSpeed] = useState(1);
   const [manualPitch, setManualPitch] = useState(0);
   const canFollow = followSemitones !== undefined && followSemitones !== null;
   const [follow, setFollow] = useState(true);
-  const [engine, setEngine] = useState<'soundtouch' | 'nativo' | 'parado'>('parado');
-  const [error, setError] = useState<string | null>(null);
-
   const pitch = canFollow && follow ? clampPitch(followSemitones) : manualPitch;
-  const pitchAvailable = engine !== 'nativo';
-
-  // Aplica tom e velocidade sempre que mudarem.
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (chainRef.current) {
-      chainRef.current.setSpeed(speed);
-      chainRef.current.setSemitones(pitch);
-    } else {
-      // Sem SoundTouch (ou antes do primeiro play): velocidade nativa, sem mudar o tom.
-      audio.preservesPitch = true;
-      audio.playbackRate = speed;
-    }
-  }, [speed, pitch, engine]);
-
-  const ensureEngine = async () => {
-    const audio = audioRef.current;
-    if (!audio || chainRef.current || engine === 'nativo') return;
-    if (!isSoundTouchSupported()) {
-      setEngine('nativo');
-      return;
-    }
-    try {
-      chainRef.current = await attachSoundTouch(audio);
-      chainRef.current.setSpeed(speed);
-      chainRef.current.setSemitones(pitch);
-      setEngine('soundtouch');
-    } catch {
-      setEngine('nativo');
-      setError('Mudar o tom não funciona neste navegador; a velocidade continua disponível.');
-    }
-  };
-
-  const toggle = async () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audio.paused) {
-      await ensureEngine();
-      try {
-        await audio.play();
-      } catch {
-        setError('Não foi possível tocar este áudio.');
-      }
-    } else {
-      audio.pause();
-    }
-  };
-
-  const seekBy = (delta: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(
-      0,
-      Math.min(duration || audio.duration || 0, audio.currentTime + delta),
-    );
-  };
-
-  const total = duration || durationSeconds || 0;
+  const {
+    audioRef,
+    audioProps,
+    playing,
+    time,
+    total,
+    engine,
+    pitchAvailable,
+    error,
+    toggle,
+    seekTo,
+    seekBy,
+  } = useAudioEngine({ speed, pitch, durationSeconds });
 
   return (
     <div
@@ -116,21 +62,7 @@ export function AudioPlayer({
       data-pitch={pitch}
       data-speed={speed}
     >
-      <audio
-        ref={audioRef}
-        src={src}
-        preload="metadata"
-        crossOrigin="anonymous"
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
-        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => {
-          const d = e.currentTarget.duration;
-          if (Number.isFinite(d) && d > 0) setDuration(d);
-        }}
-        onError={() => setError('Não foi possível carregar o áudio.')}
-      />
+      <audio ref={audioRef} src={src} {...audioProps} />
 
       <div className="flex items-center gap-2">
         <Button
@@ -154,9 +86,7 @@ export function AudioPlayer({
             step={1}
             value={Math.min(time, total || time)}
             disabled={!total}
-            onChange={(e) => {
-              if (audioRef.current) audioRef.current.currentTime = Number(e.target.value);
-            }}
+            onChange={(e) => seekTo(Number(e.target.value))}
             aria-label={`Posição em ${label}`}
             className="h-8 w-full accent-[var(--primary)]"
           />

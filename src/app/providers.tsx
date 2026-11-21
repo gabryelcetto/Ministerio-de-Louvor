@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { SessionProvider } from '@/features/auth/session-provider';
+import { ThemeProvider } from '@/hooks/theme-provider';
 
-/** Providers globais: TanStack Query (cache das consultas) e sessão do Supabase Auth. */
+/** Providers globais: TanStack Query (cache das consultas), tema e sessão do Supabase Auth. */
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -14,7 +15,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
   );
   return (
     <QueryClientProvider client={queryClient}>
-      <SessionProvider>{children}</SessionProvider>
+      <ThemeProvider>
+        <SessionProvider>{children}</SessionProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

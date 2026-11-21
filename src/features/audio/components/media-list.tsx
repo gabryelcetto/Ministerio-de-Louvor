@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from 'lucide-react';
+import { Check, Headphones, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { FormError } from '@/components/common/form-error';
@@ -20,6 +20,8 @@ export function MediaList({
   followSemitones,
   followLabel,
   onRename,
+  onSelect,
+  selectedId,
   emptyText,
 }: {
   items: MediaItem[];
@@ -28,6 +30,12 @@ export function MediaList({
   followSemitones?: number | null;
   followLabel?: string;
   onRename?: (item: MediaItem) => void;
+  /**
+   * Modo "escolher" (tela da música): em vez de um player por áudio, um botão que põe o áudio
+   * no player do dock, embaixo da tela.
+   */
+  onSelect?: (item: MediaItem) => void;
+  selectedId?: string | null;
   emptyText: string;
 }) {
   const { session } = useSession();
@@ -83,7 +91,23 @@ export function MediaList({
                   </span>
                 )}
               </div>
-              {item.url ? (
+              {onSelect ? (
+                <Button
+                  type="button"
+                  variant={selectedId === item.id ? 'secondary' : 'outline'}
+                  className="self-start"
+                  aria-pressed={selectedId === item.id}
+                  onClick={() => onSelect(item)}
+                >
+                  {selectedId === item.id ? (
+                    <Check aria-hidden="true" />
+                  ) : (
+                    <Headphones aria-hidden="true" />
+                  )}
+                  {selectedId === item.id ? 'No player' : 'Ouvir no player'}
+                  <span className="sr-only">: {label}</span>
+                </Button>
+              ) : item.url ? (
                 <AudioPlayer
                   src={item.url}
                   label={label}

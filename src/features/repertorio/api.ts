@@ -80,3 +80,21 @@ export function useSong(songId: string | undefined) {
     enabled: Boolean(songId),
   });
 }
+
+/** Músicas que têm áudio de referência (ícone de fone na lista do repertório). */
+export async function fetchSongsWithAudio(): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('media_files')
+    .select('song_id')
+    .eq('kind', 'reference');
+  if (error) throw error;
+  return new Set(data.map((row) => row.song_id).filter((id): id is string => Boolean(id)));
+}
+
+export function useSongsWithAudio() {
+  return useQuery({
+    queryKey: ['media', 'songs-with-audio'],
+    queryFn: fetchSongsWithAudio,
+    staleTime: 5 * 60_000,
+  });
+}

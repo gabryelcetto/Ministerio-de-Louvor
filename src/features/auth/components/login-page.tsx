@@ -1,16 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Music } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { brandTitle } from '@/config/brand';
+import { FlameLogo } from '@/components/brand/flame-logo';
+import { brand } from '@/config/brand';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signIn } from '../api';
 import { useSession } from '../session-context';
+import { useSystemThemeWhileMounted } from '@/hooks/use-theme';
 import { friendlyError } from '@/lib/errors';
 
 const schema = z.object({
@@ -20,6 +21,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function LoginPage() {
+  // Antes de entrar ainda não se sabe de quem é o aparelho: o login segue o tema do sistema.
+  useSystemThemeWhileMounted();
   const { session, loading } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,10 +51,8 @@ export function LoginPage() {
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center p-4">
       <Card>
         <CardHeader className="items-center text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-primary text-accent">
-            <Music aria-hidden="true" className="size-6" />
-          </div>
-          <h1 className="text-xl font-semibold">{brandTitle}</h1>
+          <FlameLogo tile className="size-14" />
+          <h1 className="text-screen-title">{brand.shortName}</h1>
           <CardDescription>Entre com o e-mail e a senha recebidos da liderança.</CardDescription>
         </CardHeader>
         <CardContent>

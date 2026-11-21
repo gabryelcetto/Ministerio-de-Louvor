@@ -1,6 +1,6 @@
-import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { FormError } from '@/components/common/form-error';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
@@ -18,6 +18,7 @@ import {
   parseMetadata,
   summarizeChange,
 } from '../history-format';
+import { ScreenHeader } from '@/components/layout/screen-header';
 
 type Filter = VersionField | 'todos';
 const FILTERS: Filter[] = ['todos', 'chords', 'lyrics', 'official_key', 'metadata'];
@@ -41,9 +42,7 @@ export function SongHistoryPage() {
     const label = FIELD_LABEL[pending.field].toLowerCase();
     restore.mutate(pending.id, {
       onSuccess: () => {
-        setNotice(
-          `Versão restaurada: ${label}. A restauração entrou no histórico como nova versão.`,
-        );
+        setNotice(`Conteúdo restaurado: ${label}. Isso também ficou registrado no histórico.`);
         setPending(null);
       },
       // Fecha o diálogo e mostra o erro na página.
@@ -52,100 +51,95 @@ export function SongHistoryPage() {
   };
 
   return (
-    <section className="mx-auto flex max-w-3xl flex-col gap-5">
-      <Button asChild variant="ghost" size="sm" className="self-start">
-        <Link to={`/repertorio/${songId}`}>
-          <ArrowLeft aria-hidden="true" />
-          {song.data?.title ?? 'Música'}
-        </Link>
-      </Button>
+    <>
+      <ScreenHeader title="Histórico" subtitle={song.data?.title} back={`/repertorio/${songId}`} />
+      <section className="mx-auto flex max-w-[45rem] flex-col gap-5">
+        <header>
+          <p className="text-sm text-muted-foreground">
+            Toda alteração de letra, cifra, tom oficial e dados fica registrada.
+            {canRestore
+              ? ' Restaurar volta ao conteúdo daquela alteração e também fica registrado.'
+              : ' Só administradores podem restaurar alterações.'}
+          </p>
+        </header>
 
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Histórico</h1>
-        <p className="text-sm text-muted-foreground">
-          Toda alteração de letra, cifra, tom oficial e dados fica registrada.
-          {canRestore
-            ? ' Restaurar volta ao conteúdo daquela versão e também fica registrado.'
-            : ' Só a liderança pode restaurar versões.'}
+        <p role="status" aria-live="polite" className="text-sm font-medium text-primary">
+          {notice}
         </p>
-      </header>
+        <FormError error={restore.error} fallback="Não foi possível restaurar. Tente de novo." />
 
-      <p role="status" aria-live="polite" className="text-sm font-medium text-primary">
-        {notice}
-      </p>
-      <FormError error={restore.error} fallback="Não foi possível restaurar a versão." />
+        <div role="group" aria-label="Filtrar por campo" className="flex flex-wrap gap-2">
+          {FILTERS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={filter === value}
+              onClick={() => setFilter(value)}
+              className={cn(
+                'inline-flex min-h-9 items-center rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                filter === value
+                  ? 'border-transparent bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted',
+              )}
+            >
+              {value === 'todos' ? 'Tudo' : FIELD_LABEL[value]}
+            </button>
+          ))}
+        </div>
 
-      <div role="group" aria-label="Filtrar por campo" className="flex flex-wrap gap-2">
-        {FILTERS.map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={filter === value}
-            onClick={() => setFilter(value)}
-            className={cn(
-              'inline-flex min-h-9 items-center rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              filter === value
-                ? 'border-transparent bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted',
-            )}
-          >
-            {value === 'todos' ? 'Tudo' : FIELD_LABEL[value]}
-          </button>
-        ))}
-      </div>
-
-      {versions.isPending ? (
-        <LoadingState label="Carregando histórico…" />
-      ) : versions.isError ? (
-        <ErrorState onRetry={() => void versions.refetch()} />
-      ) : !items || items.length === 0 ? (
-        <EmptyState>
-          Nenhuma alteração registrada{filter === 'todos' ? '' : ' neste campo'}.
-        </EmptyState>
-      ) : (
-        <>
-          <ol className="flex flex-col gap-3">
-            {items.map((v) => (
-              <li key={v.id}>
-                <VersionCard
-                  version={v}
-                  canRestore={canRestore}
-                  busy={restore.isPending}
-                  onRestore={() => {
-                    setNotice(null);
-                    restore.reset();
-                    setPending(v);
-                  }}
-                />
-              </li>
-            ))}
-          </ol>
-          {versions.data.length >= VERSIONS_LIMIT && (
-            <p className="text-center text-sm text-muted-foreground">
-              Mostrando as {VERSIONS_LIMIT} alterações mais recentes.
-            </p>
-          )}
-        </>
-      )}
-
-      <ConfirmDialog
-        open={pending !== null}
-        title="Restaurar esta versão?"
-        confirmLabel="Restaurar"
-        busy={restore.isPending}
-        onConfirm={confirmRestore}
-        onCancel={() => setPending(null)}
-      >
-        {pending && (
+        {versions.isPending ? (
+          <LoadingState label="Carregando histórico…" />
+        ) : versions.isError ? (
+          <ErrorState onRetry={() => void versions.refetch()} />
+        ) : !items || items.length === 0 ? (
+          <EmptyState>
+            Nenhuma alteração registrada{filter === 'todos' ? '' : ' neste campo'}.
+          </EmptyState>
+        ) : (
           <>
-            {FIELD_LABEL[pending.field]} volta ao conteúdo de {formatShortDate(pending.changedAt)}{' '}
-            às {formatTime(pending.changedAt)}
-            {pending.author ? `, salvo por ${pending.author}` : ''}. O conteúdo atual não se perde:
-            ele continua no histórico.
+            <ol className="flex flex-col gap-3">
+              {items.map((v) => (
+                <li key={v.id}>
+                  <VersionCard
+                    version={v}
+                    canRestore={canRestore}
+                    busy={restore.isPending}
+                    onRestore={() => {
+                      setNotice(null);
+                      restore.reset();
+                      setPending(v);
+                    }}
+                  />
+                </li>
+              ))}
+            </ol>
+            {versions.data.length >= VERSIONS_LIMIT && (
+              <p className="text-center text-sm text-muted-foreground">
+                Mostrando as {VERSIONS_LIMIT} alterações mais recentes.
+              </p>
+            )}
           </>
         )}
-      </ConfirmDialog>
-    </section>
+
+        <ConfirmDialog
+          open={pending !== null}
+          title="Restaurar esta alteração?"
+          confirmLabel="Restaurar"
+          busy={restore.isPending}
+          onConfirm={confirmRestore}
+          onCancel={() => setPending(null)}
+        >
+          {pending && (
+            <>
+              {FIELD_LABEL[pending.field]} volta ao conteúdo de {formatShortDate(pending.changedAt)}{' '}
+              às {formatTime(pending.changedAt)}
+              {pending.author ? `, salvo por ${pending.author}` : ''}. O conteúdo atual não se
+              perde: ele continua no histórico.
+            </>
+          )}
+        </ConfirmDialog>
+      </section>
+    </>
   );
 }
 
@@ -170,7 +164,7 @@ function VersionCard({
         <span className="font-medium">{CHANGE_LABEL[v.changeType]}</span>
         {v.isCurrent && (
           <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
-            versão atual
+            atual
           </span>
         )}
       </div>
@@ -189,7 +183,7 @@ function VersionCard({
       {isText && (
         <div className="flex flex-col gap-1">
           {v.changeType !== 'create' && <ValueDetails label="Valor anterior" value={v.oldValue} />}
-          <ValueDetails label="Conteúdo desta versão" value={v.newValue} />
+          <ValueDetails label="Como ficou" value={v.newValue} />
         </div>
       )}
       {v.field === 'metadata' && v.oldValue === null && (

@@ -2,6 +2,7 @@ import { supabase } from '@/services/supabase';
 import {
   groupAssignmentsByEvent,
   groupTeamByFunction,
+  groupTeamBySection,
   resolveEventKey,
   keySource,
   type EventSummary,
@@ -9,6 +10,7 @@ import {
   type MyScheduleItem,
   type TeamAssignmentRow,
   type TeamGroup,
+  type TeamSectionGroup,
 } from './schedule-utils';
 import type { EventRow } from '@/types/app.types';
 
@@ -48,6 +50,8 @@ export interface EventSongItem {
 export interface EventDetail {
   event: EventSummary & Pick<EventRow, 'notes'>;
   team: TeamGroup[];
+  /** Equipe em Cantores e Instrumentistas (tela do evento). */
+  teamBySection: TeamSectionGroup[];
   songs: EventSongItem[];
 }
 
@@ -56,7 +60,7 @@ export async function fetchEventDetail(eventId: string): Promise<EventDetail | n
   const { data, error } = await supabase
     .from('events')
     .select(
-      'id, type, title, starts_at, ends_at, location, status, notes, event_assignments(id, notes, profile:profiles(id, full_name, display_name), function:ministry_functions(id, name, sort_order)), event_songs(id, position, key_for_event, notes, song:songs(id, title, artist, official_key, original_key))',
+      'id, type, title, starts_at, ends_at, location, status, notes, event_assignments(id, notes, profile:profiles(id, full_name, display_name), function:ministry_functions(id, name, sort_order, section)), event_songs(id, position, key_for_event, notes, song:songs(id, title, artist, official_key, original_key))',
     )
     .eq('id', eventId)
     .maybeSingle();
@@ -81,6 +85,7 @@ export async function fetchEventDetail(eventId: string): Promise<EventDetail | n
   return {
     event,
     team: groupTeamByFunction(event_assignments satisfies TeamAssignmentRow[]),
+    teamBySection: groupTeamBySection(event_assignments satisfies TeamAssignmentRow[]),
     songs,
   };
 }

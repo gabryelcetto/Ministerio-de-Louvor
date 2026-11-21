@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { displayName } from '@/features/escalas';
 import { readPublicEnv } from '@/lib/env';
 import { requireAffected, UserFacingError } from '@/lib/errors';
+import { MESSAGES } from '@/lib/messages';
 import { baseMimeType } from '@/lib/audio/format';
 import { uploadWithProgress } from '@/lib/audio/upload';
 import { supabase } from '@/services/supabase';
@@ -138,7 +139,7 @@ export async function checkAudioUpload(kind: MediaKind, targetId: string): Promi
 export async function uploadAudio(input: UploadAudioInput): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData.session;
-  if (!session) throw new UserFacingError('Sua sessão expirou. Entre de novo.');
+  if (!session) throw new UserFacingError(MESSAGES.sessionExpired);
   await checkAudioUpload(input.kind, input.targetId);
 
   const env = readPublicEnv(import.meta.env);

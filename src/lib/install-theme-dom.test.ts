@@ -18,7 +18,6 @@ afterEach(() => vi.unstubAllGlobals());
 beforeEach(() => {
   vi.resetModules();
   localStorage.clear();
-  delete document.documentElement.dataset.theme;
 });
 
 /** Janela de mentira com os eventos do PWA. */
@@ -117,30 +116,5 @@ describe('instalação do app (estado e eventos do navegador)', () => {
     const install = await import('./install');
     install.initInstallCapture();
     expect(install.getInstallState().installed).toBe(false);
-  });
-});
-
-describe('tema (preferência guardada no navegador)', () => {
-  it('lê, salva e aplica claro/escuro/sistema', async () => {
-    const theme = await import('./theme');
-    expect(theme.readThemePref()).toBe('system');
-    theme.saveThemePref('dark');
-    expect(localStorage.getItem(theme.THEME_STORAGE_KEY)).toBe('dark');
-    expect(theme.readThemePref()).toBe('dark');
-    theme.applyTheme('dark');
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    theme.saveThemePref('system');
-    expect(localStorage.getItem(theme.THEME_STORAGE_KEY)).toBeNull();
-    theme.applyTheme('system');
-    expect(document.documentElement.dataset.theme).toBeUndefined();
-  });
-
-  it('sem armazenamento (aba anônima bloqueada): "sistema" e sem erro', async () => {
-    const theme = await import('./theme');
-    localStorage.setItem(theme.THEME_STORAGE_KEY, 'dark');
-    vi.stubGlobal('localStorage', blockedStorage);
-    expect(theme.readThemePref()).toBe('system');
-    expect(() => theme.saveThemePref('light')).not.toThrow();
-    expect(() => theme.saveThemePref('system')).not.toThrow();
   });
 });

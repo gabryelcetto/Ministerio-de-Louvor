@@ -5,6 +5,13 @@ import { AppProviders } from '@/app/providers';
 import { router } from '@/app/router';
 import { initInstallCapture } from '@/lib/install';
 import { registerSW } from 'virtual:pwa-register';
+// Inter auto-hospedada (só o alfabeto latino, que cobre o português): funciona offline e entra
+// no cache do PWA. Nada de Google Fonts.
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-500.css';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/inter/latin-700.css';
+import '@fontsource/inter/latin-800.css';
 import './index.css';
 
 // Antes de tudo: o navegador pode oferecer a instalação logo no carregamento.

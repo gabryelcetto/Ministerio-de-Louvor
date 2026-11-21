@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dateBlock,
   dayKey,
   formatDayLabel,
   formatTime,
@@ -62,5 +63,14 @@ describe('datetime-local no fuso da igreja', () => {
   it('faz o caminho de volta para preencher o campo', () => {
     expect(isoToZonedLocal('2026-11-24T01:30:00Z')).toBe('2026-11-23T22:30');
     expect(isoToZonedLocal(zonedLocalToIso('2027-01-02T09:05') as string)).toBe('2027-01-02T09:05');
+  });
+});
+
+describe('bloco de data dos cards de evento', () => {
+  it('dia da semana abreviado (sem ponto, maiúsculo) e o dia, no fuso da igreja', () => {
+    // 22/11/2026 é domingo; 02:00 UTC ainda é sábado, 21, em São Paulo.
+    expect(dateBlock('2026-11-22T22:00:00Z')).toEqual({ weekday: 'DOM', day: '22' });
+    expect(dateBlock('2026-11-22T02:00:00Z')).toEqual({ weekday: 'SÁB', day: '21' });
+    expect(dateBlock(new Date('2026-11-25T15:00:00Z'))).toEqual({ weekday: 'QUA', day: '25' });
   });
 });

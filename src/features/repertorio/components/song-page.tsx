@@ -1,21 +1,39 @@
 import {
-  ArrowLeft,
+  Archive,
+  ArchiveRestore,
   ExternalLink,
   History,
   KeyRound,
+  Mic,
   Minus,
   Pencil,
-  SquarePen,
   Plus,
   RotateCcw,
+  SquarePen,
 } from 'lucide-react';
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ErrorState, LoadingState } from '@/components/common/states';
-import { Button } from '@/components/ui/button';
+import { OverflowMenu, type OverflowMenuItem } from '@/components/layout/overflow-menu';
+import { ScreenHeader } from '@/components/layout/screen-header';
+import { ReferenceAudios, SongAudioBar, SongAudioProvider, useSongAudio } from '@/features/audio';
 import { usePermission } from '@/features/auth';
+import { useEventDetail } from '@/features/escalas';
+import { useWakeLock } from '@/hooks/use-wake-lock';
+import { shortestSemitones } from '@/lib/audio/semitones';
+import {
+  nextTextSize,
+  readLastTab,
+  readTextSize,
+  saveLastTab,
+  saveTextSize,
+  TEXT_SIZES,
+  type SongTab,
+  type TextSizeIndex,
+} from '@/lib/reading-prefs';
 import { cn } from '@/lib/utils';
 import { useSong, type SongDetail } from '../api';
+import { chordProToLyrics } from '../editor-checks';
 import {
   currentKey,
   formatSemitones,
@@ -25,60 +43,39 @@ import {
   safeMediaUrl,
   semitonesTo,
   sheetBaseKey,
+  transposeLegend,
 } from '../song-key';
-import { chordProToLyrics } from '../editor-checks';
 import { ChordSheet } from './chord-sheet';
-import { ReferenceAudios } from '@/features/audio';
-import { shortestSemitones } from '@/lib/audio/semitones';
-import { ArchiveSongButton, SongDataEditor } from './song-data-editor';
+import { ArchiveSongDialog, SongDataEditor } from './song-data-editor';
 import { ChordsEditor, LyricsEditor, OfficialKeyEditor } from './song-editors';
+import { LABELS } from '@/lib/messages';
 
-/** Tamanhos de letra para leitura tocando (o acorde acompanha, em `em`). */
-const TEXT_SIZES = ['text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl'] as const;
-const DEFAULT_SIZE = 2;
-const SIZE_STORAGE_KEY = 'repertorio:tamanho-letra';
-
-function readStoredSize(): number {
-  try {
-    const value = Number(localStorage.getItem(SIZE_STORAGE_KEY));
-    return Number.isInteger(value) && value >= 0 && value < TEXT_SIZES.length
-      ? value
-      : DEFAULT_SIZE;
-  } catch {
-    return DEFAULT_SIZE;
-  }
-}
-
+/** Tela da música ("modo tocar"). */
 export function SongPage() {
   const { songId } = useParams();
   const query = useSong(songId);
 
-  return (
-    <section className="mx-auto flex max-w-3xl flex-col gap-5">
-      <Button asChild variant="ghost" size="sm" className="self-start">
-        <Link to="/repertorio">
-          <ArrowLeft aria-hidden="true" />
-          Repertório
-        </Link>
-      </Button>
-
-      {query.isPending ? (
-        <LoadingState label="Carregando música…" />
-      ) : query.isError ? (
-        <ErrorState onRetry={() => void query.refetch()} />
-      ) : query.data === null ? (
-        <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold">Música não encontrada</h1>
-          <p className="text-muted-foreground">Ela pode ter sido removida do repertório.</p>
-        </div>
-      ) : (
-        <SongView song={query.data} />
-      )}
-    </section>
-  );
+  if (query.isPending || query.isError || query.data === null) {
+    return (
+      <>
+        <ScreenHeader
+          title={query.data === null ? 'Música não encontrada' : 'Música'}
+          back="/repertorio"
+        />
+        {query.isPending ? (
+          <LoadingState label="Carregando música…" />
+        ) : query.isError ? (
+          <ErrorState onRetry={() => void query.refetch()} />
+        ) : (
+          <p className="mx-auto max-w-[45rem] text-muted-foreground">
+            Ela pode ter sido removida do repertório.
+          </p>
+        )}
+      </>
+    );
+  }
+  return <SongView song={query.data} />;
 }
-
-type Tab = 'cifra' | 'letra';
 
 type Editing = 'letra' | 'cifra' | 'tom' | 'dados' | null;
 
@@ -91,20 +88,28 @@ const SAVED_MESSAGE: Record<Exclude<Editing, null>, string> = {
 
 function SongView({ song }: { song: SongDetail }) {
   const [params, setParams] = useSearchParams();
-  const [size, setSizeState] = useState(readStoredSize);
+  const navigate = useNavigate();
+  const [size, setSizeState] = useState<TextSizeIndex>(() => readTextSize());
   const [editing, setEditing] = useState<Editing>(null);
+  const [archiving, setArchiving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  // Só esconde/mostra botões: quem barra de verdade é o banco (RLS e triggers).
   const canEditChords = usePermission('chords.edit_official');
   const canSetKey = usePermission('songs.set_official_key');
   const canManageSongs = usePermission('songs.manage');
   const canArchive = usePermission('songs.delete');
-  const media = safeMediaUrl(song.media_url);
+  // Vindo de uma escala: "Tom oficial G · Culto de domingo em A".
+  const eventId = params.get('evento') ?? undefined;
+  const event = useEventDetail(eventId);
+  // Modo tocar: a tela não apaga enquanto a música está aberta (quando o aparelho deixa).
+  useWakeLock(editing === null);
 
-  const tab: Tab =
-    params.get('aba') === 'letra' || (!song.chords && params.get('aba') !== 'cifra')
-      ? 'letra'
-      : 'cifra';
+  const tabParam = params.get('aba');
+  const tab: SongTab =
+    tabParam === 'cifra' || tabParam === 'letra'
+      ? tabParam
+      : !song.chords
+        ? 'letra'
+        : (readLastTab() ?? 'cifra');
 
   // Tom: guardado na URL (?tom=A), o que permite abrir já no "tom do dia" vindo de uma escala.
   const baseKey = sheetBaseKey(song.chords, song.original_key);
@@ -136,17 +141,16 @@ function SongView({ song }: { song: SongDetail }) {
     else update({ st: n === 0 ? null : String(n), tom: null });
   };
 
-  const setSize = (value: number) => {
-    const next = Math.min(TEXT_SIZES.length - 1, Math.max(0, value));
-    setSizeState(next);
-    try {
-      localStorage.setItem(SIZE_STORAGE_KEY, String(next));
-    } catch {
-      // Sem armazenamento (aba anônima etc.): o tamanho vale só nesta visita.
-    }
+  const setTab = (value: SongTab) => {
+    saveLastTab(value);
+    update({ aba: value });
   };
 
-  const textSize = TEXT_SIZES[size] ?? 'text-xl';
+  const cycleSize = () => {
+    const next = nextTextSize(size);
+    setSizeState(next);
+    saveTextSize(next);
+  };
 
   const startEditing = (what: Exclude<Editing, null>) => {
     setNotice(null);
@@ -158,77 +162,105 @@ function SongView({ song }: { song: SongDetail }) {
     setEditing(null);
   };
 
+  const subtitle = [
+    song.official_key
+      ? `${LABELS.officialKey} ${song.official_key}`
+      : song.original_key
+        ? `Tom original ${song.original_key}`
+        : null,
+    event.data && tomParam ? `${event.data.event.title} em ${tomParam}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const menu: OverflowMenuItem[] = [
+    ...(canEditChords
+      ? [
+          {
+            label: song.chords ? 'Editar cifra' : 'Adicionar cifra',
+            icon: Pencil,
+            onSelect: () => startEditing('cifra'),
+          },
+        ]
+      : []),
+    { label: 'Editar letra', icon: Pencil, onSelect: () => startEditing('letra') },
+    ...(canManageSongs
+      ? [{ label: 'Editar dados', icon: SquarePen, onSelect: () => startEditing('dados') }]
+      : []),
+    ...(canSetKey
+      ? [{ label: 'Definir tom oficial', icon: KeyRound, onSelect: () => startEditing('tom') }]
+      : []),
+    {
+      label: 'Histórico',
+      icon: History,
+      onSelect: () => void navigate(`/repertorio/${song.id}/historico`),
+    },
+    {
+      label: 'Gravar áudio de referência',
+      icon: Mic,
+      onSelect: () => {
+        const section = document.getElementById('audios-referencia');
+        section?.scrollIntoView({ block: 'start' });
+        section?.querySelector<HTMLButtonElement>('button[data-gravar]')?.focus();
+      },
+    },
+    ...(canArchive
+      ? [
+          song.archived_at
+            ? {
+                label: 'Restaurar música',
+                icon: ArchiveRestore,
+                onSelect: () => setArchiving(true),
+              }
+            : {
+                label: 'Excluir',
+                icon: Archive,
+                destructive: true,
+                onSelect: () => setArchiving(true),
+              },
+        ]
+      : []),
+  ];
+
+  const media = safeMediaUrl(song.media_url);
+  const textSize = TEXT_SIZES[size];
+
   return (
-    <>
-      <header className="flex flex-col gap-2">
+    <SongAudioProvider
+      songId={song.id}
+      // O áudio de referência está no tom ORIGINAL: o player muda o tom pela diferença até o
+      // tom que está na tela (caminho mais curto, −6 a +5).
+      followSemitones={shortestSemitones(song.original_key ?? baseKey, shownKey)}
+      shownKey={shownKey}
+    >
+      <ScreenHeader
+        title={song.title}
+        subtitle={subtitle || undefined}
+        back="/repertorio"
+        actions={<OverflowMenu items={menu} />}
+      />
+      <ArchiveSongDialog
+        songId={song.id}
+        title={song.title}
+        archived={Boolean(song.archived_at)}
+        open={archiving}
+        onClose={() => setArchiving(false)}
+      />
+
+      <section className="mx-auto flex max-w-3xl flex-col gap-4">
         {song.archived_at && (
-          <p role="status" className="rounded-lg border border-accent bg-accent/15 p-3 text-sm">
-            Música <strong>arquivada</strong>: não aparece na lista do repertório.
+          <p role="status" className="rounded-lg border border-accent bg-accent p-3 text-sm">
+            Esta música foi <strong>excluída</strong> e não aparece na lista do repertório.
           </p>
         )}
-        <h1 className="text-2xl font-semibold">{song.title}</h1>
-        {song.artist && <p className="text-muted-foreground">{song.artist}</p>}
-        <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-          {song.category && <Info label="Categoria">{song.category}</Info>}
-          {song.original_key && <Info label="Tom original">{song.original_key}</Info>}
-          <Info label="Tom oficial">{song.official_key ?? 'não definido'}</Info>
-        </dl>
-        {media && (
-          <a
-            href={media}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 self-start rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ExternalLink aria-hidden="true" className="size-4" />
-            Ouvir / assistir ({mediaHost(media)})<span className="sr-only">(abre em nova aba)</span>
-          </a>
-        )}
-        {song.notes && (
-          <p className="rounded-lg bg-muted p-3 text-sm whitespace-pre-line">{song.notes}</p>
-        )}
-        {!editing && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={() => startEditing('letra')}>
-              <Pencil aria-hidden="true" />
-              Editar letra
-            </Button>
-            {canEditChords && (
-              <Button variant="outline" size="sm" onClick={() => startEditing('cifra')}>
-                <Pencil aria-hidden="true" />
-                {song.chords ? 'Editar cifra' : 'Adicionar cifra'}
-              </Button>
-            )}
-            {canManageSongs && (
-              <Button variant="outline" size="sm" onClick={() => startEditing('dados')}>
-                <SquarePen aria-hidden="true" />
-                Editar dados
-              </Button>
-            )}
-            {canSetKey && (
-              <Button variant="outline" size="sm" onClick={() => startEditing('tom')}>
-                <KeyRound aria-hidden="true" />
-                Definir tom oficial
-              </Button>
-            )}
-            <Button asChild variant="ghost" size="sm">
-              <Link to={`/repertorio/${song.id}/historico`}>
-                <History aria-hidden="true" />
-                Histórico
-              </Link>
-            </Button>
-            {canArchive && (
-              <ArchiveSongButton
-                songId={song.id}
-                title={song.title}
-                archived={Boolean(song.archived_at)}
-              />
-            )}
-          </div>
-        )}
-        <p role="status" aria-live="polite" className="text-sm font-medium text-primary">
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-sm font-semibold text-brand-text empty:hidden"
+        >
           {notice}
         </p>
+
         {editing === 'dados' && <SongDataEditor song={song} onDone={finishEditing} />}
         {editing === 'tom' && (
           <OfficialKeyEditor
@@ -238,315 +270,309 @@ function SongView({ song }: { song: SongDetail }) {
             onDone={finishEditing}
           />
         )}
-      </header>
 
-      <SongTabs
-        tab={tab}
-        onChange={(value) => update({ aba: value })}
-        extra={
-          <div className="flex items-center gap-1" role="group" aria-label="Tamanho da letra">
-            <SizeButton
-              label="Diminuir letra"
-              onClick={() => setSize(size - 1)}
-              disabled={size === 0}
-            >
-              A−
-            </SizeButton>
-            <SizeButton
-              label="Aumentar letra"
-              onClick={() => setSize(size + 1)}
-              disabled={size === TEXT_SIZES.length - 1}
-            >
-              A+
-            </SizeButton>
-          </div>
-        }
-        cifra={
-          editing === 'cifra' ? (
-            <ChordsEditor
-              songId={song.id}
-              initial={
-                song.chords ??
-                (song.lyrics
-                  ? `${song.original_key ? `{key: ${song.original_key}}\n` : ''}${song.lyrics}`
-                  : '')
-              }
-              onDone={finishEditing}
-            />
-          ) : song.chords ? (
-            <div className="flex flex-col gap-3">
-              {song.chordsStatus === 'pending' && (
-                <p
-                  role="note"
-                  className="rounded-lg border border-accent bg-accent/15 p-3 text-sm text-foreground"
-                >
-                  Cifra enviada por um integrante e <strong>aguardando revisão</strong> da
-                  liderança.
-                </p>
-              )}
+        <SongTabs
+          tab={tab}
+          onChange={setTab}
+          cifra={
+            editing === 'cifra' ? (
+              <ChordsEditor
+                songId={song.id}
+                initial={
+                  song.chords ??
+                  (song.lyrics
+                    ? `${song.original_key ? `{key: ${song.original_key}}\n` : ''}${song.lyrics}`
+                    : '')
+                }
+                onDone={finishEditing}
+              />
+            ) : song.chords ? (
+              <div className="flex flex-col gap-3">
+                {song.chordsStatus === 'pending' && (
+                  <p
+                    role="note"
+                    className="rounded-lg bg-accent p-3 text-sm text-accent-foreground"
+                  >
+                    Cifra enviada por um integrante · <strong>{LABELS.pending}</strong>.
+                  </p>
+                )}
+                <ChordSheet
+                  content={song.chords}
+                  semitones={semitones}
+                  fromKey={baseKey}
+                  style={{ fontSize: `${textSize.px}px` }}
+                />
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Esta música ainda não tem cifra.</p>
+            )
+          }
+          letra={
+            editing === 'letra' ? (
+              <LyricsEditor
+                songId={song.id}
+                initial={song.lyrics ?? (song.chords ? chordProToLyrics(song.chords) : '')}
+                onDone={finishEditing}
+              />
+            ) : song.lyrics ? (
+              <p
+                className="leading-[1.35] whitespace-pre-line"
+                style={{ fontSize: `${textSize.px}px` }}
+              >
+                {song.lyrics}
+              </p>
+            ) : song.chords ? (
+              // Sem letra cadastrada: mostra a letra da própria cifra, sem acordes.
               <ChordSheet
                 content={song.chords}
-                semitones={semitones}
-                fromKey={baseKey}
-                className={cn(textSize, 'leading-snug')}
+                showChords={false}
+                style={{ fontSize: `${textSize.px}px` }}
               />
-            </div>
-          ) : (
-            <p className="text-muted-foreground">Esta música ainda não tem cifra.</p>
-          )
-        }
-        letra={
-          editing === 'letra' ? (
-            <LyricsEditor
-              songId={song.id}
-              initial={song.lyrics ?? (song.chords ? chordProToLyrics(song.chords) : '')}
-              onDone={finishEditing}
-            />
-          ) : song.lyrics ? (
-            <p className={cn('leading-relaxed whitespace-pre-line', textSize)}>{song.lyrics}</p>
-          ) : song.chords ? (
-            // Sem letra cadastrada: mostra a letra da própria cifra, sem acordes.
-            <ChordSheet content={song.chords} showChords={false} className={textSize} />
-          ) : (
-            <p className="text-muted-foreground">Esta música ainda não tem letra.</p>
-          )
-        }
-      />
+            ) : (
+              <p className="text-muted-foreground">Esta música ainda não tem letra.</p>
+            )
+          }
+        />
 
-      {/* O áudio de referência está no tom ORIGINAL: o player muda o tom pela diferença até o tom
-          que está na tela (caminho mais curto, −6 a +5). */}
-      <ReferenceAudios
-        songId={song.id}
-        followSemitones={shortestSemitones(song.original_key ?? baseKey, shownKey)}
-        shownKey={shownKey}
-      />
-
-      {tab === 'cifra' && song.chords && !editing && (
-        <>
-          {/* Espaço para a barra fixa não cobrir o fim da cifra. */}
-          <div aria-hidden="true" className="h-20 md:h-4" />
-          <div
-            role="toolbar"
-            aria-label="Tom"
-            className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t bg-card/95 px-3 py-2 backdrop-blur md:sticky md:bottom-4 md:mx-auto md:w-fit md:rounded-xl md:border md:shadow-md"
+        {(song.artist || song.category || song.notes || media) && (
+          <section
+            aria-label="Sobre a música"
+            className="flex flex-col gap-2 rounded-xl border bg-card p-4 text-sm"
           >
-            <KeyControls
-              baseKey={baseKey}
-              semitones={semitones}
-              shownKey={shownKey}
-              officialKey={song.official_key}
-              isOfficial={Boolean(song.official_key) && semitones === officialSemitones}
-              onChange={setSemitones}
-              onOfficial={() => setSemitones(officialSemitones)}
-            />
-          </div>
-        </>
+            <h2 className="section-label">Sobre a música</h2>
+            {(song.artist || song.category) && (
+              <p className="text-muted-foreground">
+                {[song.artist, song.category].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {song.notes && <p className="whitespace-pre-line">{song.notes}</p>}
+            {media && (
+              <a
+                href={media}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-lg font-semibold text-brand-text underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ExternalLink aria-hidden="true" className="size-4" />
+                Ouvir / assistir ({mediaHost(media)})
+                <span className="sr-only">(abre em nova aba)</span>
+              </a>
+            )}
+          </section>
+        )}
+
+        <ReferenceAudios
+          songId={song.id}
+          followSemitones={shortestSemitones(song.original_key ?? baseKey, shownKey)}
+          shownKey={shownKey}
+        />
+
+        {/* Espaço para o dock fixo não cobrir o fim da página. */}
+        {editing === null && <div aria-hidden="true" className="h-40" />}
+      </section>
+
+      {editing === null && (
+        <PlayDock
+          baseKey={baseKey}
+          semitones={semitones}
+          shownKey={shownKey}
+          officialKey={song.official_key}
+          officialSemitones={officialSemitones}
+          onChange={setSemitones}
+          size={size}
+          onSize={cycleSize}
+        />
       )}
-    </>
+    </SongAudioProvider>
   );
 }
 
-function KeyControls({
+/**
+ * Dock fixo embaixo do modo tocar: linha 1 com o áudio de referência (se houver) e linha 2 com
+ * [−] [tom atual + legenda] [+] [Oficial] [Aa].
+ */
+function PlayDock({
   baseKey,
   semitones,
   shownKey,
   officialKey,
-  isOfficial,
+  officialSemitones,
   onChange,
-  onOfficial,
+  size,
+  onSize,
 }: {
   baseKey: string | null;
   semitones: number;
   shownKey: string | null;
   officialKey: string | null;
-  isOfficial: boolean;
+  officialSemitones: number;
   onChange: (semitones: number) => void;
-  onOfficial: () => void;
+  size: TextSizeIndex;
+  onSize: () => void;
 }) {
   const selectId = useId();
+  const audio = useSongAudio();
+  const isOfficial = Boolean(officialKey) && semitones === officialSemitones;
+  const legend = transposeLegend(
+    normalizeSemitones(semitones - officialSemitones),
+    !audio?.selected ? 'none' : audio.follow ? 'follow' : 'manual',
+  );
+
   return (
-    <div className="mx-auto flex max-w-3xl items-center justify-center gap-1.5">
-      <ToolButton label="Descer meio tom" onClick={() => onChange(semitones - 1)}>
-        <Minus aria-hidden="true" className="size-5" />
-      </ToolButton>
+    <div
+      role="region"
+      aria-label="Controles da música"
+      className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 border-t bg-card px-3 pt-2 pb-2 md:bottom-0 md:left-60 md:pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+    >
+      <div className="mx-auto flex max-w-3xl flex-col gap-2">
+        <SongAudioBar />
+        <div role="toolbar" aria-label="Tom" className="flex items-center gap-1.5">
+          <DockButton label="Descer meio tom" onClick={() => onChange(semitones - 1)}>
+            <Minus aria-hidden="true" className="size-5" />
+          </DockButton>
 
-      {baseKey ? (
-        <>
-          <label htmlFor={selectId} className="sr-only">
-            Tom
-          </label>
-          <select
-            id={selectId}
-            value={shownKey ?? ''}
-            onChange={(e) => onChange(semitonesTo(baseKey, e.target.value))}
-            className="h-12 min-w-16 rounded-lg border bg-background px-2 text-center text-lg font-bold text-chord focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          <div className="flex min-w-0 flex-1 flex-col items-center leading-tight">
+            {baseKey ? (
+              <>
+                <label htmlFor={selectId} className="sr-only">
+                  Tom
+                </label>
+                <select
+                  id={selectId}
+                  value={shownKey ?? ''}
+                  onChange={(e) => onChange(semitonesTo(baseKey, e.target.value))}
+                  className="h-9 appearance-none rounded-lg bg-transparent px-2 text-center text-2xl font-extrabold text-chord focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {keyOptions(baseKey).map((key) => (
+                    <option key={key} value={key}>
+                      {key}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <span className="text-2xl font-extrabold text-chord" aria-live="polite">
+                <span className="sr-only">Transposição: </span>
+                {formatSemitones(semitones)}
+              </span>
+            )}
+            <span className="truncate text-caption text-muted-foreground">
+              {officialKey ? legend : 'sem tom oficial definido'}
+            </span>
+          </div>
+
+          <DockButton label="Subir meio tom" onClick={() => onChange(semitones + 1)}>
+            <Plus aria-hidden="true" className="size-5" />
+          </DockButton>
+          <button
+            type="button"
+            onClick={() => onChange(officialSemitones)}
+            disabled={!officialKey || isOfficial}
+            title={
+              officialKey ? `Voltar ao tom oficial (${officialKey})` : 'Sem tom oficial definido'
+            }
+            className="flex h-11 items-center gap-1 rounded-lg bg-chip px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
-            {keyOptions(baseKey).map((key) => (
-              <option key={key} value={key}>
-                {key}
-              </option>
-            ))}
-          </select>
-        </>
-      ) : (
-        <span
-          className="flex h-12 min-w-16 items-center justify-center rounded-lg border px-2 text-sm font-bold"
-          aria-live="polite"
-        >
-          <span className="sr-only">Transposição: </span>
-          {formatSemitones(semitones)}
-        </span>
-      )}
-
-      <ToolButton label="Subir meio tom" onClick={() => onChange(semitones + 1)}>
-        <Plus aria-hidden="true" className="size-5" />
-      </ToolButton>
-
-      <Button
-        type="button"
-        variant={isOfficial ? 'secondary' : 'outline'}
-        className="ml-1 h-12 px-3"
-        onClick={onOfficial}
-        disabled={!officialKey || isOfficial}
-        title={officialKey ? `Voltar ao tom oficial (${officialKey})` : 'Sem tom oficial definido'}
-      >
-        <RotateCcw aria-hidden="true" />
-        <span className="hidden sm:inline">Tom oficial</span>
-        <span className="sm:hidden">Oficial</span>
-      </Button>
+            <RotateCcw aria-hidden="true" className="size-4" />
+            Oficial
+          </button>
+          <button
+            type="button"
+            onClick={onSize}
+            title="Tamanho da letra"
+            className="flex size-11 items-center justify-center rounded-lg bg-chip font-extrabold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span aria-hidden="true">Aa</span>
+            <span className="sr-only">Tamanho da letra: {TEXT_SIZES[size].label}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-function ToolButton({
+function DockButton({
   label,
   onClick,
-  disabled,
   children,
 }: {
   label: string;
   onClick: () => void;
-  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
-    <Button
+    <button
       type="button"
-      variant="outline"
-      className="size-12 p-0"
-      aria-label={label}
-      title={label}
       onClick={onClick}
-      disabled={disabled}
+      title={label}
+      className="flex size-11 shrink-0 items-center justify-center rounded-lg border bg-card hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {children}
-    </Button>
-  );
-}
-
-function SizeButton({
-  label,
-  onClick,
-  disabled,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    // Nome acessível = texto para leitor de tela (sem aria-label): "A−" visível não diverge do
-    // nome "Diminuir letra" (WCAG 2.5.3, regra label-content-name-mismatch do axe).
-    <Button
-      type="button"
-      variant="ghost"
-      className="size-11 p-0 text-base font-bold"
-      title={label}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      <span aria-hidden="true">{children}</span>
       <span className="sr-only">{label}</span>
-    </Button>
+    </button>
   );
 }
 
-function Info({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex gap-1">
-      <dt className="text-muted-foreground">{label}:</dt>
-      <dd className="font-medium">{children}</dd>
-    </div>
-  );
-}
-
-const TABS: { value: Tab; label: string }[] = [
+const TABS: { value: SongTab; label: string }[] = [
   { value: 'cifra', label: 'Cifra' },
   { value: 'letra', label: 'Letra' },
 ];
 
-/** Abas acessíveis (setas ←/→ trocam de aba, como no padrão WAI-ARIA). */
+/** Controle segmentado Cifra | Letra (abas acessíveis: setas ←/→ trocam de aba). */
 function SongTabs({
   tab,
   onChange,
   cifra,
   letra,
-  extra,
 }: {
-  tab: Tab;
-  onChange: (tab: Tab) => void;
+  tab: SongTab;
+  onChange: (tab: SongTab) => void;
   cifra: ReactNode;
   letra: ReactNode;
-  /** Controles ao lado das abas (tamanho da letra). */
-  extra?: ReactNode;
 }) {
   const baseId = useId();
-  const refs = useRef<Record<Tab, HTMLButtonElement | null>>({ cifra: null, letra: null });
+  const refs = useRef<Record<SongTab, HTMLButtonElement | null>>({ cifra: null, letra: null });
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
     event.preventDefault();
-    const next: Tab = tab === 'cifra' ? 'letra' : 'cifra';
+    const next: SongTab = tab === 'cifra' ? 'letra' : 'cifra';
     onChange(next);
     refs.current[next]?.focus();
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <div
-          role="tablist"
-          aria-label="Conteúdo da música"
-          onKeyDown={onKeyDown}
-          className="grid flex-1 grid-cols-2 rounded-lg bg-muted p-1"
-        >
-          {TABS.map(({ value, label }) => {
-            const selected = tab === value;
-            return (
-              <button
-                key={value}
-                ref={(el) => {
-                  refs.current[value] = el;
-                }}
-                type="button"
-                role="tab"
-                id={`${baseId}-tab-${value}`}
-                aria-selected={selected}
-                aria-controls={`${baseId}-panel-${value}`}
-                tabIndex={selected ? 0 : -1}
-                onClick={() => onChange(value)}
-                className={cn(
-                  'min-h-11 rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  selected ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-        {extra}
+      <div
+        role="tablist"
+        aria-label="Conteúdo da música"
+        onKeyDown={onKeyDown}
+        className="grid grid-cols-2 rounded-xl bg-chip p-1"
+      >
+        {TABS.map(({ value, label }) => {
+          const selected = tab === value;
+          return (
+            <button
+              key={value}
+              ref={(el) => {
+                refs.current[value] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`${baseId}-tab-${value}`}
+              aria-selected={selected}
+              aria-controls={`${baseId}-panel-${value}`}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => onChange(value)}
+              className={cn(
+                'min-h-11 rounded-lg text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                selected ? 'bg-card shadow-sm' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
       {TABS.map(({ value }) => (
         <div
@@ -556,9 +582,9 @@ function SongTabs({
           aria-labelledby={`${baseId}-tab-${value}`}
           hidden={tab !== value}
           tabIndex={0}
-          className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {value === 'cifra' ? cifra : letra}
+          {tab === value && (value === 'cifra' ? cifra : letra)}
         </div>
       ))}
     </div>

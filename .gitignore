@@ -25,6 +25,8 @@ Thumbs.db
 
 # saídas do Playwright (capturas e relatórios)
 e2e-output
+capturas-design
+test-results
 
 # script de CI copiado para simular a nuvem (supabase/ci/simular-nuvem.sql) — nunca commitar
 supabase/migrations/00000000000000_simular_nuvem.sql

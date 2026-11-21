@@ -8,8 +8,10 @@ export const brand = {
   churchName: 'ADVOP',
   /** Nome do app. */
   appName: 'Ministério de Louvor',
-  /** Nome do ícone instalado (manifest short_name: curto para caber embaixo do ícone). */
+  /** Nome do app instalado e do topo das telas (manifest name). */
   shortName: 'Louvor ADVOP',
+  /** Nome embaixo do ícone na tela inicial (manifest short_name: bem curto). */
+  iconLabel: 'Louvor',
   /** Descrição do PWA. */
   description: 'Escalas, repertório, cifras e agenda do Ministério de Louvor da ADVOP.',
 } as const;

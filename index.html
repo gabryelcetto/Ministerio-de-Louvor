@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1b2a4a" />
+    <meta name="theme-color" content="#F6F5F2" />
     <!-- App interno do ministério: não deve aparecer em buscadores. -->
     <meta name="robots" content="noindex, nofollow" />
     <meta
@@ -13,12 +13,30 @@
       content="Escalas, repertório, cifras e agenda do ministério de louvor."
     />
     <title>%BRAND_TITLE%</title>
-    <!-- Aplica o tema escolhido em Configurações antes da primeira pintura (evita piscar). -->
+    <!--
+      Anti-flash: aplica o tema ANTES do React carregar (senão a tela pisca clara no escuro).
+      Mesma regra de src/lib/theme.ts: 'light' | 'dark' | 'system' em localStorage
+      ("louvor.theme"); a chave antiga "tema" ainda vale; o login sempre segue o sistema.
+    -->
     <script>
-      try {
-        var tema = localStorage.getItem('tema');
-        if (tema === 'light' || tema === 'dark') document.documentElement.dataset.theme = tema;
-      } catch (e) {}
+      (function () {
+        try {
+          var pref = localStorage.getItem('louvor.theme');
+          if (pref !== 'light' && pref !== 'dark' && pref !== 'system') {
+            var antiga = localStorage.getItem('tema');
+            pref = antiga === 'light' || antiga === 'dark' ? antiga : 'system';
+          }
+          if (location.pathname.indexOf('/login') === 0) pref = 'system';
+          var escuro =
+            pref === 'dark' ||
+            (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var raiz = document.documentElement;
+          if (escuro) raiz.classList.add('dark');
+          raiz.style.colorScheme = escuro ? 'dark' : 'light';
+          var barra = document.querySelector('meta[name="theme-color"]');
+          if (barra) barra.setAttribute('content', escuro ? '#121214' : '#F6F5F2');
+        } catch (e) {}
+      })();
     </script>
   </head>
   <body>

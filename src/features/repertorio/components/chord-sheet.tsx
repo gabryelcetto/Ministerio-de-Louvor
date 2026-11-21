@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type CSSProperties } from 'react';
 import { parseChordPro, toSheetUnits, transposeChordPro } from '@/lib/chords';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,8 @@ export interface ChordSheetProps {
   /** false = mostra só a letra. */
   showChords?: boolean;
   className?: string;
+  /** Tamanho da letra (botão Aa): o acorde acompanha (0,8 em = 16px com letra de 20px). */
+  style?: CSSProperties;
 }
 
 /**
@@ -25,6 +27,7 @@ export function ChordSheet({
   fromKey,
   showChords = true,
   className,
+  style,
 }: ChordSheetProps) {
   const lines = useMemo(() => {
     const source = semitones === 0 ? content : transposeChordPro(content, semitones, { fromKey });
@@ -32,7 +35,8 @@ export function ChordSheet({
   }, [content, semitones, fromKey]);
 
   return (
-    <div className={cn('font-sans text-base leading-snug', className)}>
+    // Letra 20px com linha de 1,35 (design); o tamanho vem do botão Aa pelo `style`.
+    <div className={cn('font-sans text-[1.25rem] leading-[1.35]', className)} style={style}>
       {lines.map((line, lineIndex) => {
         const key = `${lineIndex}`;
         switch (line.type) {
@@ -40,7 +44,8 @@ export function ChordSheet({
             return <div key={key} className="h-4" aria-hidden="true" />;
           case 'comment':
             return (
-              <p key={key} className="mt-3 text-sm font-semibold text-secondary-foreground">
+              // Partes (ESTROFE, REFRÃO…) no estilo de rótulo de seção.
+              <p key={key} className="section-label mt-5 mb-1">
                 {line.text}
               </p>
             );
@@ -60,7 +65,7 @@ export function ChordSheet({
                       <span
                         className={cn(
                           // Tamanho em em: acompanha o tamanho da letra escolhido na tela.
-                          'min-h-[1.25em] pr-1 font-mono text-[0.85em] font-bold whitespace-pre text-chord',
+                          'min-h-[1.25em] pr-1 text-[0.8em] font-extrabold whitespace-pre text-chord',
                           !unit.chord && 'select-none',
                         )}
                       >

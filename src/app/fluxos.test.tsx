@@ -68,7 +68,7 @@ describe('primeiro acesso e troca de senha', () => {
     );
   });
 
-  it('Configurações: confere a senha atual, troca a senha, tema e sair', async () => {
+  it('Configurações: confere a senha atual e troca a senha', async () => {
     const { user } = renderApp('/configuracoes', {
       as: 'member',
       setup: (s) => {
@@ -85,16 +85,6 @@ describe('primeiro acesso e troca de senha', () => {
     await user.type(screen.getByLabelText('Senha atual'), 'SenhaAtual2026');
     await user.click(screen.getByRole('button', { name: 'Trocar senha' }));
     expect(await screen.findByText('Senha alterada.')).toBeTruthy();
-
-    const theme = screen.getByRole('radiogroup', { name: 'Tema' });
-    await user.click(within(theme).getByLabelText('Escuro'));
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    await user.click(within(theme).getByLabelText('Sistema'));
-    expect(document.documentElement.dataset.theme).toBeUndefined();
-
-    const sair = screen.getAllByRole('button', { name: 'Sair' });
-    await user.click(sair.at(-1)!);
-    await waitFor(() => expect(fake.state.session).toBeNull());
   });
 });
 
@@ -114,41 +104,75 @@ describe('notificações', () => {
 });
 
 describe('repertório', () => {
-  it('busca, filtra por categoria e abre a música', async () => {
-    const { user, router } = renderApp('/repertorio', { as: 'member' });
-    await findHeading('Repertório');
-    await user.type(screen.getByLabelText('Buscar música'), 'grande');
-    const categories = screen.getByRole('group', { name: 'Filtrar por categoria' });
-    for (const b of within(categories).getAllByRole('button')) await user.click(b);
-    await user.click(within(categories).getAllByRole('button')[0]!);
-    await user.click((await screen.findAllByRole('link', { name: /Grande é o Senhor/ }))[0]!);
-    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/repertorio\/b0/));
-  });
-
-  it('nova música: cola a cifra, usa o tom detectado, gera a letra e salva', async () => {
+  it('nova música: título, cifra colada (prévia), tom sugerido pelo 1º acorde, mais detalhes e salvar', async () => {
     const { user, router } = renderApp('/repertorio/nova', { as: 'member' });
     await findHeading('Nova música');
+    await screen.findByLabelText('Título');
     await user.click(screen.getByRole('button', { name: 'Salvar música' }));
     expect(await screen.findByText(/Informe o título/)).toBeTruthy();
     await user.type(screen.getByLabelText('Título'), 'Música colada');
-    fireEvent.change(screen.getByLabelText('Cifra (opcional)'), {
+    fireEvent.change(screen.getByLabelText('Cole a cifra ou a letra'), {
       target: {
         value:
-          '[Intro] G D\n\nG          D\nSanto santo santo\nEm        C\nDeus poderoso\n\n[Refrão]\nC    G\nAleluia',
+          '[Intro] Em D\n\nG          D\nSanto santo santo\nEm        C\nDeus poderoso\n\n[Refrão]\nC    G\nAleluia',
       },
     });
-    expect(await screen.findByText(/Formato detectado/)).toBeTruthy();
-    const usar = screen.queryByRole('button', { name: 'usar' });
-    if (usar) await user.click(usar);
-    await user.click(screen.getByRole('button', { name: 'Gerar letra a partir da cifra' }));
-    expect((screen.getByLabelText('Letra (opcional)') as HTMLTextAreaElement).value).toContain(
-      'Santo santo santo',
+    expect((await screen.findByText(/O app entendeu/)).textContent).toContain(
+      'acordes em cima da letra',
     );
-    await user.selectOptions(screen.getByLabelText('Tom oficial do ministério (opcional)'), 'A');
+    expect(screen.getByRole('region', { name: 'Pré-visualização' })).toBeTruthy();
+    // Primeiro acorde da cifra: Em.
+    expect((screen.getByLabelText('Tom') as HTMLSelectElement).value).toBe('Em');
+    expect(screen.getByText(/Sugerido pelo primeiro acorde \(Em\)/)).toBeTruthy();
+    await user.selectOptions(screen.getByLabelText('Tom'), 'G');
+    expect(screen.getByText('O tom em que a cifra foi escrita.')).toBeTruthy();
+
+    await user.click(screen.getByText('Mais detalhes'));
+    await user.click(screen.getByRole('button', { name: 'Gerar letra a partir da cifra' }));
+    expect(
+      (screen.getByLabelText('Letra (se for diferente da cifra)') as HTMLTextAreaElement).value,
+    ).toContain('Santo santo santo');
+    await user.selectOptions(screen.getByLabelText('Tom oficial do ministério'), 'A');
+    // Link inválido não bloqueia: avisa que não vai ser salvo.
+    await user.type(screen.getByLabelText('Link de áudio ou vídeo'), 'youtube.com/x');
+    expect(screen.getByText(/não vai ser salvo/)).toBeTruthy();
+    await user.dblClick(screen.getByRole('button', { name: 'Salvar música' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/repertorio/${SONG2_ID}`));
+    const creates = fake.calls.filter((c) => c.name === 'create_song');
+    expect(creates).toHaveLength(1);
+    expect(creates[0]!.ops[0]!.args[0]).toMatchObject({
+      p_title: 'Música colada',
+      p_official_key: 'A',
+      p_original_key: 'G',
+      p_media_url: '',
+    });
+  });
+
+  it('nova música só com a letra', async () => {
+    const { user, router } = renderApp('/repertorio/nova', { as: 'member' });
+    await findHeading('Nova música');
+    await screen.findByLabelText('Título');
+    await user.type(screen.getByLabelText('Título'), 'Só letra');
+    fireEvent.change(screen.getByLabelText('Cole a cifra ou a letra'), {
+      target: { value: 'Santo santo santo\nDeus poderoso' },
+    });
+    expect(await screen.findByText(/só a letra, sem acordes/)).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Salvar música' }));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/repertorio/${SONG2_ID}`));
-    const create = fake.calls.find((c) => c.name === 'create_song')!;
-    expect(create.ops[0]!.args[0]).toMatchObject({ p_title: 'Música colada', p_official_key: 'A' });
+    expect(fake.calls.find((c) => c.name === 'create_song')!.ops[0]!.args[0]).toMatchObject({
+      p_lyrics: 'Santo santo santo\nDeus poderoso',
+      p_chords: '',
+    });
+  });
+
+  it('sem permissão de cadastrar músicas', async () => {
+    renderApp('/repertorio/nova', {
+      as: 'member',
+      setup: (s) => {
+        s.rpc!.my_permissions = [];
+      },
+    });
+    expect(await screen.findByText('Você não tem permissão para cadastrar músicas.')).toBeTruthy();
   });
 });
 
@@ -156,21 +180,23 @@ describe('nova música: não perde o que foi digitado', () => {
   it('sair (Voltar/menu) com algo digitado pede confirmação', async () => {
     const { user, router } = renderApp('/repertorio/nova', { as: 'member' });
     await findHeading('Nova música');
+    await screen.findByLabelText('Título');
     // Sem nada digitado, sai sem perguntar.
     await router.navigate('/repertorio');
     await findHeading('Repertório');
     await router.navigate('/repertorio/nova');
     await findHeading('Nova música');
-    fireEvent.change(screen.getByLabelText('Cifra (opcional)'), {
+    await screen.findByLabelText('Título');
+    fireEvent.change(screen.getByLabelText('Cole a cifra ou a letra'), {
       target: { value: 'G D Santo' },
     });
     await router.navigate('/repertorio');
     const dialog = await screen.findByRole('dialog', { name: 'Sair sem salvar?' });
     await user.click(within(dialog).getByRole('button', { name: 'Continuar editando' }));
     expect(router.state.location.pathname).toBe('/repertorio/nova');
-    expect((screen.getByLabelText('Cifra (opcional)') as HTMLTextAreaElement).value).toContain(
-      'Santo',
-    );
+    expect(
+      (screen.getByLabelText('Cole a cifra ou a letra') as HTMLTextAreaElement).value,
+    ).toContain('Santo');
     await router.navigate('/repertorio');
     await user.click(
       within(await screen.findByRole('dialog', { name: 'Sair sem salvar?' })).getByRole('button', {
@@ -268,7 +294,7 @@ describe('integrantes', () => {
 describe('início, agenda, comunicados, escalas e instalar', () => {
   it('início mostra próximas escalas e a dica de instalar pode ser dispensada', async () => {
     const { user } = renderApp('/', { as: 'member' });
-    await findHeading(/Isa!/);
+    await findHeading(/Isa/);
     const dismiss = screen.queryByRole('button', { name: /Dispensar|Fechar aviso/ });
     if (dismiss) await user.click(dismiss);
     expect((await screen.findAllByText(/Culto de domingo/)).length).toBeGreaterThan(0);

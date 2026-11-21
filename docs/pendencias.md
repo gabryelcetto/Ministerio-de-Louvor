@@ -92,9 +92,9 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 ### 20. Ícone feito por script
 
-- **O quê:** o ícone (colcheia azul-marinho com bandeirola dourada, fundo creme) é desenhado por
-  `scripts/generate-icons.mjs`. É original e simples; se o ministério tiver um logo, trocar o
-  desenho no script (ou os arquivos em `public/`).
+- **O quê:** o ícone (chama do Louvor ADVOP sobre fundo `#121214`, desenho aprovado) é gerado
+  por `scripts/generate-icons.mjs` (`npm i --no-save sharp` antes). Se o desenho mudar, trocar o
+  SVG no script e no `<FlameLogo>` e rodar de novo.
 
 ### 21. Workflow "Deploy banco" ainda não executado
 
@@ -266,39 +266,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   consegue enviar um arquivo de até 45 MB, passando um pouco de 90%. O limite de 1 GB do plano
   continua longe.
 
-### 44. Duplo clique em "Salvar letra" grava duas vezes (Chromium) — QA, médio
-
-- **O quê:** no Chromium, um duplo clique rápido em "Salvar letra" manda duas gravações antes
-  de o botão virar "Salvando…" (WebKit e Firefox mandam uma). O resultado final é o mesmo
-  texto, mas o histórico ganha uma versão repetida.
-- **O que fazer:** ignorar o segundo envio enquanto o primeiro está em andamento (checar
-  `save.isPending` no `onSubmit` ou guardar uma trava num ref). Vale para todos os editores.
-- Relatório: `docs/qa/relatorio-qa-2026-11-21.md`.
-
-### 45. Sem internet ao salvar, a mensagem de conexão demora — QA, médio
-
-- **O quê:** com o aparelho offline, "Salvar letra" fica em "Salvando…" e não mostrou "Sem
-  conexão com o servidor…" em 15 s (o texto digitado continua no campo, nada se perde). A biblioteca não repete
-  gravações (só GET/HEAD), então a espera vem de outro ponto (provavelmente a sessão do Auth).
-- **O que fazer:** pôr um tempo limite nas gravações (ex.: `AbortSignal.timeout(15000)` no
-  cliente) para a pessoa ver o erro e poder tentar de novo; investigar com o navegador aberto.
-
-### 46. Envio de áudio sem internet fica parado em "Enviando… 0%" — QA, médio
-
-- **O quê:** sem internet, o envio de uma gravação ficou mais de 20 s em "Enviando… 0%", com
-  "Enviar" e "Descartar" desativados. A gravação continua salva no aparelho.
-- **O que fazer:** tempo limite também na consulta `check_audio_upload` e no envio (o XHR já
-  aceita `signal`), mais um botão "Cancelar envio".
-
-### 47. Mensagens específicas do envio de áudio não chegam à tela — Vitest, médio
-
-- **O quê:** `uploadErrorMessage()` monta mensagens claras ("Sem conexão…", "O arquivo passou
-  do limite de 45 MB", "Você não tem permissão…"), mas o `UploadError` não é
-  `UserFacingError`; o `friendlyError` mostra o texto genérico "Não foi possível enviar o
-  áudio".
-- **O que fazer:** `UploadError extends UserFacingError` (os dois ficam em `src/lib`) e ajustar
-  o teste em `reference-audios.test.tsx`.
-
 ### 48. Mutantes sobreviventes nos módulos com score mais baixo — baixo
 
 - **O quê:** score geral de 78,95% (alto 85, baixo 70, quebra 65). Os menores:
@@ -312,8 +279,39 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **O quê:** no happy-dom, o `isDirty` não muda ao digitar; o teste de "Editar dados" envia o
   formulário direto (`fireEvent.submit`). No navegador o botão funciona (coberto pelo E2E).
 
+### 50. Novo visual: conferir em celulares de verdade — médio
+
+- **O quê:** o visual "Louvor ADVOP" foi testado com Vitest (happy-dom) e, no CI, com Playwright
+  (Chromium, WebKit e Firefox emulando celular). Falta conferir em aparelho: cor da barra do
+  navegador no claro/escuro, área segura do iPhone (barra inferior e dock), Wake Lock no modo
+  tocar e a troca de tema com o app instalado.
+- **O que fazer:** abrir o app no celular (Ctrl+Shift+R no computador ou fechar e abrir o app
+  instalado, por causa do cache do PWA) e seguir o checklist do PR.
+
+### 51. Roteiros E2E e capturas atualizados sem rodar nesta máquina — médio
+
+- **O quê:** `e2e/fluxos.mjs`, `e2e/qa.mjs`, `e2e/varredura.mjs` e `tests/e2e/capturas.spec.ts`
+  foram atualizados para o novo visual (menu ⋯, tela Mais, dock, modal de tema), mas só rodam no
+  workflow **E2E (dados reais)** (sem Docker e sem Playwright aqui). A primeira execução no PR é
+  a validação.
+- **Sem teste com dados reais:** "Cancelar evento"/"Reativar evento" (menu ⋯ da escala) só tem
+  teste de tela com o Supabase de mentira; o RLS de `events` já é coberto pelo pgTAP.
+- **O que fazer:** olhar o resultado do E2E no PR; se algum seletor falhar, ajustar o roteiro.
+
 ## Resolvidas recentemente
 
+- **44 a 47. Salvar duas vezes, espera sem internet e mensagens do envio de áudio** — PR
+  "feat(design): novo visual Louvor ADVOP":
+  - `useSingleFlight` (`src/hooks`): duplo clique em "Salvar letra", "Salvar cifra", "Salvar tom
+    oficial", "Salvar dados" e "Salvar música" grava uma vez só (trava em ref, vale no mesmo
+    instante do clique).
+  - `fetchWithTimeout` (`src/lib/network.ts`) no cliente Supabase: sem internet falha na hora;
+    sem resposta em 15 s desiste. A tela mostra "Sem conexão. Tente de novo." e o texto digitado
+    continua no campo.
+  - Envio de áudio: falha na hora sem internet e desiste depois de 30 s sem progresso; a
+    gravação continua no aparelho para "Tentar de novo".
+  - `UploadError` agora é `UserFacingError`: "O arquivo passou do limite de 45 MB" e as outras
+    mensagens do envio chegam à tela. Todas vêm de `src/lib/messages.ts`.
 - **34. Funções novas do ministério nasciam "instrumental"** — tela **Integrantes → Funções do
   ministério**: o grupo (Cantores/Instrumentistas) é obrigatório ao cadastrar e pode ser trocado
   na lista; o banco não tem mais valor padrão (PR "admin redefine senha de integrante").

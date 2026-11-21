@@ -28,7 +28,7 @@ const browser = await chromium.launch({
   ],
 });
 
-async function session(email, device, password = PASSWORD) {
+async function session(email, device, password = PASSWORD, { theme = 'system' } = {}) {
   const context = await browser.newContext({
     ...device,
     locale: 'pt-BR',
@@ -36,6 +36,15 @@ async function session(email, device, password = PASSWORD) {
     serviceWorkers: 'block',
     permissions: ['microphone'],
   });
+  // Tema já escolhido: o modal "Como você prefere ver o app?" tem passo próprio (theme: null).
+  if (theme)
+    await context.addInitScript((t) => {
+      try {
+        if (!localStorage.getItem('louvor.theme')) localStorage.setItem('louvor.theme', t);
+      } catch {
+        // armazenamento indisponível
+      }
+    }, theme);
   const page = await context.newPage();
   page.apiErrors = [];
   page.on('response', async (r) => {
@@ -108,23 +117,84 @@ const poll = async (fn, what, timeout = 8000) => {
 const expectText = async (page, text, timeout = 8000) => {
   await main(page).getByText(text).first().waitFor({ timeout });
 };
+/** Abre o menu ⋯ do cabeçalho e devolve o item pedido. */
+const menuItem = async (page, name) => {
+  await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+  const item = page.getByRole('menuitem', { name, exact: true });
+  await item.waitFor();
+  return item;
+};
+/** Itens do menu ⋯ (abre, lê e fecha com Esc). */
+const menuItems = async (page) => {
+  await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+  await page.getByRole('menu').waitFor();
+  const items = await page.getByRole('menuitem').allInnerTexts();
+  await page.keyboard.press('Escape');
+  return items.map((t) => t.trim());
+};
+/** Campo da cifra no editor (o rótulo "Cifra" também é o da aba, que não é textbox). */
+const chordsBox = (page) => page.getByRole('textbox', { name: 'Cifra', exact: true });
+/** Escolhe uma opção de tema tocando no cartão (o <input> do rádio fica escondido). */
+const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click();
+
+// =============================================================================== TEMA (1º acesso)
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE, PASSWORD, {
+    theme: null,
+  });
+  const who = 'integrante';
+  const dialog = page.getByRole('dialog', { name: 'Como você prefere ver o app?' });
+
+  await step(page, who, 'Primeiro acesso: pergunta o tema (Automático marcado)', async () => {
+    await dialog.waitFor();
+    for (const name of ['Claro', 'Escuro', 'Automático'])
+      await dialog.getByRole('radio', { name: new RegExp(name) }).waitFor();
+    if (!(await dialog.getByRole('radio', { name: /Automático/ }).isChecked()))
+      throw new Error('Automático não veio marcado');
+    await pickTheme(dialog, 'Escuro');
+    await poll(
+      () => dialog.getByRole('radio', { name: /Escuro/ }).isChecked(),
+      'Escuro não ficou marcado',
+    );
+    await dialog.getByRole('button', { name: 'Continuar' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    const saved = await page.evaluate(() => localStorage.getItem('louvor.theme'));
+    if (saved !== 'dark') throw new Error(`tema salvo: ${saved}`);
+    if (!(await page.evaluate(() => document.documentElement.classList.contains('dark'))))
+      throw new Error('o app não ficou escuro');
+  });
+
+  await step(page, who, 'Segundo acesso: não pergunta de novo', async () => {
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(800);
+    if (await dialog.isVisible()) throw new Error('o modal de tema apareceu de novo');
+  });
+
+  await context.close();
+}
 
 // =============================================================================== INTEGRANTE
 {
   const { context, page } = await session('integrante@demo.local', MOBILE);
   const who = 'integrante';
 
-  await step(page, who, 'Início com saudação e próximo culto', async () => {
+  await step(page, who, 'Início com saudação e a próxima escala', async () => {
     await expectText(page, /Isa/);
-    await expectText(page, 'ADVOP'); // nome da igreja acima da saudação (celular)
+    // Topo das telas principais: chama + "Louvor ADVOP" e o sino.
+    await page.locator('header').getByText('Louvor ADVOP').first().waitFor();
+    await page.getByRole('link', { name: /^Notificações:/ }).waitFor();
     const title = await page.title();
     if (title !== 'Ministério de Louvor · ADVOP') throw new Error(`título da aba: ${title}`);
-    await expectText(page, 'Culto de celebração');
+    await expectText(page, /Sua próxima escala/i);
     await expectText(page, 'Ensaio geral');
-    await expectText(page, /Bateria/);
+    await expectText(page, /Você toca .*bateria/i);
+    await main(page).getByRole('link', { name: 'Ver repertório' }).waitFor();
   });
 
   await step(page, who, 'Música do repertório do culto abre no tom do dia', async () => {
+    await page.goto(`${BASE}/escalas/10000000-0000-4000-8000-000000000002`);
+    await page.waitForLoadState('networkidle');
     await main(page).locator('a[href*="/repertorio/"][href*="tom="]').first().click();
     await page.waitForURL(/\/repertorio\/.+tom=/);
     await page.waitForLoadState('networkidle');
@@ -169,15 +239,16 @@ const expectText = async (page, text, timeout = 8000) => {
     await page.waitForURL((u) => !u.search.includes('tom=E'));
   });
 
-  await step(page, who, 'Integrante vê editar cifra, tom e dados; não vê Arquivar', async () => {
+  await step(page, who, 'Menu ⋯: editar cifra, tom e dados; não vê Excluir', async () => {
+    const items = await menuItems(page);
     for (const name of ['Editar letra', 'Editar cifra', 'Definir tom oficial', 'Editar dados'])
-      await page.getByRole('button', { name }).waitFor();
-    if (await page.getByRole('button', { name: 'Arquivar' }).count())
-      throw new Error('botão Arquivar visível');
+      if (!items.includes(name)) throw new Error(`sem "${name}" no menu: ${items.join(', ')}`);
+    if (items.includes('Excluir')) throw new Error('Excluir visível para integrante');
+    return items.join(', ');
   });
 
   await step(page, who, 'Editar letra e salvar', async () => {
-    await page.getByRole('button', { name: 'Editar letra' }).click();
+    await (await menuItem(page, 'Editar letra')).click();
     const box = page.getByRole('textbox', { name: 'Letra', exact: true });
     await box.fill(`${await box.inputValue()}\nVerso de teste (integrante)`);
     await page.getByRole('button', { name: 'Salvar letra' }).click();
@@ -240,8 +311,10 @@ const expectText = async (page, text, timeout = 8000) => {
     await expectText(page, 'Bem-vindos à nova plataforma');
   });
 
-  await step(page, who, 'Notificações: marcar todas como lidas', async () => {
-    await page.goto(`${BASE}/notificacoes`);
+  await step(page, who, 'Notificações (pelo sino): marcar todas como lidas', async () => {
+    await page.goto(`${BASE}/`);
+    await page.getByRole('link', { name: /^Notificações:/ }).click();
+    await page.waitForURL(/\/notificacoes$/);
     await page.waitForLoadState('networkidle');
     await expectText(page, /Você foi escalado/);
     await page.getByRole('button', { name: 'Marcar todas como lidas' }).click();
@@ -253,20 +326,76 @@ const expectText = async (page, text, timeout = 8000) => {
     );
   });
 
-  // Configurações é a tela pessoal (perfil, tema, instalar, sair): aparece para todos.
-  await step(page, who, 'Menu Mais abre, mostra os itens e fecha com Esc', async () => {
+  await step(
+    page,
+    who,
+    'Navegação inferior: Início, Escalas, Repertório, Agenda, Mais',
+    async () => {
+      await page.goto(`${BASE}/`);
+      const nav = page.getByRole('navigation', { name: 'Navegação principal' });
+      // allInnerTexts não espera: aguarda a barra aparecer antes de ler.
+      await nav.getByRole('link', { name: 'Mais', exact: true }).waitFor();
+      const links = (await nav.getByRole('link').allInnerTexts()).map((t) => t.trim());
+      const expected = ['Início', 'Escalas', 'Repertório', 'Agenda', 'Mais'];
+      if (links.join('|') !== expected.join('|')) throw new Error(`itens: ${links.join(', ')}`);
+      await nav.getByRole('link', { name: 'Repertório' }).click();
+      await page.waitForURL(/\/repertorio$/);
+      await poll(
+        async () =>
+          (await nav.getByRole('link', { name: 'Repertório' }).getAttribute('aria-current')) ===
+          'page',
+        'Repertório não ficou marcado como atual',
+      );
+      return links.join(', ');
+    },
+  );
+
+  // Mais: perfil, Integrantes, Comunicados, Configurações e, no fim, Sair (só aqui).
+  await step(page, who, 'Tela Mais: itens sem administração e Sair só aqui', async () => {
     await page.goto(`${BASE}/`);
-    const button = page.getByRole('button', { name: /^Mais/ });
-    await button.click();
-    const menu = page.getByRole('navigation', { name: 'Mais opções' });
-    for (const item of ['Notificações', 'Comunicados', 'Integrantes', 'Configurações'])
-      await menu.getByRole('link', { name: item }).waitFor();
-    if (await menu.getByRole('link', { name: 'Atividade recente' }).count())
+    await page
+      .getByRole('navigation', { name: 'Navegação principal' })
+      .getByRole('link', { name: 'Mais', exact: true })
+      .click();
+    await page.waitForURL(/\/mais$/);
+    for (const item of ['Integrantes', 'Comunicados', 'Aparência', 'Minha conta'])
+      await main(page)
+        .getByRole('link', { name: new RegExp(item) })
+        .waitFor();
+    if (
+      await main(page)
+        .getByRole('link', { name: /Atividade recente/ })
+        .count()
+    )
       throw new Error('Atividade recente visível para integrante');
-    await page.keyboard.press('Escape');
+    await main(page).getByRole('button', { name: 'Sair' }).waitFor();
+    for (const path of ['/', '/repertorio', '/escalas', '/configuracoes']) {
+      await page.goto(`${BASE}${path}`);
+      await page.waitForLoadState('networkidle');
+      if (await page.getByRole('button', { name: 'Sair', exact: true }).count())
+        throw new Error(`botão Sair em ${path}`);
+    }
+  });
+
+  await step(page, who, 'Configurações: tema Escuro fica salvo; volta ao Automático', async () => {
+    await page.goto(`${BASE}/configuracoes#aparencia`);
+    await page.waitForLoadState('networkidle');
+    const group = page.getByRole('radiogroup', { name: 'Tema' });
+    await pickTheme(group, 'Escuro');
     await poll(
-      () => button.evaluate((el) => el === document.activeElement),
-      'foco não voltou ao Mais',
+      () => page.evaluate(() => document.documentElement.classList.contains('dark')),
+      'o app não ficou escuro',
+    );
+    const saved = await page.evaluate(() => localStorage.getItem('louvor.theme'));
+    if (saved !== 'dark') throw new Error(`tema salvo: ${saved}`);
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    if (!(await page.evaluate(() => document.documentElement.classList.contains('dark'))))
+      throw new Error('o tema escuro não ficou depois de recarregar');
+    await pickTheme(page.getByRole('radiogroup', { name: 'Tema' }), 'Automático');
+    await poll(
+      async () => (await page.evaluate(() => localStorage.getItem('louvor.theme'))) === 'system',
+      'não voltou ao Automático',
     );
   });
 
@@ -287,26 +416,26 @@ const expectText = async (page, text, timeout = 8000) => {
   await step(page, who, 'Editar cifra e salvar', async () => {
     await page.goto(`${BASE}/repertorio/${SONG}`);
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: /Editar cifra/ }).click();
-    const box = page.getByLabel('Cifra (ChordPro)');
+    await (await menuItem(page, 'Editar cifra')).click();
+    const box = chordsBox(page);
     await box.fill(`${await box.inputValue()}\n[G]Linha nova do [D]admin`);
     await page.getByRole('button', { name: 'Salvar cifra' }).click();
     await expectText(page, 'Cifra salva.');
   });
 
   await step(page, who, 'Definir tom oficial', async () => {
-    await page.getByRole('button', { name: /Definir tom oficial/ }).click();
+    await (await menuItem(page, 'Definir tom oficial')).click();
     await page.getByLabel('Tom oficial', { exact: true }).selectOption('A');
     await page.getByRole('button', { name: 'Salvar tom oficial' }).click();
     await expectText(page, 'Tom oficial salvo.');
   });
 
-  await step(page, who, 'Histórico: restaurar uma versão', async () => {
+  await step(page, who, 'Histórico: restaurar uma alteração', async () => {
     await page.goto(`${BASE}/repertorio/${SONG}/historico`);
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: 'Restaurar' }).first().click();
     await page.getByRole('dialog').getByRole('button', { name: 'Restaurar' }).click();
-    await expectText(page, /Versão restaurada/);
+    await expectText(page, /Conteúdo restaurado/);
   });
 
   await step(page, who, 'Integrantes com telefone', async () => {
@@ -324,13 +453,22 @@ const expectText = async (page, text, timeout = 8000) => {
     await expectText(page, /Ana/);
   });
 
-  await step(page, who, 'Menu Mais com Configurações e Atividade recente', async () => {
-    await page.goto(`${BASE}/`);
-    await page.getByRole('button', { name: /^Mais/ }).click();
-    const menu = page.getByRole('navigation', { name: 'Mais opções' });
-    await menu.getByRole('link', { name: 'Configurações' }).waitFor();
-    await menu.getByRole('link', { name: 'Atividade recente' }).waitFor();
-    await page.keyboard.press('Escape');
+  await step(page, who, 'Tela Mais com itens de administração', async () => {
+    await page.goto(`${BASE}/mais`);
+    await page.waitForLoadState('networkidle');
+    for (const item of ['Montar escala', 'Cadastrar integrante', 'Atividade recente'])
+      await main(page)
+        .getByRole('link', { name: new RegExp(item) })
+        .waitFor();
+  });
+
+  await step(page, who, 'Menu ⋯ da música mostra Excluir para o admin', async () => {
+    await page.goto(`${BASE}/repertorio/${SONG}`);
+    await page.waitForLoadState('networkidle');
+    const items = await menuItems(page);
+    for (const name of ['Editar cifra', 'Editar letra', 'Histórico', 'Excluir'])
+      if (!items.includes(name)) throw new Error(`sem "${name}": ${items.join(', ')}`);
+    return items.join(', ');
   });
 
   await context.close();
@@ -438,15 +576,15 @@ let newSongPath = '';
       await page.getByRole('link', { name: 'Nova música' }).click();
       await page.waitForURL(/\/repertorio\/nova$/);
       await page.getByLabel('Título').fill(NEW_SONG);
-      await page.getByLabel('Cifra (opcional)').fill(PASTED);
+      await page.getByRole('textbox', { name: 'Cole a cifra ou a letra' }).fill(PASTED);
       await expectText(page, /acordes em cima da letra/);
       const preview = page.getByRole('region', { name: 'Pré-visualização' });
       await preview.getByText('Refrão').waitFor();
       await preview.getByText('D7(9)').waitFor();
-      await expectText(page, /Tom detectado na cifra/);
-      await page.getByRole('button', { name: 'usar' }).click();
-      const key = await page.getByLabel('Tom original (opcional)').inputValue();
-      if (key !== 'G') throw new Error(`tom original sugerido: ${key}`);
+      // Tom sugerido pelo primeiro acorde (G), editável.
+      await expectText(page, /Sugerido pelo primeiro acorde \(G\)/);
+      const key = await page.getByRole('combobox', { name: 'Tom', exact: true }).inputValue();
+      if (key !== 'G') throw new Error(`tom sugerido: ${key}`);
     },
   );
 
@@ -471,28 +609,27 @@ let newSongPath = '';
 
   await step(page, who, 'Nova música: integrante edita a cifra', async () => {
     await page.goto(`${BASE}${newSongPath}`);
-    await page.getByRole('button', { name: 'Editar cifra' }).click();
-    const box = page.getByLabel('Cifra (ChordPro)');
+    await (await menuItem(page, 'Editar cifra')).click();
+    const box = chordsBox(page);
     await box.fill(`${await box.inputValue()}\n[C]Linha nova da [G]Isa`);
     await page.getByRole('button', { name: 'Salvar cifra' }).click();
     await expectText(page, 'Cifra salva.');
   });
 
   await step(page, who, 'Nova música: integrante define o tom oficial', async () => {
-    await page.getByRole('button', { name: 'Definir tom oficial' }).click();
+    await (await menuItem(page, 'Definir tom oficial')).click();
     await page.getByLabel('Tom oficial', { exact: true }).selectOption('A');
     await page.getByRole('button', { name: 'Salvar tom oficial' }).click();
     await expectText(page, 'Tom oficial salvo.');
   });
 
   await step(page, who, 'Nova música: integrante edita os dados', async () => {
-    await page.getByRole('button', { name: 'Editar dados' }).click();
+    await (await menuItem(page, 'Editar dados')).click();
     await page.getByLabel('Artista / autor (opcional)').fill('Autor fictício');
     await page.getByRole('button', { name: 'Salvar dados' }).click();
     await expectText(page, 'Dados da música salvos.');
     await expectText(page, 'Autor fictício');
-    if (await page.getByRole('button', { name: 'Arquivar' }).count())
-      throw new Error('botão Arquivar visível');
+    if ((await menuItems(page)).includes('Excluir')) throw new Error('Excluir visível');
   });
 
   await step(
@@ -540,14 +677,15 @@ let newSongPath = '';
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: 'Restaurar' }).first().click();
     await page.getByRole('dialog').getByRole('button', { name: 'Restaurar' }).click();
-    await expectText(page, /Versão restaurada/);
+    await expectText(page, /Conteúdo restaurado/);
   });
 
-  await step(page, who, 'Arquivar música (só admin)', async () => {
+  await step(page, who, 'Excluir música pelo menu ⋯ (só admin)', async () => {
     await page.goto(`${BASE}${newSongPath}`);
-    await page.getByRole('button', { name: 'Arquivar' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click();
-    await expectText(page, /arquivada/);
+    await page.waitForLoadState('networkidle');
+    await (await menuItem(page, 'Excluir')).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Excluir' }).click();
+    await expectText(page, /excluída/);
     await page.goto(`${BASE}/repertorio`);
     await page.getByLabel('Buscar música').fill('Teste E2E');
     await expectText(page, 'Nenhuma música encontrada');
@@ -921,7 +1059,8 @@ const skipNaming = async (page) => {
 
   await step(page, who, 'Player: velocidade 75% sem mudar o tom', async () => {
     const player = playerOf(page);
-    await player.getByRole('button', { name: '75%' }).click();
+    // Chip do dock: 100% → 75% → 50%.
+    await player.getByRole('button', { name: /^Velocidade/ }).click();
     await poll(async () => (await attr(player, 'data-speed')) === '0.75', 'velocidade não mudou');
     const rate = await page.evaluate(
       () => document.querySelector('[data-testid="audio-player"] audio')?.playbackRate,
@@ -937,13 +1076,14 @@ const skipNaming = async (page) => {
       async () => Number(await attr(player, 'data-pitch')) === before + 1,
       'tom do áudio não acompanhou a cifra',
     );
-    await player.getByRole('button', { name: 'Descer meio tom do áudio' }).click();
-    await player.getByRole('button', { name: 'Descer meio tom do áudio' }).click();
+    // Ajustes do áudio (abaixo dos áudios de referência).
+    await page.getByRole('button', { name: 'Descer meio tom do áudio' }).click();
+    await page.getByRole('button', { name: 'Descer meio tom do áudio' }).click();
     await poll(
       async () => Number(await attr(player, 'data-pitch')) === before - 1,
       'ajuste manual não funcionou',
     );
-    const follow = player.getByRole('checkbox', { name: /Acompanhar o tom da cifra/ });
+    const follow = page.getByRole('checkbox', { name: /Acompanhar o tom da cifra/ });
     if (await follow.isChecked()) throw new Error('ajuste manual deveria desligar o acompanhar');
     await player.getByRole('button', { name: /^Pausar/ }).click();
     return `pitch ${before} → ${before - 1}`;
@@ -974,9 +1114,15 @@ const skipNaming = async (page) => {
   });
 
   await step(page, who, 'Gravar na música: ouve e o tom acompanha a cifra', async () => {
-    // Mais novo primeiro: o primeiro player é a gravação que acabou de ser enviada.
-    const item = main(page).locator('li').filter({ hasText: 'Arranjo E2E' });
-    const player = item.getByTestId('audio-player');
+    // Escolhe a gravação para o player do dock.
+    await main(page)
+      .getByRole('button', { name: /(Ouvir no player|No player).*Arranjo E2E/ })
+      .click();
+    const player = playerOf(page);
+    await poll(
+      async () => /Arranjo E2E/.test(await player.innerText()),
+      'o player não trocou para a gravação',
+    );
     await player.getByRole('button', { name: /^Tocar/ }).click();
     await poll(
       async () => (await attr(player, 'data-engine')) !== 'parado',
@@ -1023,7 +1169,9 @@ const skipNaming = async (page) => {
       throw new Error('Gravar continua liberado com 3 áudios');
     if (!(await page.getByRole('button', { name: 'Enviar áudio' }).isDisabled()))
       throw new Error('Enviar áudio continua liberado com 3 áudios');
-    const players = await main(page).getByTestId('audio-player').count();
+    const players = await main(page)
+      .getByRole('button', { name: /(Ouvir no player|No player)/ })
+      .count();
     if (players !== 3) throw new Error(`${players} áudios na lista`);
   });
 

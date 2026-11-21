@@ -1,8 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useId } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import { Link } from 'react-router';
 import { FormError } from '@/components/common/form-error';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
@@ -22,6 +21,7 @@ import {
   type MinistryFunction,
 } from '../functions';
 import type { Section } from '../sections';
+import { ScreenHeader } from '@/components/layout/screen-header';
 
 const SECTIONS: Section[] = ['vocal', 'instrumental'];
 
@@ -34,41 +34,36 @@ export function FunctionsPage() {
   const functions = useManagedFunctions();
 
   return (
-    <section className="mx-auto flex max-w-2xl flex-col gap-5">
-      <Link
-        to="/integrantes"
-        className="inline-flex items-center gap-2 self-start rounded-md px-2 py-1 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <ArrowLeft aria-hidden="true" className="size-4" />
-        Integrantes
-      </Link>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Funções do ministério</h1>
-        <p className="text-sm text-muted-foreground">
-          Cada função pertence a um grupo: Cantores ou Instrumentistas. O grupo aparece como selo e
-          filtro nas escalas e na lista de integrantes.
-        </p>
-      </header>
+    <>
+      <ScreenHeader title="Funções do ministério" back="/integrantes" />
+      <section className="mx-auto flex max-w-2xl flex-col gap-5">
+        <header>
+          <p className="text-sm text-muted-foreground">
+            Cada função pertence a um grupo: Cantores ou Instrumentistas. O grupo aparece como selo
+            e filtro nas escalas e na lista de integrantes.
+          </p>
+        </header>
 
-      {!canManage ? (
-        <p role="alert" className="rounded-lg border p-4">
-          Você não tem permissão para gerenciar as funções do ministério.
-        </p>
-      ) : functions.isPending ? (
-        <LoadingState label="Carregando funções…" />
-      ) : functions.isError ? (
-        <ErrorState onRetry={() => void functions.refetch()} />
-      ) : (
-        <>
-          <AddFunctionForm sortOrder={nextSortOrder(functions.data)} />
-          {functions.data.length === 0 ? (
-            <EmptyState>Nenhuma função cadastrada.</EmptyState>
-          ) : (
-            <FunctionList functions={functions.data} />
-          )}
-        </>
-      )}
-    </section>
+        {!canManage ? (
+          <p role="alert" className="rounded-lg border p-4">
+            Você não tem permissão para gerenciar as funções do ministério.
+          </p>
+        ) : functions.isPending ? (
+          <LoadingState label="Carregando funções…" />
+        ) : functions.isError ? (
+          <ErrorState onRetry={() => void functions.refetch()} />
+        ) : (
+          <>
+            <AddFunctionForm sortOrder={nextSortOrder(functions.data)} />
+            {functions.data.length === 0 ? (
+              <EmptyState>Nenhuma função cadastrada.</EmptyState>
+            ) : (
+              <FunctionList functions={functions.data} />
+            )}
+          </>
+        )}
+      </section>
+    </>
   );
 }
 

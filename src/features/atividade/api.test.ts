@@ -27,7 +27,7 @@ describe('descrição da atividade', () => {
   it('auditoria', () => {
     expect(
       describeActivity({ kind: 'audit', field: null, changeType: null, action: 'archive_song' }),
-    ).toBe('Arquivou a música');
+    ).toBe('Excluiu a música');
     expect(
       describeActivity({
         kind: 'audit',
@@ -35,7 +35,7 @@ describe('descrição da atividade', () => {
         changeType: null,
         action: 'restore_version',
       }),
-    ).toBe('Restaurou uma versão (cifra)');
+    ).toBe('Restaurou uma alteração (cifra)');
     expect(
       describeActivity({ kind: 'audit', field: null, changeType: null, action: 'outra' }),
     ).toBe('Alteração administrativa');

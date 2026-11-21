@@ -76,3 +76,31 @@ export function uniqueCategories(values: readonly (string | null)[]): string[] {
   const set = new Set(values.map((v) => v?.trim()).filter((v): v is string => Boolean(v)));
   return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
+
+/**
+ * Distância do tom oficial em TONS, como se fala na música: 1 semitom = ½ tom.
+ * "+½ tom", "+1 tom", "−1½ tom", "+2 tons"; 0 = "no tom oficial".
+ */
+export function formatTones(semitones: number): string {
+  if (semitones === 0) return 'no tom oficial';
+  const sign = semitones > 0 ? '+' : '−';
+  const abs = Math.abs(semitones);
+  const whole = Math.floor(abs / 2);
+  const half = abs % 2 === 1 ? '½' : '';
+  const amount = whole === 0 ? half : `${whole}${half}`;
+  return `${sign}${amount} ${abs > 3 ? 'tons' : 'tom'}`;
+}
+
+/**
+ * Legenda do tom no dock: "+1 tom · áudio acompanha". Sem áudio, só a distância do oficial;
+ * com o tom do áudio ajustado à mão, avisa.
+ */
+export function transposeLegend(
+  semitonesFromOfficial: number,
+  audio: 'none' | 'follow' | 'manual',
+): string {
+  const tones = formatTones(semitonesFromOfficial);
+  if (audio === 'follow') return `${tones} · áudio acompanha`;
+  if (audio === 'manual') return `${tones} · áudio no ajuste manual`;
+  return tones;
+}

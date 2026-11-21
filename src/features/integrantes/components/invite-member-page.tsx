@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, Check, UserPlus } from 'lucide-react';
+import { Check, UserPlus } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Link } from 'react-router';
@@ -21,6 +21,7 @@ import {
   type InviteResult,
 } from '../invite';
 import { TemporaryPasswordPanel } from './temporary-password';
+import { ScreenHeader } from '@/components/layout/screen-header';
 
 /** Cadastrar integrante (só com members.manage; líder/admin só com permissions.manage). */
 export function InviteMemberPage() {
@@ -34,31 +35,24 @@ export function InviteMemberPage() {
   const canSetRoles = permissions.data.includes('permissions.manage');
 
   return (
-    <section className="mx-auto flex max-w-2xl flex-col gap-5">
-      <Link
-        to="/integrantes"
-        className="inline-flex items-center gap-2 self-start rounded-md px-2 py-1 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <ArrowLeft aria-hidden="true" className="size-4" />
-        Integrantes
-      </Link>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Cadastrar integrante</h1>
+    <>
+      <ScreenHeader title="Cadastrar integrante" back="/integrantes" />
+      <section className="mx-auto flex max-w-2xl flex-col gap-5">
         <p className="text-sm text-muted-foreground">
           A pessoa recebe uma senha provisória e cria a própria senha no primeiro acesso.
         </p>
-      </header>
 
-      {!canManage ? (
-        <p role="alert" className="rounded-lg border p-4">
-          Você não tem permissão para cadastrar integrantes.
-        </p>
-      ) : result ? (
-        <InviteResultCard result={result} onAnother={() => setResult(null)} />
-      ) : (
-        <InviteForm canSetRoles={canSetRoles} onDone={setResult} />
-      )}
-    </section>
+        {!canManage ? (
+          <p role="alert" className="rounded-lg border p-4">
+            Você não tem permissão para cadastrar integrantes.
+          </p>
+        ) : result ? (
+          <InviteResultCard result={result} onAnother={() => setResult(null)} />
+        ) : (
+          <InviteForm canSetRoles={canSetRoles} onDone={setResult} />
+        )}
+      </section>
+    </>
   );
 }
 

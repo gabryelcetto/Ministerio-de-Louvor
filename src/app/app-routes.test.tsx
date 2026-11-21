@@ -11,7 +11,7 @@ vi.mock('@/services/supabase', async () => ({
 
 /** Cada tela do app com o título esperado. */
 const SCREENS: [string, RegExp][] = [
-  ['/', /Ana!|Isa!/],
+  ['/', /(Bom dia|Boa tarde|Boa noite), (Ana|Isa)/],
   ['/escalas', /Minhas escalas/],
   [`/escalas/${SERVICE_ID}`, /Culto de domingo/],
   [`/escalas/${REHEARSAL_ID}`, /Ensaio geral/],
