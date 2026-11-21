@@ -25,7 +25,9 @@ supabase db dump --remote="$SUPABASE_DB_URL" --role-only -f "$work/roles.sql" >&
 supabase db dump --remote="$SUPABASE_DB_URL" -f "$work/schema.sql" >&2
 # Tabelas internas do recurso de vetores do Storage (não usado pelo app): o usuário postgres não
 # pode gravá-las na restauração. buckets e objects (os áudios do app) continuam no backup.
-supabase db dump --remote="$SUPABASE_DB_URL" --data-only --use-copy \n  -x storage.buckets_vectors,storage.vector_indexes \n  -f "$work/data.sql" >&2
+supabase db dump --remote="$SUPABASE_DB_URL" --data-only --use-copy \
+  -x storage.buckets_vectors,storage.vector_indexes \
+  -f "$work/data.sql" >&2
 
 # Dump vazio é falha, não sucesso.
 for f in roles schema data; do
