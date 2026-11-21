@@ -41,9 +41,16 @@ jobs:
         run: cp supabase/ci/simular-nuvem.sql supabase/migrations/00000000000000_simular_nuvem.sql
 
       - name: Subir Supabase local (banco, Auth, API)
-        run: >
-          supabase start -x
-          studio,storage-api,imgproxy,logflare,vector,realtime,postgres-meta,supavisor,mailpit
+        # O registro de imagens (public.ecr.aws) às vezes limita downloads ("Data limit
+        # exceeded"): tenta de novo com espera antes de desistir.
+        run: |
+          for attempt in 1 2 3 4; do
+            supabase start -x studio,storage-api,imgproxy,logflare,vector,realtime,postgres-meta,supavisor,mailpit && exit 0
+            echo "::warning::supabase start falhou (tentativa $attempt); nova tentativa em $((attempt * 60))s"
+            supabase stop --no-backup || true
+            sleep $((attempt * 60))
+          done
+          exit 1
 
       - name: Variáveis do Supabase local
         run: |
