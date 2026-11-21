@@ -456,16 +456,18 @@ function SizeButton({
   children: ReactNode;
 }) {
   return (
+    // Nome acessível = texto para leitor de tela (sem aria-label): "A−" visível não diverge do
+    // nome "Diminuir letra" (WCAG 2.5.3, regra label-content-name-mismatch do axe).
     <Button
       type="button"
       variant="ghost"
       className="size-11 p-0 text-base font-bold"
-      aria-label={label}
       title={label}
       onClick={onClick}
       disabled={disabled}
     >
       <span aria-hidden="true">{children}</span>
+      <span className="sr-only">{label}</span>
     </Button>
   );
 }
