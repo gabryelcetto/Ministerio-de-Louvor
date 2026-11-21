@@ -6,7 +6,8 @@ import { ScreenHeader } from '@/components/layout/screen-header';
 import { Label } from '@/components/ui/label';
 import { useMyPermissions } from '@/features/auth';
 import { formatShortDate, formatTime } from '@/lib/dates';
-import { ACTIVITY_LIMIT, describeActivity, useActivity, useActivityFilters } from '../api';
+import { LoadMore } from '@/components/common/load-more';
+import { describeActivity, useActivity, useActivityFilters } from '../api';
 
 const selectClass =
   'h-11 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -140,12 +141,12 @@ function ActivityContent() {
                 );
               })}
             </ul>
-            {activity.data.length >= ACTIVITY_LIMIT && (
-              <p className="text-sm text-muted-foreground">
-                Mostrando as {ACTIVITY_LIMIT} alterações mais recentes. Use os filtros para ver
-                outras.
-              </p>
-            )}
+            <LoadMore
+              hasMore={activity.hasNextPage}
+              loading={activity.isFetchingNextPage}
+              error={activity.isFetchNextPageError}
+              onLoad={() => void activity.fetchNextPage()}
+            />
           </>
         )}
       </section>

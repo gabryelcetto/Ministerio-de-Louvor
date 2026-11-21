@@ -89,6 +89,7 @@ function applyOrderLimit(rows: Row[], ops: Op[]): Row[] {
       });
     }
     if (method === 'limit') out = out.slice(0, args[0] as number);
+    if (method === 'range') out = out.slice(args[0] as number, (args[1] as number) + 1);
   }
   return out;
 }

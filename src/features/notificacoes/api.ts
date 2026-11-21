@@ -1,9 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { nextOffset, pageRange } from '@/lib/paging';
 import { useSession } from '@/features/auth';
 import { supabase } from '@/services/supabase';
-
-/** Quantas notificações a tela mostra (as mais recentes). */
-export const NOTIFICATIONS_LIMIT = 100;
 
 export interface NotificationItem {
   id: string;
@@ -16,12 +14,13 @@ export interface NotificationItem {
 }
 
 /** Só as do usuário logado: o RLS garante (user_id = auth.uid()). */
-export async function fetchNotifications(): Promise<NotificationItem[]> {
+export async function fetchNotifications(offset = 0): Promise<NotificationItem[]> {
+  const [from, to] = pageRange(offset);
   const { data, error } = await supabase
     .from('notifications')
     .select('id, type, title, body, link, read_at, created_at')
     .order('created_at', { ascending: false })
-    .limit(NOTIFICATIONS_LIMIT);
+    .range(from, to);
   if (error) throw error;
   return data;
 }
@@ -65,9 +64,13 @@ const keys = {
 export function useNotifications() {
   const { session } = useSession();
   const userId = session?.user.id;
-  return useQuery({
+  // "Carregar mais": páginas de 30; a tela recebe a lista já juntada.
+  return useInfiniteQuery({
     queryKey: keys.list(userId),
-    queryFn: fetchNotifications,
+    queryFn: ({ pageParam }) => fetchNotifications(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, all) => nextOffset(last, all),
+    select: (data) => data.pages.flat(),
     enabled: Boolean(userId),
   });
 }

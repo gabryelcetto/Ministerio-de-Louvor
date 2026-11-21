@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
+import { nextOffset, pageRange } from '@/lib/paging';
 import { displayName } from '@/features/escalas';
 import { requireAffected } from '@/lib/errors';
 import { supabase } from '@/services/supabase';
@@ -57,8 +63,6 @@ export interface SongVersion {
   isCurrent: boolean;
 }
 
-export const VERSIONS_LIMIT = 100;
-
 /** Marca como "atual" a primeira versão de cada campo numa lista do mais recente ao mais antigo. */
 export function markCurrent<T extends { field: VersionField }>(
   versions: readonly T[],
@@ -71,7 +75,9 @@ export function markCurrent<T extends { field: VersionField }>(
   });
 }
 
-export async function fetchVersions(songId: string): Promise<SongVersion[]> {
+/** Uma página do histórico (sem "atual": marcado depois de juntar as páginas). */
+export async function fetchVersions(songId: string, offset = 0): Promise<SongVersion[]> {
+  const [from, to] = pageRange(offset);
   const { data, error } = await supabase
     .from('song_versions')
     .select(
@@ -79,19 +85,18 @@ export async function fetchVersions(songId: string): Promise<SongVersion[]> {
     )
     .eq('song_id', songId)
     .order('changed_at', { ascending: false })
-    .limit(VERSIONS_LIMIT);
+    .range(from, to);
   if (error) throw error;
-  return markCurrent(
-    data.map((v) => ({
-      id: v.id,
-      field: v.field,
-      changeType: v.change_type,
-      oldValue: v.old_value,
-      newValue: v.new_value,
-      changedAt: v.changed_at,
-      author: v.author ? displayName(v.author) : null,
-    })),
-  );
+  return data.map((v) => ({
+    id: v.id,
+    field: v.field,
+    changeType: v.change_type,
+    oldValue: v.old_value,
+    newValue: v.new_value,
+    changedAt: v.changed_at,
+    author: v.author ? displayName(v.author) : null,
+    isCurrent: false,
+  }));
 }
 
 /** Só com history.restore (a função confere e responde 42501). Grava uma NOVA versão "restore". */
@@ -122,9 +127,13 @@ export async function invalidateAfterSave(
 }
 
 export function useSongVersions(songId: string | undefined) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: songKeys.versions(songId ?? ''),
-    queryFn: () => fetchVersions(songId as string),
+    queryFn: ({ pageParam }) => fetchVersions(songId as string, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, all) => nextOffset(last, all),
+    // "Atual" = a mais recente de cada campo, olhando todas as páginas carregadas.
+    select: (data) => markCurrent(data.pages.flat()),
     enabled: Boolean(songId),
   });
 }

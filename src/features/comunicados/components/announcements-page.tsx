@@ -5,7 +5,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/common/states
 import { ScreenHeader } from '@/components/layout/screen-header';
 import { usePermission } from '@/features/auth';
 import { formatDayLabel, formatTime } from '@/lib/dates';
-import { ANNOUNCEMENTS_LIMIT, useAnnouncements, useMyReads, type AnnouncementItem } from '../api';
+import { LoadMore } from '@/components/common/load-more';
+import { useAnnouncements, useMyReads, type AnnouncementItem } from '../api';
 
 /** Comunicados: fixados primeiro, depois do mais recente. Toque abre o detalhe. */
 export function AnnouncementsPage() {
@@ -19,7 +20,7 @@ export function AnnouncementsPage() {
       <section className="mx-auto flex max-w-[45rem] flex-col gap-5 pb-20">
         {query.isPending ? (
           <LoadingState label="Carregando comunicados…" />
-        ) : query.isError ? (
+        ) : query.isError || !query.data ? (
           <ErrorState onRetry={() => void query.refetch()} />
         ) : query.data.length === 0 ? (
           <EmptyState>Nenhum comunicado por enquanto.</EmptyState>
@@ -36,11 +37,12 @@ export function AnnouncementsPage() {
                 </li>
               ))}
             </ul>
-            {query.data.length >= ANNOUNCEMENTS_LIMIT && (
-              <p className="text-center text-sm text-muted-foreground">
-                Mostrando os {ANNOUNCEMENTS_LIMIT} mais recentes.
-              </p>
-            )}
+            <LoadMore
+              hasMore={query.hasNextPage}
+              loading={query.isFetchingNextPage}
+              error={query.isFetchNextPageError}
+              onLoad={() => void query.fetchNextPage()}
+            />
           </>
         )}
       </section>

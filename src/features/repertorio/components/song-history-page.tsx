@@ -10,7 +10,8 @@ import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import type { VersionField } from '@/types/app.types';
 import { useSong } from '../api';
-import { useRestoreVersion, useSongVersions, VERSIONS_LIMIT, type SongVersion } from '../editing';
+import { LoadMore } from '@/components/common/load-more';
+import { useRestoreVersion, useSongVersions, type SongVersion } from '../editing';
 import {
   CHANGE_LABEL,
   changedMetadata,
@@ -113,11 +114,12 @@ export function SongHistoryPage() {
                 </li>
               ))}
             </ol>
-            {versions.data.length >= VERSIONS_LIMIT && (
-              <p className="text-center text-sm text-muted-foreground">
-                Mostrando as {VERSIONS_LIMIT} alterações mais recentes.
-              </p>
-            )}
+            <LoadMore
+              hasMore={versions.hasNextPage}
+              loading={versions.isFetchingNextPage}
+              error={versions.isFetchNextPageError}
+              onLoad={() => void versions.fetchNextPage()}
+            />
           </>
         )}
 

@@ -574,7 +574,7 @@ isOneToOne: false
             }[]
                            },
 "get_recent_activity":
-{ Args: { "p_actor"?: string,"p_limit"?: number,"p_song"?: string }; Returns: {
+{ Args: { "p_actor"?: string,"p_limit"?: number,"p_offset"?: number,"p_song"?: string }; Returns: {
               "action": string,"actor_id": string,"actor_name": string,"change_type": string,"field": string,"kind": string,"occurred_at": string,"song_id": string,"song_title": string,"version_id": string
             }[]
                            },
