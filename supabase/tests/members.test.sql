@@ -155,11 +155,17 @@ select throws_ok(
   'conta bloqueada não se reconfigura'
 );
 
-select lives_ok($$select public.complete_password_change()$$, 'complete_password_change() funciona');
+-- Pendência 30: o usuário não libera a própria conta; só a Edge Function change-password
+-- (service role), depois de trocar a senha de verdade.
+select throws_ok($$select public.complete_password_change()$$, '42501', null,
+  'complete_password_change() não é mais executável pelo usuário');
+set local role service_role;
+select public.finish_password_change('eeeeeeee-0000-4000-8000-000000000001');
+set local role authenticated;
 select is(
   (select must_change_password from public.profiles where id = 'eeeeeeee-0000-4000-8000-000000000001'),
   false,
-  'flag vira false depois da troca'
+  'flag vira false depois da troca (finish_password_change pela service role)'
 );
 select ok(public.is_active_member(), 'depois da troca: integrante ativo');
 select isnt_empty('select id from public.songs', 'depois da troca: lê músicas');
@@ -168,7 +174,7 @@ reset role;
 select is(
   (select must_change_password from public.profiles where id = 'eeeeeeee-0000-4000-8000-000000000002'),
   true,
-  'complete_password_change() não mexe na conta de outra pessoa'
+  'a troca de uma pessoa não mexe na conta de outra'
 );
 
 -- ---------------------------------------------------------------------------

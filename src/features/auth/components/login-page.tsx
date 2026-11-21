@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { z } from 'zod';
@@ -99,8 +99,34 @@ export function LoginPage() {
               {isSubmitting ? 'Entrando…' : 'Entrar'}
             </Button>
           </form>
+          <ForgotPassword />
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+/** "Esqueci minha senha": sem e-mail (não há SMTP), quem redefine é um administrador. */
+function ForgotPassword() {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <div className="mt-4 flex flex-col items-center gap-2 text-center">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen((v) => !v)}
+        className="min-h-11 rounded-lg px-3 text-sm font-semibold text-brand-text underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Esqueci minha senha
+      </button>
+      {open && (
+        <p id={id} className="text-sm text-muted-foreground">
+          Peça a um administrador do ministério para redefinir a sua senha. Ele gera uma senha
+          provisória (vale 7 dias) e manda para você; no primeiro acesso, você cria a sua.
+        </p>
+      )}
+    </div>
   );
 }

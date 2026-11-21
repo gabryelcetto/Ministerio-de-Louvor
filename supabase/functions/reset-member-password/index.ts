@@ -10,7 +10,8 @@
  *    senha provisória forte gerada aqui.
  * 4. `mark_password_reset` COMO O USUÁRIO: marca must_change_password = true (a pessoa é obrigada
  *    a trocar no próximo acesso) e registra em audit_logs.
- * 5. Devolve a senha provisória UMA vez (Cache-Control: no-store).
+ * 5. Encerra as sessões abertas da pessoa (revoke_user_sessions, só service role).
+ * 6. Devolve a senha provisória UMA vez (Cache-Control: no-store). Ela vale 7 dias.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2.119.1';
 import { generatePassword } from '../_shared/password.ts';
@@ -107,6 +108,17 @@ Deno.serve(async (req) => {
       return fail(
         500,
         'A senha foi trocada, mas não foi possível exigir a troca no próximo acesso. Tente de novo.',
+      );
+    }
+
+    // Pendência 41: encerra as sessões abertas da pessoa. (O acesso ao banco já está bloqueado
+    // por must_change_password; isto derruba também os refresh tokens.)
+    const { error: revokeError } = await admin.rpc('revoke_user_sessions', { p_user_id: userId });
+    if (revokeError) {
+      console.error(
+        'reset-member-password: revoke_user_sessions',
+        revokeError.code,
+        revokeError.message,
       );
     }
 

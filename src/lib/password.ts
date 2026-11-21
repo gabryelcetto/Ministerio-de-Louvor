@@ -13,6 +13,10 @@ export {
   PASSWORD_MIN_LENGTH,
   passwordProblems,
 } from '../../supabase/functions/_shared/password.ts';
+export {
+  EXPIRED_MESSAGE,
+  isTemporaryExpired,
+} from '../../supabase/functions/_shared/change-password.ts';
 
 /** Texto curto para mostrar acima do campo. */
 export const PASSWORD_HINT = 'Mínimo de 10 caracteres, com letras e números.';

@@ -303,14 +303,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"must_change_password": boolean,"phone": string | null,"status": string,"updated_at": string
+                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"must_change_password": boolean,"phone": string | null,"status": string,"temp_password_expires_at": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"temp_password_expires_at"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"temp_password_expires_at"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -560,6 +560,9 @@ isOneToOne: false
 "duplicate_event":
 { Args: { "p_event_id": string,"p_starts_at": string }; Returns: string
                            },
+"finish_password_change":
+{ Args: { "p_user_id": string }; Returns: undefined
+                           },
 "get_announcement_audience_status":
 { Args: { "p_id": string }; Returns: {
               "display_name": string,"full_name": string,"read_at": string,"user_id": string
@@ -623,6 +626,9 @@ isOneToOne: false
                            },
 "restore_song_version":
 { Args: { "version_id": string }; Returns: undefined
+                           },
+"revoke_user_sessions":
+{ Args: { "p_user_id": string }; Returns: undefined
                            },
 "save_announcement":
 { Args: { "p_body": string,"p_filter": Json,"p_id": string,"p_pinned_until"?: string,"p_title": string }; Returns: string

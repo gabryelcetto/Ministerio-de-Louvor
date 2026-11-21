@@ -62,6 +62,12 @@ verify_jwt = false
 enabled = true
 verify_jwt = true
 
+# Troca da própria senha (primeiro acesso e Configurações): troca no Auth e libera a conta numa
+# operação só (a função confere o usuário e a senha atual antes de usar a service role).
+[functions.change-password]
+enabled = true
+verify_jwt = true
+
 # Segredos das Edge Functions no ambiente LOCAL (na nuvem: supabase secrets set CRON_SECRET=...).
 [edge_runtime.secrets]
 CRON_SECRET = "env(CRON_SECRET)"

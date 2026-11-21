@@ -12,7 +12,7 @@ set search_path = public, extensions;
 select plan(
   (select count(*)::int * 2 from pg_tables where schemaname = 'public')
   + (select count(*)::int * 2 from pg_sequences where schemaname = 'public')
-  + 10 -- colunas de profiles
+  + 11 -- colunas de profiles
   + 3 -- colunas de notifications
   + 2 -- colunas de media_files
   + 5 -- RLS, schema e privilégios padrão
@@ -31,6 +31,9 @@ select table_privs_are(
     when 'announcements' then array['SELECT']
     when 'announcement_recipients' then array['SELECT']
     when 'announcement_reads' then array['INSERT', 'SELECT']
+    -- histórico e auditoria: só por trigger/RPC (pendência 27)
+    when 'song_versions' then array['SELECT']
+    when 'audit_logs' then array['INSERT', 'SELECT']
     when 'media_files' then array['DELETE', 'INSERT', 'SELECT'] -- UPDATE só em label (abaixo)
     else array['DELETE', 'INSERT', 'SELECT', 'UPDATE']
   end::name[],
@@ -84,7 +87,8 @@ from (
     ('status', array['SELECT', 'UPDATE']),
     ('created_at', array['SELECT']),
     ('updated_at', array['SELECT']),
-    ('must_change_password', array['SELECT']) -- só a RPC complete_password_change() altera
+    ('must_change_password', array['SELECT']), -- só finish_password_change() (service role) altera
+    ('temp_password_expires_at', array['SELECT'])
 ) as c(col, privs);
 
 -- notifications: lê tudo, mas só atualiza read_at (inserção só por trigger).

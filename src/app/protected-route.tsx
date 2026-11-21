@@ -51,7 +51,12 @@ export function ProtectedRoute() {
     );
   }
   if (profile.data?.must_change_password) {
-    return <FirstAccessPage name={profile.data.display_name || profile.data.full_name} />;
+    return (
+      <FirstAccessPage
+        name={profile.data.display_name || profile.data.full_name}
+        expiresAt={profile.data.temp_password_expires_at}
+      />
+    );
   }
   return <Outlet />;
 }

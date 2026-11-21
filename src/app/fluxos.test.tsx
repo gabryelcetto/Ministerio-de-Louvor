@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { FunctionsHttpError } from '@supabase/supabase-js';
 // Fluxos de tela com o app inteiro (rotas + Supabase de mentira).
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -11,6 +12,15 @@ vi.mock('@/services/supabase', async () => ({
 }));
 
 describe('login', () => {
+  it('"Esqueci minha senha" explica que um administrador redefine (sem e-mail)', async () => {
+    const { user } = renderApp('/login', { as: null });
+    const button = await screen.findByRole('button', { name: 'Esqueci minha senha' });
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    await user.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText(/Peça a um administrador do ministério/)).toBeTruthy();
+  });
+
   it('senha errada mostra a mensagem; certa entra no app', async () => {
     const { user, router } = renderApp('/login', {
       as: null,
@@ -61,11 +71,34 @@ describe('primeiro acesso e troca de senha', () => {
     await user.clear(screen.getByLabelText('Repita a nova senha'));
     await user.type(screen.getByLabelText('Nova senha'), 'NovaSenha2026');
     await user.type(screen.getByLabelText('Repita a nova senha'), 'NovaSenha2026');
-    fake.state.tables.profiles!.find((p) => p.id === MEMBER_ID)!.must_change_password = false;
+    const calls: { name: string; body: unknown }[] = [];
+    fake.onInvoke(async (name, { body }) => {
+      calls.push({ name, body });
+      // A Edge Function troca a senha e libera a conta numa operação só.
+      fake.state.tables.profiles!.find((p) => p.id === MEMBER_ID)!.must_change_password = false;
+      return { data: { ok: true }, error: null };
+    });
     await user.click(screen.getByRole('button', { name: 'Salvar e entrar' }));
     await waitFor(() =>
-      expect(fake.calls.some((c) => c.name === 'complete_password_change')).toBe(true),
+      expect(calls).toEqual([{ name: 'change-password', body: { password: 'NovaSenha2026' } }]),
     );
+  });
+
+  it('senha provisória vencida: explica e não deixa trocar', async () => {
+    renderApp('/', {
+      as: 'member',
+      setup: (s) => {
+        const me = s.tables!.profiles!.find((p) => p.id === MEMBER_ID)!;
+        me.must_change_password = true;
+        me.temp_password_expires_at = '2020-01-01T00:00:00Z';
+      },
+    });
+    expect(await screen.findByText('Senha provisória vencida')).toBeTruthy();
+    expect(
+      screen.getByText('Sua senha provisória venceu. Peça a um administrador para gerar outra.'),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText('Nova senha')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Sair' })).toBeTruthy();
   });
 
   it('Configurações: confere a senha atual e troca a senha', async () => {
@@ -76,11 +109,28 @@ describe('primeiro acesso e troca de senha', () => {
       },
     });
     await findHeading('Configurações');
+    const sent: unknown[] = [];
+    fake.onInvoke(async (_name, { body }) => {
+      sent.push(body);
+      const current = (body as { currentPassword?: string }).currentPassword;
+      if (current !== 'SenhaAtual2026') {
+        return {
+          data: null,
+          error: new FunctionsHttpError(
+            new Response(JSON.stringify({ error: 'A senha atual está incorreta.' }), {
+              status: 400,
+            }),
+          ),
+        };
+      }
+      return { data: { ok: true }, error: null };
+    });
     await user.type(screen.getByLabelText('Senha atual'), 'errada123');
     await user.type(screen.getByLabelText('Nova senha'), 'OutraSenha2027');
     await user.type(screen.getByLabelText('Repita a nova senha'), 'OutraSenha2027');
     await user.click(screen.getByRole('button', { name: 'Trocar senha' }));
     expect(await screen.findByText('A senha atual está incorreta.')).toBeTruthy();
+    expect(sent[0]).toEqual({ password: 'OutraSenha2027', currentPassword: 'errada123' });
     await user.clear(screen.getByLabelText('Senha atual'));
     await user.type(screen.getByLabelText('Senha atual'), 'SenhaAtual2026');
     await user.click(screen.getByRole('button', { name: 'Trocar senha' }));

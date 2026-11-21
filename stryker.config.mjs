@@ -28,6 +28,7 @@ export default {
     'supabase/functions/_shared/password.ts',
     'supabase/functions/_shared/invite.ts',
     'supabase/functions/_shared/reset.ts',
+    'supabase/functions/_shared/change-password.ts',
   ],
   coverageAnalysis: 'perTest',
   thresholds: { high: 85, low: 70, break: 65 },

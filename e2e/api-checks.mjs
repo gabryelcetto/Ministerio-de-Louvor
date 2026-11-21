@@ -314,13 +314,24 @@ if (created?.temporaryPassword) {
     check(Boolean(error), 'não limpa a flag por UPDATE direto', error?.code ?? 'sem erro');
   }
   {
-    const { error: e1 } = await fresh.auth.updateUser({ password: 'SenhaDaApi2026' });
-    const { error: e2 } = await fresh.rpc('complete_password_change');
+    // Pendência 30: a RPC antiga não libera mais a conta; a Edge Function troca e libera.
+    const { error: old } = await fresh.rpc('complete_password_change');
+    check(Boolean(old), 'complete_password_change não é mais executável', old?.code ?? 'sem erro');
+    const { data: sess } = await fresh.auth.getSession();
+    const res = await fetch(`${API_URL}/functions/v1/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${sess.session?.access_token}`,
+      },
+      body: JSON.stringify({ password: 'SenhaDaApi2026' }),
+    });
     const { data } = await fresh.from('songs').select('id');
     check(
-      !e1 && !e2 && (data ?? []).length > 0,
-      'troca a senha + complete_password_change: acesso liberado',
-      e1?.message ?? e2?.message ?? `${data?.length} músicas`,
+      res.status === 200 && (data ?? []).length > 0,
+      'change-password: troca a senha e libera o acesso numa operação',
+      `${res.status} ${data?.length} músicas`,
     );
   }
 }
