@@ -104,10 +104,17 @@ function contextOptions(browserName, size) {
 /** Coleta erros de console/página e respostas >= 400 da API desde o último `take()`. */
 function watch(page) {
   const events = [];
+  // Enquanto o PRÓPRIO roteiro troca de página, o WebKit registra as consultas do documento
+  // antigo que foram canceladas como "Fetch API cannot load … due to access control checks".
+  // Isso não acontece com quem usa o app (é o descarte da página anterior): fica de fora.
+  let navigating = false;
   page.on('console', (m) => {
     if (m.type() === 'error') events.push({ kind: 'console', text: m.text() });
   });
-  page.on('pageerror', (e) => events.push({ kind: 'pageerror', text: e.message }));
+  page.on('pageerror', (e) => {
+    if (navigating && /due to access control checks/.test(e.message)) return;
+    events.push({ kind: 'pageerror', text: e.message });
+  });
   page.on('response', async (r) => {
     if (!r.url().includes(':54321') || r.status() < 400) return;
     let body = '';
@@ -124,6 +131,16 @@ function watch(page) {
   });
   let from = 0;
   return {
+    /** Abre o endereço e espera a página assentar (com o filtro acima ligado). */
+    async go(url) {
+      navigating = true;
+      try {
+        await page.goto(url).catch(() => {});
+        await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+      } finally {
+        navigating = false;
+      }
+    },
     take() {
       const slice = events.slice(from);
       from = events.length;
@@ -327,7 +344,7 @@ async function sweep(browserName) {
       for (const tema of themes) {
         await page.emulateMedia({ colorScheme: tema === 'escuro' ? 'dark' : 'light' });
         for (const [tela, path] of screensFor(perfil)) {
-          await page.goto(`${BASE}${path}`).catch(() => {});
+          await monitor.go(`${BASE}${path}`);
           await checkScreen(page, monitor, {
             browser: browserName,
             size,
@@ -575,12 +592,14 @@ async function edgeCases() {
     'chromium',
     '390x844',
     async ({ page }) => {
+      // Como a pessoa usa: chega à Nova música pelo próprio app (o Voltar volta dentro do app).
       await page.goto(`${BASE}/repertorio`);
       await settle(page);
-      await page.goto(`${BASE}/repertorio/nova`);
+      await page.getByRole('link', { name: 'Nova música' }).click();
+      await page.waitForURL(/\/repertorio\/nova$/);
       await settle(page);
       await page.getByLabel('Título').fill('Música digitada e não salva');
-      await page.goBack();
+      await page.goBack({ timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(800);
       const dialog = page.getByRole('dialog', { name: 'Sair sem salvar?' });
       const guarded = await dialog.isVisible().catch(() => false);
@@ -593,7 +612,8 @@ async function edgeCases() {
       }
       return {
         problem: {
-          passos: 'Repertório → Nova música → digitar o título → botão Voltar do navegador',
+          passos:
+            'Repertório → tocar em Nova música → digitar o título → botão Voltar do navegador',
           tipo: 'formulário perdido ao voltar',
           esperado: 'confirmação "Sair sem salvar?" antes de perder o que foi digitado',
           obtido: `saiu da tela sem perguntar (${new URL(page.url()).pathname})`,
