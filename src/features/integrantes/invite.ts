@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { brand } from '@/config/brand';
-import { UserFacingError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import {
   DISPLAY_NAME_MAX,
@@ -12,6 +10,7 @@ import {
   type InviteResult,
   type InviteRole,
 } from '../../../supabase/functions/_shared/invite.ts';
+import { invokeEdgeFunction } from './edge';
 
 export type { InviteInput, InviteResult, InviteRole };
 export { parseInviteInput } from '../../../supabase/functions/_shared/invite.ts';
@@ -44,17 +43,6 @@ export const ROLE_OPTIONS: { value: InviteRole; label: string; hint: string }[] 
   },
 ];
 
-/** Erro da Edge Function já em português (o corpo é `{ error: "..." }`). */
-export class InviteFunctionError extends UserFacingError {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = 'InviteFunctionError';
-  }
-}
-
 export async function inviteMember(values: InviteFormValues): Promise<InviteResult> {
   const body: InviteInput = {
     fullName: values.fullName,
@@ -63,22 +51,12 @@ export async function inviteMember(values: InviteFormValues): Promise<InviteResu
     accessRole: values.accessRole,
     functionIds: values.functionIds,
   };
-  const { data, error } = await supabase.functions.invoke<InviteResult>('invite-member', { body });
-  if (error) {
-    if (error instanceof FunctionsHttpError) {
-      const response = error.context as Response;
-      let message = 'Não foi possível concluir o cadastro. Tente de novo.';
-      try {
-        const payload = (await response.json()) as { error?: unknown };
-        if (typeof payload.error === 'string' && payload.error) message = payload.error;
-      } catch {
-        // corpo não é JSON: fica a mensagem genérica
-      }
-      throw new InviteFunctionError(message, response.status);
-    }
-    throw error; // rede etc.: friendlyError traduz
-  }
-  if (!data?.temporaryPassword) throw new Error('Resposta inesperada do servidor.');
+  const data = await invokeEdgeFunction<InviteResult>(
+    'invite-member',
+    body,
+    'Não foi possível concluir o cadastro. Tente de novo.',
+  );
+  if (!data.temporaryPassword) throw new Error('Resposta inesperada do servidor.');
   return data;
 }
 

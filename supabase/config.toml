@@ -56,6 +56,12 @@ verify_jwt = true
 enabled = true
 verify_jwt = false
 
+# Admin redefine a senha de um integrante: exige JWT válido (a função confere a permissão e as
+# regras do dono/admin no banco, como o próprio usuário, antes de usar a service role).
+[functions.reset-member-password]
+enabled = true
+verify_jwt = true
+
 # Segredos das Edge Functions no ambiente LOCAL (na nuvem: supabase secrets set CRON_SECRET=...).
 [edge_runtime.secrets]
 CRON_SECRET = "env(CRON_SECRET)"

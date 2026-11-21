@@ -207,6 +207,36 @@ Automatizado em `e2e/fluxos.mjs` (seção CADASTRO) e `e2e/api-checks.mjs` (Edge
 
 ---
 
+# Redefinir senha e funções do ministério
+
+Automatizado em `e2e/fluxos.mjs` (seção REDEFINIR SENHA) e `e2e/api-checks.mjs`
+(Edge Function `reset-member-password`).
+
+## Redefinir senha (Integrantes)
+
+| #   | Passo                                                                   | Integrante (Isa)                                    | Admin dono (Ana)                                                                |
+| --- | ----------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------- |
+| 1   | Abrir Integrantes                                                       | **Sem** botão "Redefinir senha"                     | Botão "Redefinir senha" nos cartões dos outros; **não** no próprio cartão       |
+| 2   | **Redefinir senha** → **Cancelar**                                      | —                                                   | Nada muda                                                                       |
+| 3   | **Redefinir senha** → confirmar                                         | —                                                   | Senha provisória, aviso "não será mostrada de novo", copiar, WhatsApp, mensagem |
+| 4   | A pessoa entra com a senha **antiga**                                   | —                                                   | "E-mail ou senha incorretos."                                                   |
+| 5   | A pessoa entra com a senha provisória                                   | —                                                   | Tela **"Defina sua senha"**; depois de salvar, entra normalmente                |
+| 6   | Admin que **não** é o dono tenta redefinir a senha de outro admin       | —                                                   | Sem botão; pela API: 403 "Só o dono do ministério pode redefinir a senha de …"  |
+| 7   | Console: `supabase.functions.invoke('reset-member-password', { body })` | 403 "Você não tem permissão para redefinir senhas." | 200 (para integrante); 400 para a própria senha                                 |
+
+## Funções do ministério (`/integrantes/funcoes`)
+
+| #   | Passo                                      | Integrante                                                        | Admin                                            |
+| --- | ------------------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------ |
+| 1   | Abrir Integrantes                          | **Sem** botão "Funções do ministério"                             | Botão "Funções do ministério"                    |
+| 2   | Abrir `/integrantes/funcoes` pelo endereço | "Você não tem permissão para gerenciar as funções do ministério." | Lista e formulário                               |
+| 3   | **Adicionar função** sem preencher         | —                                                                 | "Informe o nome da função." / "Escolha o grupo." |
+| 4   | "Ministro(a)" + **Cantores** → Adicionar   | —                                                                 | Aparece na lista com grupo Cantores              |
+| 5   | Mesmo nome de novo                         | —                                                                 | "Já existe uma função com esse nome."            |
+| 6   | Trocar o grupo de uma função na lista      | —                                                                 | Fica salvo ao recarregar; selos mudam            |
+
+---
+
 # Base ADVOP: perfis, nova música e atividade recente
 
 Automatizado em `e2e/fluxos.mjs` (seções NOVA MÚSICA, LUCAS e ADMIN desktop),

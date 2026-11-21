@@ -37,6 +37,7 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   event_songs_event_id_position_key: 'Já existe uma música nessa posição do repertório.',
   events_ends_after_starts: 'O término precisa ser depois do início.',
   event_songs_song_id_fkey: 'Esta música está no repertório de algum evento.',
+  ministry_functions_name_key: 'Já existe uma função com esse nome.',
 };
 
 interface ErrorLike {

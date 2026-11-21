@@ -713,6 +713,149 @@ let temporaryPassword = '';
   await context.close();
 }
 
+// =============================================================================== REDEFINIR SENHA
+// Integrante não vê o botão nem a tela de funções; admin redefine a senha do "Novato" (senha
+// provisória mostrada uma vez); a pessoa entra com ela e é obrigada a trocar. Funções do
+// ministério: nova função exige o grupo (pendência 34).
+const RESET_PASSWORD = 'TerceiraSenha2028';
+let resetTemporary = '';
+
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE);
+  const who = 'integrante';
+  await step(page, who, 'Redefinir senha: integrante não vê o botão', async () => {
+    await page.goto(`${BASE}/integrantes`);
+    await page.waitForLoadState('networkidle');
+    await expectText(page, /Novato/);
+    if (
+      await main(page)
+        .getByRole('button', { name: /Redefinir senha/ })
+        .count()
+    )
+      throw new Error('botão Redefinir senha visível para integrante');
+    if (await page.getByRole('link', { name: 'Funções do ministério' }).count())
+      throw new Error('link Funções do ministério visível para integrante');
+  });
+  await step(page, who, 'Funções: tela bloqueada pelo endereço', async () => {
+    await page.goto(`${BASE}/integrantes/funcoes`);
+    await expectText(page, 'Você não tem permissão para gerenciar as funções do ministério.');
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  const who = 'admin';
+  await step(page, who, 'Redefinir senha: sem botão no próprio cartão', async () => {
+    await page.goto(`${BASE}/integrantes`);
+    await page.waitForLoadState('networkidle');
+    await expectText(page, /Novato/);
+    const mine = main(page)
+      .locator('li')
+      .filter({ has: page.getByText('você', { exact: true }) });
+    if ((await mine.count()) !== 1) throw new Error(`cartão próprio: ${await mine.count()}`);
+    if (await mine.getByRole('button', { name: /Redefinir senha/ }).count())
+      throw new Error('botão Redefinir senha no próprio cartão');
+  });
+  await step(page, who, 'Redefinir senha: cancelar não muda nada', async () => {
+    await main(page).getByRole('button', { name: 'Redefinir senha de Novato' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Redefinir a senha de Novato?' });
+    await dialog.waitFor();
+    await dialog.getByRole('button', { name: 'Cancelar' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+  });
+  await step(page, who, 'Redefinir senha: admin redefine e vê a senha provisória', async () => {
+    await main(page).getByRole('button', { name: 'Redefinir senha de Novato' }).click();
+    const confirm = page.getByRole('dialog', { name: 'Redefinir a senha de Novato?' });
+    await confirm.getByRole('button', { name: 'Redefinir senha', exact: true }).click();
+    const result = page.getByRole('dialog', { name: /Senha de Novato redefinida/ });
+    await result.waitFor({ timeout: 20000 });
+    await result.getByText(/não será mostrada de novo/).waitFor();
+    resetTemporary = (await result.getByLabel('Senha provisória').innerText()).trim();
+    if (!/^[A-Za-z2-9]{4}(-[A-Za-z2-9]{4}){3}$/.test(resetTemporary))
+      throw new Error(`senha provisória em formato inesperado: ${resetTemporary}`);
+    const message = await result.getByLabel('Mensagem pronta para o WhatsApp').inputValue();
+    for (const piece of [BASE, NEW_EMAIL, resetTemporary, 'redefinida'])
+      if (!message.includes(piece)) throw new Error(`mensagem sem "${piece}"`);
+    const wa = await result
+      .getByRole('link', { name: /Enviar pelo WhatsApp/ })
+      .getAttribute('href');
+    if (!wa?.startsWith('https://wa.me/?text=')) throw new Error(`link do WhatsApp: ${wa}`);
+    await result.getByRole('button', { name: 'Fechar' }).click();
+    await result.waitFor({ state: 'hidden' });
+  });
+
+  await step(page, who, 'Funções: grupo obrigatório ao cadastrar', async () => {
+    await page.goto(`${BASE}/integrantes`);
+    await page.getByRole('link', { name: 'Funções do ministério' }).click();
+    await page.waitForURL(/\/integrantes\/funcoes$/);
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: 'Adicionar função' }).click();
+    await expectText(page, 'Informe o nome da função.');
+    await expectText(page, 'Escolha o grupo.');
+  });
+  await step(page, who, 'Funções: cadastra função vocal (Cantores)', async () => {
+    await page.getByLabel('Nome da função').fill('Ministro(a) E2E');
+    await page.getByRole('radio', { name: /Cantores/ }).check();
+    await page.getByRole('button', { name: 'Adicionar função' }).click();
+    const select = page.getByLabel('Grupo de Ministro(a) E2E');
+    await select.waitFor({ timeout: 10000 });
+    const value = await select.inputValue();
+    if (value !== 'vocal') throw new Error(`grupo salvo: ${value}`);
+  });
+  await step(
+    page,
+    who,
+    'Funções: nome repetido é recusado',
+    async () => {
+      await page.getByLabel('Nome da função').fill('Ministro(a) E2E');
+      await page.getByRole('radio', { name: /Instrumentistas/ }).check();
+      await page.getByRole('button', { name: 'Adicionar função' }).click();
+      await expectText(page, 'Já existe uma função com esse nome.');
+    },
+    { expectApiErrors: true },
+  );
+  await step(page, who, 'Funções: muda o grupo de uma função existente', async () => {
+    await page.getByLabel('Grupo de Ministro(a) E2E').selectOption('instrumental');
+    await page.waitForLoadState('networkidle');
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await poll(
+      async () =>
+        (await page.getByLabel('Grupo de Ministro(a) E2E').inputValue()) === 'instrumental',
+      'grupo não ficou salvo',
+    );
+  });
+  await context.close();
+}
+
+if (resetTemporary) {
+  const { context, page } = await session(NEW_EMAIL, MOBILE, resetTemporary);
+  const who = 'novo';
+  await step(
+    page,
+    who,
+    'Senha redefinida: entra com a provisória e é obrigado a trocar',
+    async () => {
+      await page.getByRole('heading', { name: 'Defina sua senha' }).waitFor();
+      if (await page.getByRole('navigation', { name: 'Navegação principal' }).count())
+        throw new Error('navegação visível antes de trocar a senha');
+    },
+  );
+  await step(page, who, 'Senha redefinida: define a nova senha e entra', async () => {
+    await page.getByLabel('Nova senha', { exact: true }).fill(RESET_PASSWORD);
+    await page.getByLabel('Repita a nova senha').fill(RESET_PASSWORD);
+    await page.getByRole('button', { name: 'Salvar e entrar' }).click();
+    await page
+      .getByRole('navigation', { name: 'Navegação principal' })
+      .first()
+      .waitFor({ timeout: 15000 });
+    await page.goto(`${BASE}/`);
+    await expectText(page, /Novato/);
+  });
+  await context.close();
+}
+
 // =============================================================================== ÁUDIO
 const ENSAIO_GERAL = '10000000-0000-4000-8000-000000000001';
 const playerOf = (page) => page.getByTestId('audio-player').first();

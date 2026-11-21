@@ -205,7 +205,7 @@ isOneToOne: false
                   }
                   ComputedFields: never
                   Insert: {
-                    "id"?: never,"name": string,"section"?: string,"sort_order"?: number
+                    "id"?: never,"name": string,"section": string,"sort_order"?: number
                   }
                   Update: {
                     "id"?: never,"name"?: string,"section"?: string,"sort_order"?: number
@@ -437,7 +437,26 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "audio_files_to_purge":
+            "assert_can_reset_password":
+{ Args: { "p_user_id": string }; Returns: {
+              "access_role": Database["public"]['Enums']["access_role"],
+"created_at": string,
+"display_name": string | null,
+"full_name": string,
+"id": string,
+"is_owner": boolean,
+"must_change_password": boolean,
+"phone": string | null,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "profiles"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"audio_files_to_purge":
 { Args: { "p_days"?: number }; Returns: {
               "reason": string,"storage_path": string
             }[]
@@ -476,8 +495,16 @@ isOneToOne: false
 "is_active_member":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"mark_password_reset":
+{ Args: { "p_user_id": string }; Returns: undefined
+                           },
 "my_permissions":
 { Args: Record<PropertyKey, never>; Returns: string[]
+                           },
+"prepare_password_reset":
+{ Args: { "p_user_id": string }; Returns: {
+              "display_name": string,"email": string,"full_name": string
+            }[]
                            },
 "restore_song_version":
 { Args: { "version_id": string }; Returns: undefined

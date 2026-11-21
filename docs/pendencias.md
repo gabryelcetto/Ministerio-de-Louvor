@@ -8,11 +8,14 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 ### 32. Configurar o backup diário (repositório privado)
 
 - **O quê:** o repositório privado `gabryelcetto/ministerio-louvor-ops` já tem o workflow
-  `Backup do banco`, mas ele só funciona depois de cadastrar os secrets. Até lá, a execução
-  agendada falha com "Falta o secret …" (de propósito: backup que não roda tem que avisar).
-- **O que fazer:** seguir `ops/backup/README.md`: gerar o par de chaves `age` (a privada fica só
-  com você, fora do GitHub), cadastrar `SUPABASE_DB_URL` (Session pooler) e `AGE_PUBLIC_KEY`,
-  rodar uma vez pelo "Run workflow" e **testar uma restauração** num Supabase local.
+  `Backup do banco`. Em 21/11/2026 o par de chaves `age` foi gerado nesta máquina (a privada
+  ficou em `Documentos\louvor-backup\`, fora do repositório) e o secret `AGE_PUBLIC_KEY` foi
+  cadastrado. **Falta o `SUPABASE_DB_URL`**, que tem a senha do banco e por isso fica com o dono.
+  Até lá, a execução agendada falha com "Falta o secret …" (de propósito).
+- **O que fazer:** cadastrar `SUPABASE_DB_URL` (Session pooler), rodar uma vez pelo
+  "Run workflow" e **testar uma restauração** num Supabase local (`ops/backup/README.md`).
+  Guarde uma cópia da chave privada `age` fora deste computador (pendrive ou gerenciador de
+  senhas): sem ela o backup não abre.
 - **Lembrete:** os áudios do Storage não entram no backup do banco.
 
 ### 2. Vitest falha no Windows quando a pasta é aberta como `c:\` (minúsculo)
@@ -166,13 +169,11 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   `revoke update, delete on public.song_versions, public.audit_logs from authenticated;` (e
   `insert` em `song_versions`) e ajustar o `privileges.test.sql`.
 
-### 28. Aplicar a migration de GRANT na nuvem
+### 28. Conferir os privilégios na nuvem
 
-- **O quê:** `20261120200000_explicit_grants.sql` ainda não foi aplicada pelo workflow; a nuvem
-  está com a correção manual. A migration é idempotente (o CI prova: aplica um `grant all`,
-  reaplica a migration duas vezes e roda o pgTAP).
-- **O que fazer:** depois do merge, Actions → **Deploy banco** → Run workflow (sem seed). Conferir
-  na prévia que só esta migration aparece. Depois, no SQL Editor da nuvem, a consulta abaixo deve
+- **O quê:** `20261120200000_explicit_grants.sql` foi aplicada na nuvem em 21/11/2026 (`db push`,
+  junto com as demais). Falta só a conferência visual.
+- **O que fazer:** no SQL Editor da nuvem, a consulta abaixo deve
   mostrar `DELETE, INSERT, SELECT, UPDATE` para `authenticated` em cada tabela (exceto
   `profiles`, sem linha de tabela, e `notifications`, só `SELECT`) e **nenhuma** linha de
   `anon`:
@@ -184,14 +185,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   group by 1, 2
   order by 1, 2;
   ```
-
-### 29. Publicar o cadastro de integrantes na nuvem
-
-- **O quê:** migration `20261121090000_member_onboarding.sql`, Edge Function `invite-member` e
-  regra de senha do Auth ainda não estão no projeto da nuvem.
-- **O que fazer:** os comandos estão no PR "cadastro de integrantes" e no README (seção
-  "Cadastrar integrantes"). A regra de senha (10 caracteres, letras e números) é configurada no
-  painel do Auth.
 
 ### 30. `complete_password_change()` não confere se a senha mudou de fato
 
@@ -205,37 +198,15 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 - **O quê:** a senha provisória não expira. Também não há recuperação de senha por e-mail: isso
   depende de SMTP, que ficou fora do protótipo.
-- **O que fazer:** depois do protótipo, (a) expirar contas com `must_change_password` que não
-  entraram em X dias; (b) uma ação "Gerar nova senha provisória" para `members.manage`, que pode
-  reaproveitar a Edge Function.
-
-### 33. Publicar a base ADVOP na nuvem
-
-- **O quê:** migration `20261122090000_advop_roles_songs.sql` (perfis, permissões, músicas,
-  atividade), nova versão da Edge Function `invite-member` (sem "liderança") e o app.
-- **O que fazer:** comandos no PR "base ADVOP". Depois da migration, conferir em Integrantes que
-  ninguém ficou como "Liderança" e que as funções vocais aparecem como "Cantor(a)".
-- **Atenção:** quem era líder perde montar escala, comunicados, contatos e restaurar (agora só
-  admin). Se alguém precisar continuar, dê a exceção individual (`user_permissions`, `grant`).
-
-### 34. Funções novas do ministério nascem "instrumental"
-
-- **O quê:** `ministry_functions.section` tem padrão `instrumental`; uma função vocal criada
-  depois (ex.: "Ministro(a)") precisa ter `section = 'vocal'` ajustado no SQL Editor (ainda não há
-  tela de funções).
+- **O que fazer:** depois do protótipo, expirar contas com `must_change_password` que não
+  entraram em X dias. (A ação "Redefinir senha" para o admin já existe: PR "admin redefine senha
+  de integrante".)
 
 ### 35. Detecção de tom é uma sugestão
 
 - **O quê:** o tom sugerido na "Nova música" vem do campo harmônico e do primeiro/último acorde.
   Músicas modais ou com muitas modulações podem sugerir o tom relativo (ex.: Em no lugar de G).
   A pessoa confirma ou troca antes de salvar.
-
-### 36. Publicar os áudios na nuvem
-
-- **O quê:** migration `20261123090000_audio.sql` (bucket, `media_files`, policies), Edge Function
-  `purge-old-recordings`, segredo `CRON_SECRET` (na função e no environment `staging` do
-  GitHub) e a variable `SUPABASE_URL`.
-- **O que fazer:** comandos no PR de áudio e no README ("Publicar a limpeza automática").
 
 ### 37. Testar a gravação em aparelhos de verdade
 
@@ -256,7 +227,33 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   Para recuperar o espaço no C:, compactar o disco virtual do Docker Desktop (como administrador)
   ou usar _Troubleshoot → Clean / Purge data_ (apaga também os volumes de outros projetos).
 
+### 40. Publicar a redefinição de senha na nuvem
+
+- **O quê:** migration `20261124090000_member_password_reset.sql` (RPCs da redefinição e grupo
+  obrigatório nas funções) e Edge Function `reset-member-password`.
+- **O que fazer (depois do merge do PR):** `npx supabase db push --dry-run` (só essa migration),
+  `npx supabase db push` e `npx supabase functions deploy reset-member-password --use-api`
+  (README, "Redefinir a senha de um integrante").
+- **Sem teste com dados reais nesta máquina** (sem Docker, disco cheio): pgTAP e E2E rodam no CI.
+
+### 41. Sessões abertas continuam com o token antigo após a redefinição
+
+- **O quê:** redefinir a senha não derruba os aparelhos em que a pessoa já estava logada; o
+  token antigo vale até expirar. Não é brecha: com `must_change_password = true` o banco não
+  deixa essa sessão ler nem alterar nada, e o app mostra "Defina sua senha".
+- **O que fazer (se quiser):** na Edge Function, depois de trocar a senha, encerrar as sessões
+  da pessoa (apagar as linhas dela em `auth.sessions` por uma RPC só para `service_role`).
+
 ## Resolvidas recentemente
+
+- **34. Funções novas do ministério nasciam "instrumental"** — tela **Integrantes → Funções do
+  ministério**: o grupo (Cantores/Instrumentistas) é obrigatório ao cadastrar e pode ser trocado
+  na lista; o banco não tem mais valor padrão (PR "admin redefine senha de integrante").
+- **29, 33 e 36. Publicar cadastro, base ADVOP e áudios na nuvem** — feito em 21/11/2026:
+  `db push` das migrations até `20261123090000_audio.sql`, Edge Functions `invite-member` e
+  `purge-old-recordings` publicadas, `CRON_SECRET` configurado (função e environment `staging`),
+  limpeza testada em dry run. Conferir no painel do Auth a regra de senha (10 caracteres, letras e
+  números), se ainda não estiver.
 
 - **Cadastro de integrantes** — Edge Function `invite-member`, tela, primeiro acesso e
   "Trocar senha" (PR "cadastro de integrantes").
@@ -282,8 +279,11 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   grau no tom de destino; `A/G` de E para G sai `C/Bb`.
 - **18. Configurações provisória** — tela de Configurações com perfil, tema, instalar e sair.
 
-## Situação em 21/11/2026
+## Situação em 21/11/2026 (noite)
 
-- **Na `main`:** fases A a F, CI/E2E com simulação da nuvem, GRANT explícito, tipos gerados.
-- **PR "cadastro de integrantes" (aberto, sem merge):** Edge Function `invite-member`, primeiro
-  acesso com troca obrigatória de senha, "Trocar senha" em Configurações.
+- **Na `main`:** fases A a F, CI/E2E com simulação da nuvem, GRANT explícito, cadastro de
+  integrantes, base ADVOP, backup (scripts) e áudios. Tag `v0.2.0`.
+- **Na nuvem:** todas as migrations até `20261123090000_audio.sql`, Edge Functions `invite-member`
+  e `purge-old-recordings`, `CRON_SECRET` configurado.
+- **PR "admin redefine senha de integrante" (aberto, sem merge):** Edge Function
+  `reset-member-password`, botão em Integrantes, tela de funções do ministério (pendência 34).

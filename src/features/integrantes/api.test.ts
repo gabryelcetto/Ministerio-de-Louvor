@@ -15,6 +15,7 @@ describe('buildMembers', () => {
       full_name: 'Zélia Souza',
       display_name: null,
       access_role: 'member' as const,
+      is_owner: false,
       status: 'active' as const,
       member_functions: [fn('Bateria', 7), fn('Backing vocal', 2, 'vocal'), { function: null }],
     },
@@ -23,6 +24,7 @@ describe('buildMembers', () => {
       full_name: 'Ana Administradora',
       display_name: 'Ana',
       access_role: 'admin' as const,
+      is_owner: true,
       status: 'inactive' as const,
       member_functions: [],
     },
@@ -33,6 +35,14 @@ describe('buildMembers', () => {
     expect(members.map((m) => [m.name, m.functions, m.active, m.phone])).toEqual([
       ['Ana', [], false, null],
       ['Zélia Souza', ['Backing vocal', 'Bateria'], true, null],
+    ]);
+  });
+
+  it('leva a marca de dono do ministério', () => {
+    const members = buildMembers(rows, null);
+    expect(members.map((m) => [m.id, m.isOwner])).toEqual([
+      ['u1', true],
+      ['u2', false],
     ]);
   });
 

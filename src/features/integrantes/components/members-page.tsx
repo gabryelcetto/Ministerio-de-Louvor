@@ -1,19 +1,26 @@
-import { Phone, Search, UserPlus } from 'lucide-react';
+import { ListChecks, Phone, Search, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useMyProfile } from '@/features/auth/hooks/use-me';
 import { useSession } from '@/features/auth/session-context';
 import { usePermission } from '@/lib/permissions';
 import { buildMembers, matchesName, ROLE_LABEL, telHref, useMembers, type Member } from '../api';
+import { canResetPassword, type ResetActor } from '../reset';
 import { SECTION_BADGE } from '../sections';
+import { ResetPasswordButton } from './reset-password-button';
 
 /** Integrantes: nome e funções; telefone só para quem tem members.view_contacts. */
 export function MembersPage() {
   const { members, contacts, canViewContacts } = useMembers();
   const canManage = usePermission('members.manage');
+  const profile = useMyProfile();
   const [text, setText] = useState('');
+  const me: ResetActor | null = profile.data
+    ? { id: profile.data.id, isOwner: profile.data.is_owner, canManageMembers: canManage }
+    : null;
 
   const all = members.data
     ? buildMembers(members.data, canViewContacts ? (contacts.data ?? null) : null)
@@ -35,12 +42,20 @@ export function MembersPage() {
         </div>
         {/* Só aparece com members.manage; quem decide de verdade é a Edge Function + o banco. */}
         {canManage && (
-          <Button asChild>
-            <Link to="/integrantes/cadastrar">
-              <UserPlus aria-hidden="true" />
-              Cadastrar integrante
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link to="/integrantes/cadastrar">
+                <UserPlus aria-hidden="true" />
+                Cadastrar integrante
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/integrantes/funcoes">
+                <ListChecks aria-hidden="true" />
+                Funções do ministério
+              </Link>
+            </Button>
+          </div>
         )}
       </header>
 
@@ -76,13 +91,13 @@ export function MembersPage() {
         </EmptyState>
       ) : (
         <>
-          <MemberList members={active} showPhone={canViewContacts} />
+          <MemberList members={active} showPhone={canViewContacts} me={me} />
           {inactive.length > 0 && (
             <div className="flex flex-col gap-2">
               <h2 className="text-sm font-semibold text-muted-foreground">
                 Inativos ({inactive.length})
               </h2>
-              <MemberList members={inactive} showPhone={canViewContacts} />
+              <MemberList members={inactive} showPhone={canViewContacts} me={me} />
             </div>
           )}
         </>
@@ -91,7 +106,15 @@ export function MembersPage() {
   );
 }
 
-function MemberList({ members, showPhone }: { members: Member[]; showPhone: boolean }) {
+function MemberList({
+  members,
+  showPhone,
+  me,
+}: {
+  members: Member[];
+  showPhone: boolean;
+  me: ResetActor | null;
+}) {
   const { session } = useSession();
   if (members.length === 0) return null;
   return (
@@ -166,6 +189,7 @@ function MemberList({ members, showPhone }: { members: Member[]; showPhone: bool
                     {m.phone}
                   </span>
                 ))}
+              {canResetPassword(me, m) && <ResetPasswordButton memberId={m.id} name={m.name} />}
             </div>
           </li>
         );
