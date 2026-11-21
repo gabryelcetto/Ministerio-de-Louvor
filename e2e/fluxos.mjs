@@ -333,7 +333,9 @@ const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click(
     async () => {
       await page.goto(`${BASE}/`);
       const nav = page.getByRole('navigation', { name: 'Navegação principal' });
-      const links = (await nav.getByRole('link').allInnerTexts()).map((t) => t.trim());
+      // allInnerTexts não espera: aguarda a barra aparecer antes de ler.
+    await nav.getByRole('link', { name: 'Mais', exact: true }).waitFor();
+    const links = (await nav.getByRole('link').allInnerTexts()).map((t) => t.trim());
       const expected = ['Início', 'Escalas', 'Repertório', 'Agenda', 'Mais'];
       if (links.join('|') !== expected.join('|')) throw new Error(`itens: ${links.join(', ')}`);
       await nav.getByRole('link', { name: 'Repertório' }).click();
