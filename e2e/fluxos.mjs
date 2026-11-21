@@ -775,7 +775,7 @@ const attr = (loc, name) => loc.getAttribute(name);
   await step(page, who, 'Player: tom acompanha a cifra e pode ser ajustado à mão', async () => {
     const player = playerOf(page);
     const before = Number(await attr(player, 'data-pitch'));
-    await page.getByRole('button', { name: 'Subir meio tom' }).click(); // barra de tom da CIFRA
+    await page.getByRole('button', { name: 'Subir meio tom', exact: true }).click(); // barra de tom da CIFRA
     await poll(
       async () => Number(await attr(player, 'data-pitch')) === before + 1,
       'tom do áudio não acompanhou a cifra',

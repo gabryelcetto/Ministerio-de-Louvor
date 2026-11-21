@@ -1,6 +1,8 @@
 -- =============================================================================
 -- ÁUDIOS: gravações de ensaio e áudios de referência por música (Supabase Storage).
 --
+-- Idempotente (pode ser reaplicada: if not exists / drop policy if exists / on conflict).
+--
 -- Limites do plano grátis: 1 GB no total e 50 MB por arquivo. O bucket aceita até 45 MB por
 -- arquivo (margem) e só audio/*. Gravações de ensaio com mais de 90 dias são apagadas pela
 -- Edge Function `purge-old-recordings` (pela API do Storage, nunca direto em storage.objects).
@@ -23,7 +25,7 @@ insert into public.role_permissions (role, permission_key) values ('admin', 'med
 on conflict do nothing;
 
 -- Tabela --------------------------------------------------------------------------------------
-create table public.media_files (
+create table if not exists public.media_files (
   id uuid primary key default gen_random_uuid(),
   kind text not null check (kind in ('rehearsal', 'reference')),
   event_id uuid references public.events (id) on delete cascade,
@@ -44,9 +46,9 @@ create table public.media_files (
     storage_path like kind || '/' || coalesce(event_id, song_id)::text || '/%'
   )
 );
-create index media_files_event_idx on public.media_files (event_id, created_at desc);
-create index media_files_song_idx on public.media_files (song_id, created_at desc);
-create index media_files_rehearsal_age_idx on public.media_files (created_at) where kind = 'rehearsal';
+create index if not exists media_files_event_idx on public.media_files (event_id, created_at desc);
+create index if not exists media_files_song_idx on public.media_files (song_id, created_at desc);
+create index if not exists media_files_rehearsal_age_idx on public.media_files (created_at) where kind = 'rehearsal';
 
 comment on table public.media_files is
   'Metadados dos áudios do bucket "audios" (o arquivo fica no Storage).';
@@ -58,6 +60,10 @@ grant select, insert, update, delete on public.media_files to authenticated;
 grant select, delete on public.media_files to service_role;
 
 alter table public.media_files enable row level security;
+
+drop policy if exists "media_files: integrantes ativos leem" on public.media_files;
+drop policy if exists "media_files: integrante ativo envia em nome próprio" on public.media_files;
+drop policy if exists "media_files: autor ou admin apaga" on public.media_files;
 
 create policy "media_files: integrantes ativos leem"
   on public.media_files for select to authenticated

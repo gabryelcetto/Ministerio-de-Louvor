@@ -163,6 +163,44 @@ só para selos e para filtrar a montagem de escala — **não** dão permissão.
 - Quem decide é o banco (`has_permission`, RLS e triggers); esconder botão é só conforto.
 - O valor `leader` continua no enum do banco, mas ninguém usa (uma CHECK impede).
 
+## Áudios: gravação de ensaio e áudio de referência
+
+- **Gravar ensaio** (detalhe de um evento do tipo _ensaio_): grava no próprio celular com áudio
+  comprimido (Opus ~32 kbps; no iPhone, AAC ~48 kbps), com cronômetro, pausar/retomar e tela acesa
+  (Wake Lock). Os pedaços vão para o **IndexedDB durante a gravação**: se o app fechar ou a
+  internet cair, a gravação aparece como "não enviada". Envio com barra de progresso e "Tentar de
+  novo"; aviso antes de chegar em 45 MB.
+- **Áudio de referência** (tela da música): envio de arquivo de áudio (até 45 MB).
+- **Player com tom e velocidade, sem servidor:** velocidade de 50% a 100% sem mudar o tom e tom em
+  semitons sem mudar o andamento, com [SoundTouch](https://github.com/cutterbl/SoundTouchJS)
+  (`@soundtouchjs/audio-worklet`, MPL-2.0) num AudioWorklet. Na música, o tom do áudio
+  **acompanha o tom escolhido na cifra** (diferença para o tom original), com opção de desligar.
+- **Storage:** bucket privado `audios` (45 MB por arquivo, só `audio/*`), metadados em
+  `media_files`. Lê e envia: integrante ativo. Apaga: o próprio autor ou o admin
+  (`media.manage`).
+- **Plano grátis:** 1 GB no total. O admin vê o espaço usado em **Configurações**.
+- **Retenção:** gravações de ensaio com mais de **90 dias** são apagadas todo dia pela Edge
+  Function `purge-old-recordings` (pela API do Storage), chamada pelo workflow agendado
+  **"Limpeza de gravações antigas"**. Áudios de referência não expiram.
+
+### Publicar a limpeza automática
+
+```bash
+# 1. Segredo próprio da função (64 caracteres aleatórios). Guarde o valor para o passo 3.
+openssl rand -hex 32
+npx supabase secrets set CRON_SECRET=COLE_O_VALOR --project-ref SEU_PROJECT_REF
+
+# 2. Publicar a função (sem verificação de JWT: quem chama é o GitHub, com o segredo)
+npx supabase functions deploy purge-old-recordings --no-verify-jwt --project-ref SEU_PROJECT_REF
+
+# 3. No GitHub (environment "staging", o mesmo do Deploy banco)
+gh secret set CRON_SECRET --env staging --body "COLE_O_VALOR"
+gh variable set SUPABASE_URL --env staging --body "https://SEU_PROJECT_REF.supabase.co"
+
+# 4. Testar sem apagar nada
+gh workflow run "Limpeza de gravações antigas" -f dry_run=true
+```
+
 ## Identidade (nome da igreja)
 
 Nome da igreja e do app ficam em [`src/config/brand.ts`](src/config/brand.ts): título da aba,
