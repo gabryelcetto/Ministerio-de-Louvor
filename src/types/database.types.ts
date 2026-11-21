@@ -143,14 +143,14 @@ isOneToOne: false
                   ]
                 },"media_files": {
                   Row: {
-                    "created_at": string,"created_by": string | null,"duration_seconds": number | null,"event_id": string | null,"id": string,"kind": string,"mime_type": string,"size_bytes": number,"song_id": string | null,"storage_path": string
+                    "created_at": string,"created_by": string | null,"duration_seconds": number | null,"event_id": string | null,"id": string,"kind": string,"label": string | null,"mime_type": string,"size_bytes": number,"song_id": string | null,"storage_path": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string | null,"duration_seconds"?: number | null,"event_id"?: string | null,"id"?: string,"kind": string,"mime_type": string,"size_bytes": number,"song_id"?: string | null,"storage_path": string
+                    "created_at"?: string,"created_by"?: string | null,"duration_seconds"?: number | null,"event_id"?: string | null,"id"?: string,"kind": string,"label"?: string | null,"mime_type": string,"size_bytes": number,"song_id"?: string | null,"storage_path": string
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string | null,"duration_seconds"?: number | null,"event_id"?: string | null,"id"?: string,"kind"?: string,"mime_type"?: string,"size_bytes"?: number,"song_id"?: string | null,"storage_path"?: string
+                    "created_at"?: string,"created_by"?: string | null,"duration_seconds"?: number | null,"event_id"?: string | null,"id"?: string,"kind"?: string,"label"?: string | null,"mime_type"?: string,"size_bytes"?: number,"song_id"?: string | null,"storage_path"?: string
                   }
                   Relationships: [
                     {
@@ -460,6 +460,24 @@ isOneToOne: false
 { Args: { "p_days"?: number }; Returns: {
               "reason": string,"storage_path": string
             }[]
+                           },
+"audio_reference_count":
+{ Args: { "p_song": string }; Returns: number
+                           },
+"audio_upload_allowed":
+{ Args: { "p_name": string }; Returns: boolean
+                           },
+"audio_upload_block_bytes":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"audio_upload_problem":
+{ Args: { "p_except_path"?: string,"p_kind": string,"p_target": string }; Returns: string
+                           },
+"audio_used_bytes":
+{ Args: { "p_except_path"?: string }; Returns: number
+                           },
+"check_audio_upload":
+{ Args: { "p_kind": string,"p_target": string }; Returns: undefined
                            },
 "complete_password_change":
 { Args: Record<PropertyKey, never>; Returns: undefined

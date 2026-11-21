@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { chooseRecordingFormat } from '@/lib/audio/format';
 import { recordingSizeLevel, type RecordingSizeLevel } from '@/lib/audio/limits';
-import { appendChunk, saveSession, type RecordingSession } from '@/lib/audio/recording-store';
+import {
+  appendChunk,
+  saveSession,
+  type RecordingSession,
+  type RecordingTarget,
+} from '@/lib/audio/recording-store';
 
 export type RecorderState = 'idle' | 'starting' | 'recording' | 'paused' | 'stopping';
 
@@ -20,13 +25,17 @@ interface WakeLockLike {
 }
 
 /**
- * Gravação de ensaio:
+ * Gravação de áudio (ensaio ou referência da música):
  * - áudio comprimido (Opus/AAC com bitrate baixo, conforme o navegador);
  * - pedaços salvos no IndexedDB enquanto grava (fechou o app? a gravação continua lá);
  * - cronômetro que respeita pausa; Wake Lock para a tela não apagar;
  * - aviso perto de 45 MB e parada automática antes do limite.
  */
-export function useRecorder(eventId: string, onStopped: (session: RecordingSession) => void) {
+export function useRecorder(
+  target: RecordingTarget,
+  onStopped: (session: RecordingSession) => void,
+) {
+  const { kind, targetId } = target;
   const [state, setState] = useState<RecorderState>('idle');
   const [elapsedMs, setElapsedMs] = useState(0);
   const [bytes, setBytes] = useState(0);
@@ -145,7 +154,8 @@ export function useRecorder(eventId: string, onStopped: (session: RecordingSessi
 
     const session: RecordingSession = {
       id: crypto.randomUUID(),
-      eventId,
+      kind,
+      targetId,
       // O tipo real pode vir sem "codecs": usamos o do gravador.
       mimeType: recorder.mimeType || format.mimeType,
       extension: format.extension,
@@ -203,7 +213,7 @@ export function useRecorder(eventId: string, onStopped: (session: RecordingSessi
     recorder.start(CHUNK_MS);
     setState('recording');
     void requestWakeLock();
-  }, [eventId, onStopped, releaseWakeLock, requestWakeLock, stop]);
+  }, [kind, targetId, onStopped, releaseWakeLock, requestWakeLock, stop]);
 
   const pause = useCallback(() => {
     const recorder = recorderRef.current;

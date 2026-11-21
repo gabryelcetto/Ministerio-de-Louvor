@@ -554,6 +554,141 @@ async function callReset(client, body) {
     );
   }
 
+  // Limite de 3 áudios de referência por música e nome (label) — outra música do seed.
+  {
+    const SONG2 = '00000000-0000-4000-8000-000000000002';
+    const paths = [1, 2, 3].map((n) => `reference/${SONG2}/limite-${n}-${Date.now()}.wav`);
+    const ids = [];
+    for (const [i, path] of paths.entries()) {
+      const { error } = await bucket(member).upload(path, wav, { contentType: 'audio/wav' });
+      const { data, error: e2 } = await member
+        .from('media_files')
+        .insert({
+          kind: 'reference',
+          song_id: SONG2,
+          storage_path: path,
+          mime_type: 'audio/wav',
+          size_bytes: wav.length,
+          created_by: isa,
+          label: i === 0 ? 'Voz guia' : null,
+        })
+        .select('id');
+      if (error || e2) check(false, `limite: envio ${i + 1} de 3`, error?.message ?? e2?.message);
+      if (data?.[0]) ids.push(data[0].id);
+    }
+    check(ids.length === 3, 'limite: integrante envia 3 áudios de referência na mesma música');
+    const FULL = 'Esta música já tem 3 áudios de referência. Apague um para enviar outro.';
+    {
+      const { error } = await member.rpc('check_audio_upload', {
+        p_kind: 'reference',
+        p_target: SONG2,
+      });
+      check(
+        error?.message === FULL,
+        'limite: o app é avisado antes de enviar o 4º (mensagem em português)',
+        error?.message ?? 'sem erro',
+      );
+    }
+    {
+      const { error } = await bucket(member).upload(`reference/${SONG2}/quarto.wav`, wav, {
+        contentType: 'audio/wav',
+      });
+      check(Boolean(error), 'limite: o bucket recusa o 4º arquivo', error?.message ?? 'aceitou');
+    }
+    {
+      const { error } = await member
+        .from('media_files')
+        .insert({
+          kind: 'reference',
+          song_id: SONG2,
+          storage_path: `reference/${SONG2}/quarto-registro.wav`,
+          mime_type: 'audio/wav',
+          size_bytes: wav.length,
+          created_by: isa,
+        })
+        .select('id');
+      check(
+        error?.message === FULL,
+        'limite: o banco recusa o 4º registro (trigger)',
+        error?.message ?? 'aceitou',
+      );
+    }
+    {
+      const { error } = await member.rpc('check_audio_upload', {
+        p_kind: 'reference',
+        p_target: SONG,
+      });
+      check(!error, 'limite: outra música continua aceitando', error?.message ?? '');
+    }
+    // Nome: autora e admin editam; outro integrante não; só a coluna label
+    {
+      const { data, error } = await member
+        .from('media_files')
+        .update({ label: 'Arranjo' })
+        .eq('id', ids[1])
+        .select('label');
+      check(
+        !error && data?.[0]?.label === 'Arranjo',
+        'nome: autora dá nome ao próprio áudio',
+        error?.message ?? JSON.stringify(data),
+      );
+    }
+    {
+      const { data, error } = await leader
+        .from('media_files')
+        .update({ label: 'Do Lucas' })
+        .eq('id', ids[1])
+        .select('id');
+      check(
+        !error && (data ?? []).length === 0,
+        'nome: outro integrante não renomeia (RLS)',
+        error?.message ?? `${data?.length} linha(s)`,
+      );
+    }
+    {
+      const { data, error } = await admin
+        .from('media_files')
+        .update({ label: 'Ensaio' })
+        .eq('id', ids[2])
+        .select('label');
+      check(
+        !error && data?.[0]?.label === 'Ensaio',
+        'nome: admin renomeia áudio de qualquer pessoa',
+        error?.message ?? JSON.stringify(data),
+      );
+    }
+    {
+      const { error } = await member
+        .from('media_files')
+        .update({ storage_path: `reference/${SONG2}/outro.wav` })
+        .eq('id', ids[1])
+        .select('id');
+      check(
+        error?.code === '42501',
+        'nome: só a coluna label pode ser alterada',
+        error?.code ?? 'aceitou',
+      );
+    }
+    {
+      const { error } = await member
+        .from('media_files')
+        .update({ label: 'x'.repeat(61) })
+        .eq('id', ids[1])
+        .select('id');
+      check(error?.code === '23514', 'nome: até 60 caracteres', error?.code ?? 'aceitou');
+    }
+    {
+      const { data } = await admin.rpc('get_storage_usage');
+      check(
+        Number(data?.block_bytes) === 966367641,
+        'espaço: admin vê o ponto de bloqueio (90% de 1 GB)',
+        JSON.stringify(data),
+      );
+    }
+    await bucket(member).remove(paths);
+    await member.from('media_files').delete().in('id', ids);
+  }
+
   // Limpeza automática: gravação de ensaio "com 100 dias" some; referência fica.
   const oldPath = `rehearsal/${ENSAIO}/antiga-${Date.now()}.wav`;
   const keepPath = `reference/${SONG}/fica-${Date.now()}.wav`;

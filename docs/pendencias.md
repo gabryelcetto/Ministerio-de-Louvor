@@ -244,6 +244,28 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **O que fazer (se quiser):** na Edge Function, depois de trocar a senha, encerrar as sessões
   da pessoa (apagar as linhas dela em `auth.sessions` por uma RPC só para `service_role`).
 
+### 42. Publicar "gravar na música" na nuvem (o dono roda)
+
+- **O quê:** migration `20261125090000_audio_labels_limits.sql` (nome do áudio, limite de 3
+  referências por música, bloqueio a 90% de 1 GB). O app já sai pelo deploy da Cloudflare, mas
+  **gravar na música só funciona de verdade depois da migration**: sem ela, o envio falha porque
+  a RPC `check_audio_upload` ainda não existe.
+- **Por que não foi feito:** a senha do banco mudou; o `db push` fica com o dono.
+- **O que fazer:**
+
+  ```bash
+  npx supabase db push --dry-run   # deve listar 20261125090000_audio_labels_limits.sql
+  npx supabase db push             # (e 20261124090000, se ainda não foi aplicada)
+  ```
+
+### 43. Bloqueio de 90% conta o bucket inteiro
+
+- **O quê:** o uso vem da soma do tamanho dos arquivos do bucket `audios` (o mesmo número de
+  Configurações). Arquivos "órfãos" (upload sem registro) contam até a limpeza diária apagá-los.
+- **Atenção:** o banco não sabe o tamanho do arquivo **antes** do envio; quem está em 89% ainda
+  consegue enviar um arquivo de até 45 MB, passando um pouco de 90%. O limite de 1 GB do plano
+  continua longe.
+
 ## Resolvidas recentemente
 
 - **34. Funções novas do ministério nasciam "instrumental"** — tela **Integrantes → Funções do
@@ -278,6 +300,12 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **12. Grafia do baixo na transposição** — fase F: cada nota (tônica e baixo) é escrita pelo
   grau no tom de destino; `A/G` de E para G sai `C/Bb`.
 - **18. Configurações provisória** — tela de Configurações com perfil, tema, instalar e sair.
+
+## Situação em 21/11/2026 (dia)
+
+- **PR "gravar na música":** gravação direto na tela da música (componente de gravação comum ao
+  ensaio), nome do áudio, limite de 3 referências por música e bloqueio a 90% do espaço. Falta o
+  `db push` (pendência 42).
 
 ## Situação em 21/11/2026 (noite)
 

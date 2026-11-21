@@ -12,6 +12,29 @@ const SIGNED_URL_SECONDS = 60 * 60;
 
 export type MediaKind = 'rehearsal' | 'reference';
 
+/** Até 3 áudios de referência por música (o banco garante; o app avisa antes). */
+export const MAX_REFERENCES_PER_SONG = 3;
+/** Nome do áudio: até 60 caracteres (mesma regra do banco). */
+export const LABEL_MAX = 60;
+export const LABEL_SUGGESTIONS = ['Voz guia', 'Arranjo', 'Ensaio'] as const;
+
+/** Nome digitado → valor gravado: espaços sobrando saem; vazio vira null (sem nome). */
+export function normalizeLabel(value: string): string | null {
+  const trimmed = value.replace(/\s+/g, ' ').trim();
+  return trimmed ? trimmed : null;
+}
+
+/** Problema no nome digitado (null = ok). */
+export function labelProblem(value: string): string | null {
+  const label = normalizeLabel(value);
+  return label && label.length > LABEL_MAX ? `Use até ${LABEL_MAX} caracteres.` : null;
+}
+
+/** Título mostrado na lista: o nome, ou "Gravação N" / "Áudio N" quando não tem nome. */
+export function mediaTitle(kind: MediaKind, label: string | null, position: number): string {
+  return label ?? `${kind === 'rehearsal' ? 'Gravação' : 'Áudio'} ${position}`;
+}
+
 export interface MediaItem {
   id: string;
   kind: MediaKind;
@@ -21,6 +44,8 @@ export interface MediaItem {
   sizeBytes: number;
   createdAt: string;
   createdBy: string | null;
+  /** Nome dado pelo autor ou admin (null = sem nome). */
+  label: string | null;
   author: string | null;
   /** Link temporário para tocar (null se o Storage não gerou). */
   url: string | null;
@@ -36,7 +61,7 @@ async function fetchMedia(filter: { eventId?: string; songId?: string }): Promis
   let query = supabase
     .from('media_files')
     .select(
-      'id, kind, storage_path, mime_type, duration_seconds, size_bytes, created_at, created_by, author:profiles(full_name, display_name)',
+      'id, kind, label, storage_path, mime_type, duration_seconds, size_bytes, created_at, created_by, author:profiles(full_name, display_name)',
     )
     .order('created_at', { ascending: false });
   if (filter.eventId) query = query.eq('event_id', filter.eventId);
@@ -63,6 +88,7 @@ async function fetchMedia(filter: { eventId?: string; songId?: string }): Promis
     sizeBytes: Number(m.size_bytes),
     createdAt: m.created_at,
     createdBy: m.created_by,
+    label: m.label,
     author: m.author ? displayName(m.author) : null,
     url: urlByPath.get(m.storage_path) ?? null,
   }));
@@ -97,13 +123,23 @@ export interface UploadAudioInput {
 }
 
 /**
- * Envia o arquivo (com progresso) e registra em media_files. Se o registro falhar, apaga o
- * arquivo enviado para não sobrar lixo no Storage.
+ * O banco aceita um envio novo? (limite de 3 referências por música e de 90% do espaço).
+ * Consultado ANTES de mandar o arquivo: a mensagem vem em português e a internet não é gasta.
  */
-export async function uploadAudio(input: UploadAudioInput): Promise<void> {
+export async function checkAudioUpload(kind: MediaKind, targetId: string): Promise<void> {
+  const { error } = await supabase.rpc('check_audio_upload', { p_kind: kind, p_target: targetId });
+  if (error) throw error;
+}
+
+/**
+ * Confere os limites, envia o arquivo (com progresso) e registra em media_files. Se o registro
+ * falhar, apaga o arquivo enviado para não sobrar lixo no Storage. Devolve o id do registro.
+ */
+export async function uploadAudio(input: UploadAudioInput): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData.session;
   if (!session) throw new UserFacingError('Sua sessão expirou. Entre de novo.');
+  await checkAudioUpload(input.kind, input.targetId);
 
   const env = readPublicEnv(import.meta.env);
   const contentType = baseMimeType(input.mimeType) || 'audio/mpeg';
@@ -120,7 +156,7 @@ export async function uploadAudio(input: UploadAudioInput): Promise<void> {
     onProgress: input.onProgress,
   });
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('media_files')
     .insert({
       kind: input.kind,
@@ -138,6 +174,20 @@ export async function uploadAudio(input: UploadAudioInput): Promise<void> {
     await supabase.storage.from(AUDIO_BUCKET).remove([path]);
     throw error;
   }
+  const id = requireAffected(data)[0]?.id;
+  if (!id) throw new Error('Resposta inesperada do servidor.');
+  return id;
+}
+
+/** Dá (ou troca) o nome do áudio. Só o autor ou o admin conseguem (RLS + GRANT de coluna). */
+export async function renameAudio(input: { id: string; label: string | null }): Promise<void> {
+  const { data, error } = await supabase
+    .from('media_files')
+    .update({ label: input.label })
+    .eq('id', input.id)
+    .select('id');
+  if (error) throw error;
+  requireAffected(data);
 }
 
 /** Apaga o arquivo (pela API do Storage) e o registro. Só o autor ou o admin conseguem. */
@@ -165,6 +215,20 @@ export function useUploadAudio(kind: MediaKind, targetId: string) {
     mutationFn: (input: Omit<UploadAudioInput, 'kind' | 'targetId'>) =>
       uploadAudio({ ...input, kind, targetId }),
     onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({
+          queryKey: kind === 'rehearsal' ? keys.event(targetId) : keys.song(targetId),
+        }),
+        client.invalidateQueries({ queryKey: keys.usage }),
+      ]),
+  });
+}
+
+export function useRenameAudio(kind: MediaKind, targetId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: renameAudio,
+    onSuccess: () =>
       client.invalidateQueries({
         queryKey: kind === 'rehearsal' ? keys.event(targetId) : keys.song(targetId),
       }),
@@ -191,6 +255,16 @@ export interface StorageUsage {
   referenceBytes: number;
   files: number;
   limitBytes: number;
+  /** A partir daqui (90% de 1 GB) o banco recusa envios novos. */
+  blockBytes: number;
+}
+
+/** Nível do aviso de espaço: ok, perto (≥ 70%) ou bloqueado (≥ 90%, o banco recusa envios). */
+export function storageLevel(
+  usage: Pick<StorageUsage, 'totalBytes' | 'blockBytes' | 'limitBytes'>,
+): 'ok' | 'warn' | 'blocked' {
+  if (usage.totalBytes >= usage.blockBytes) return 'blocked';
+  return usage.totalBytes >= usage.limitBytes * 0.7 ? 'warn' : 'ok';
 }
 
 export async function fetchStorageUsage(): Promise<StorageUsage> {
@@ -204,6 +278,7 @@ export async function fetchStorageUsage(): Promise<StorageUsage> {
     referenceBytes: n(v.reference_bytes),
     files: n(v.files),
     limitBytes: n(v.limit_bytes) || 1024 * 1024 * 1024,
+    blockBytes: n(v.block_bytes) || Math.floor(1024 * 1024 * 1024 * 0.9),
   };
 }
 

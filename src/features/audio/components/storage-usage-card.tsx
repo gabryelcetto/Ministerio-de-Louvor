@@ -1,10 +1,10 @@
-import { HardDrive } from 'lucide-react';
+import { HardDrive, TriangleAlert } from 'lucide-react';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatBytes } from '@/lib/audio/limits';
 import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
-import { useStorageUsage } from '../api';
+import { storageLevel, useStorageUsage } from '../api';
 
 /** Espaço usado pelos áudios no plano grátis (1 GB). Só para quem tem media.manage (admin). */
 export function StorageUsageCard() {
@@ -29,8 +29,29 @@ export function StorageUsageCard() {
           (() => {
             const { totalBytes, limitBytes, rehearsalBytes, referenceBytes, files } = usage.data;
             const fraction = Math.min(1, totalBytes / limitBytes);
+            const level = storageLevel(usage.data);
             return (
               <>
+                {level === 'blocked' && (
+                  <p
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg border border-destructive/40 p-3 text-sm"
+                  >
+                    <TriangleAlert
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0 text-destructive"
+                    />
+                    <span>
+                      Passou de 90% do espaço: <strong>novos áudios estão bloqueados</strong>{' '}
+                      (gravações de ensaio e referências). Apague áudios antigos para liberar.
+                    </span>
+                  </p>
+                )}
+                {level === 'warn' && (
+                  <p role="status" className="text-sm font-medium">
+                    O espaço está acabando. Ao passar de 90%, o app para de aceitar áudios novos.
+                  </p>
+                )}
                 <p className="text-sm">
                   <strong>{formatBytes(totalBytes)}</strong> de {formatBytes(limitBytes)} usados (
                   {Math.round(fraction * 100)}%)
@@ -46,9 +67,9 @@ export function StorageUsageCard() {
                   <div
                     className={cn(
                       'h-full rounded-full',
-                      fraction >= 0.9
+                      level === 'blocked'
                         ? 'bg-destructive'
-                        : fraction >= 0.7
+                        : level === 'warn'
                           ? 'bg-accent'
                           : 'bg-primary',
                     )}

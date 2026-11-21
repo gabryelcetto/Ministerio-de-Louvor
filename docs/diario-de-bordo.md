@@ -953,3 +953,47 @@ as migrations a partir da de GRANT.
 - **Grupo obrigatório sem migração de dados:** as funções existentes já têm grupo; só saiu o
   valor padrão, e a tela pergunta. Assim, esquecer o grupo vira erro em vez de "instrumental"
   silencioso.
+
+## Gravar na tela da música, nome do áudio e limites (21/11/2026)
+
+### Arquivos criados/alterados
+
+- `supabase/migrations/20261125090000_audio_labels_limits.sql` (idempotente):
+  - `media_files.label` (até 60 caracteres, opcional);
+  - GRANT de UPDATE só na coluna `label` + policy "autor ou admin renomeia";
+  - `check_audio_upload()` (consulta do app antes de enviar);
+  - triggers `media_files_enforce_limits` (BEFORE: trava por música e bloqueio de 90%) e
+    `media_files_reference_limit` (AFTER: no máximo 3 referências por música);
+  - policy de envio do bucket passa por `audio_upload_allowed()` (pasta, limite de 3 e 90%);
+  - `get_storage_usage()` devolve também `block_bytes`.
+- `src/features/audio/components/audio-recorder.tsx`: componente comum de gravação
+  (`RecorderControls` + `AudioRecorder` com "não enviadas", envio e descarte), usado pelo ensaio e
+  pela música. `rehearsal-recordings.tsx` e `reference-audios.tsx` ficaram só com o que é de cada
+  tela.
+- `audio-label-dialog.tsx` + `use-audio-naming.tsx`: nome depois de enviar e "Renomear".
+- `media-list.tsx` (nome e Renomear), `storage-usage-card.tsx` (aviso de 90%), `api.ts`
+  (`label`, `checkAudioUpload`, `renameAudio`, `storageLevel`), `use-recorder.ts` e
+  `recording-store.ts` (alvo = ensaio ou música; gravações antigas, só com `eventId`, continuam
+  aparecendo no ensaio).
+- Testes:
+  - `supabase/tests/audio-limits.test.sql` (24) e `privileges.test.sql` (coluna `label`);
+  - Vitest: `audio-recorder.test.tsx` (controles renderizados em HTML, sem DOM) e `api.test.ts`;
+  - E2E de API (limite de 3 no RPC, no bucket e no banco; quem renomeia; só a coluna `label`);
+  - E2E de tela (gravar na música com o microfone falso, dar nome, ouvir com o tom acompanhando a
+    cifra, renomear, terceiro áudio por arquivo, quarto recusado); o ensaio pula o nome.
+
+### Decisões
+
+- **Três camadas para os limites:** a consulta antes de enviar dá a mensagem em português e
+  poupa a internet; a policy do bucket impede o arquivo de entrar; o trigger em `media_files` é a
+  garantia final (inclusive para quem chamar a API direto).
+- **Contagem de referências num trigger AFTER**, com funções voláteis e trava por música: um
+  INSERT com várias linhas ou dois envios ao mesmo tempo não passam de 3. Uma função STABLE
+  enxergaria a "foto" do início do comando e deixaria passar.
+- **Bloqueio de 90% pelo bucket inteiro** (o mesmo número de Configurações); detalhe na
+  pendência 43.
+- **Nome pedido depois do envio**, não antes: a gravação já está segura no servidor e o nome é
+  só um `UPDATE` da coluna `label` (o mesmo de "Renomear").
+- **Teste do componente sem DOM:** `renderToStaticMarkup` do React, sem instalar jsdom (o disco
+  desta máquina está quase cheio).
+- **Sem `db push`:** a senha do banco mudou; o comando ficou para o dono (pendência 42).

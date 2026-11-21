@@ -170,7 +170,11 @@ só para selos e para filtrar a montagem de escala — **não** dão permissão.
   (Wake Lock). Os pedaços vão para o **IndexedDB durante a gravação**: se o app fechar ou a
   internet cair, a gravação aparece como "não enviada". Envio com barra de progresso e "Tentar de
   novo"; aviso antes de chegar em 45 MB.
-- **Áudio de referência** (tela da música): envio de arquivo de áudio (até 45 MB).
+- **Áudio de referência** (tela da música): **Gravar** na hora (o mesmo gravador do ensaio:
+  compressão, tela acesa, pausar/retomar, pedaços no aparelho, envio com progresso e "Tentar de
+  novo", aviso de 45 MB) ou **Enviar áudio** (arquivo até 45 MB). No máximo **3 por música**.
+- **Nome do áudio:** depois de gravar ou enviar, o app pede um nome (sugestões "Voz guia",
+  "Arranjo", "Ensaio"; até 60 caracteres, opcional). O autor ou o admin podem **Renomear** depois.
 - **Player com tom e velocidade, sem servidor:** velocidade de 50% a 100% sem mudar o tom e tom em
   semitons sem mudar o andamento, com [SoundTouch](https://github.com/cutterbl/SoundTouchJS)
   (`@soundtouchjs/audio-worklet`, MPL-2.0) num AudioWorklet. Na música, o tom do áudio
@@ -178,7 +182,13 @@ só para selos e para filtrar a montagem de escala — **não** dão permissão.
 - **Storage:** bucket privado `audios` (45 MB por arquivo, só `audio/*`), metadados em
   `media_files`. Lê e envia: integrante ativo. Apaga: o próprio autor ou o admin
   (`media.manage`).
-- **Plano grátis:** 1 GB no total. O admin vê o espaço usado em **Configurações**.
+- **Plano grátis:** 1 GB no total. O admin vê o espaço usado em **Configurações**. A partir de
+  **90%**, o banco recusa áudios novos (ensaio e referência) com mensagem em português, e
+  Configurações mostra o aviso; apague áudios antigos para liberar.
+- **Regras no banco** (migration `20261125090000_audio_labels_limits.sql`): só a coluna `label`
+  pode ser alterada (GRANT de coluna) e só pelo autor ou admin (RLS); limite de 3 referências por
+  música e bloqueio de 90% garantidos por trigger em `media_files` e pela policy do bucket. O app
+  consulta `check_audio_upload()` antes de enviar, para não gastar a internet à toa.
 - **Retenção:** gravações de ensaio com mais de **90 dias** são apagadas todo dia pela Edge
   Function `purge-old-recordings` (pela API do Storage), chamada pelo workflow agendado
   **"Limpeza de gravações antigas"**. Áudios de referência não expiram.
