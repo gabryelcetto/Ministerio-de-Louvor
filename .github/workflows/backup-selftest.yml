@@ -1,0 +1,98 @@
+name: Backup (autoteste)
+
+# Prova que o backup funciona de ponta a ponta, sem tocar na nuvem:
+#   1. sobe o Supabase local com as migrations e o seed do app;
+#   2. roda ops/backup/backup.sh contra ele, criptografando com uma chave age DESCARTÁVEL;
+#   3. sobe um SEGUNDO Supabase local vazio (outras portas) e restaura com ops/backup/restore.sh;
+#   4. compara a contagem de linhas das tabelas nos dois bancos.
+# Backup que nunca foi restaurado não é backup.
+
+on:
+  pull_request:
+    paths:
+      - 'ops/backup/**'
+      - '.github/workflows/backup-selftest.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '41 7 * * 1' # toda segunda, 04:41 em Brasília: pega mudança da CLI do Supabase
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-selftest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    name: Backup → criptografar → restaurar → comparar
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.2.0
+
+      - name: Ferramentas (age, psql)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age postgresql-client
+          age --version
+          psql --version
+
+      - name: Banco de origem (migrations + seed do app)
+        run: supabase db start
+
+      - name: Chave descartável
+        run: |
+          age-keygen -o "$RUNNER_TEMP/chave.txt" 2> /dev/null
+          echo "AGE_PUBLIC_KEY=$(age-keygen -y "$RUNNER_TEMP/chave.txt")" >> "$GITHUB_ENV"
+
+      - name: Backup (o mesmo script da produção)
+        env:
+          SUPABASE_DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: |
+          file="$(bash ops/backup/backup.sh "$RUNNER_TEMP")"
+          ls -la "$file"
+          echo "BACKUP=$file" >> "$GITHUB_ENV"
+          # O arquivo está mesmo criptografado (não é um tar.gz legível)?
+          if gzip -t "$file" 2> /dev/null; then echo "::error::arquivo não está criptografado"; exit 1; fi
+
+      - name: Banco de destino vazio (segundo Supabase local, portas 55xxx)
+        run: |
+          mkdir -p "$RUNNER_TEMP/destino" && cd "$RUNNER_TEMP/destino"
+          supabase init --force > /dev/null
+          sed -i -E 's/^project_id = .*/project_id = "restauracao"/; s/= 543([0-9]{2})/= 553\1/' supabase/config.toml
+          grep -E '^project_id|port = 55' supabase/config.toml
+          supabase db start
+
+      - name: Restaurar (o mesmo script do README)
+        run: |
+          bash ops/backup/restore.sh "$BACKUP" "$RUNNER_TEMP/chave.txt" \
+            postgresql://postgres:postgres@127.0.0.1:55322/postgres
+
+      - name: Comparar contagens
+        run: |
+          q="select string_agg(t || '=' || n, ' ' order by t) from (
+               select 'songs' t, count(*) n from public.songs union all
+               select 'song_lyrics', count(*) from public.song_lyrics union all
+               select 'song_chords', count(*) from public.song_chords union all
+               select 'song_versions', count(*) from public.song_versions union all
+               select 'events', count(*) from public.events union all
+               select 'event_songs', count(*) from public.event_songs union all
+               select 'announcements', count(*) from public.announcements union all
+               select 'permissions', count(*) from public.permissions union all
+               select 'role_permissions', count(*) from public.role_permissions union all
+               select 'ministry_functions', count(*) from public.ministry_functions
+             ) x;"
+          origem=$(psql -tA postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "$q")
+          destino=$(psql -tA postgresql://postgres:postgres@127.0.0.1:55322/postgres -c "$q")
+          echo "origem : $origem"
+          echo "destino: $destino"
+          [ -n "$origem" ] && [ "$origem" = "$destino" ] || { echo "::error::contagens diferentes"; exit 1; }
+          # RLS e policies também voltaram?
+          pol=$(psql -tA postgresql://postgres:postgres@127.0.0.1:55322/postgres -c "select count(*) from pg_policies where schemaname = 'public'")
+          echo "policies restauradas: $pol"
+          [ "$pol" -gt 20 ] || { echo "::error::policies não foram restauradas"; exit 1; }
