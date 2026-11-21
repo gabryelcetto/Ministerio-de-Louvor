@@ -451,9 +451,6 @@ isOneToOne: false
 "current_change_type":
 { Args: { "op": string }; Returns: string
                            },
-"get_storage_usage":
-{ Args: Record<PropertyKey, never>; Returns: Json
-                           },
 "get_dashboard":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -466,6 +463,9 @@ isOneToOne: false
 { Args: { "p_actor"?: string,"p_limit"?: number,"p_song"?: string }; Returns: {
               "action": string,"actor_id": string,"actor_name": string,"change_type": string,"field": string,"kind": string,"occurred_at": string,"song_id": string,"song_title": string,"version_id": string
             }[]
+                           },
+"get_storage_usage":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "has_permission":
 { Args: { "p": string }; Returns: boolean
