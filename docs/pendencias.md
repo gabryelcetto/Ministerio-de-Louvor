@@ -220,6 +220,32 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   Músicas modais ou com muitas modulações podem sugerir o tom relativo (ex.: Em no lugar de G).
   A pessoa confirma ou troca antes de salvar.
 
+### 36. Publicar os áudios na nuvem
+
+- **O quê:** migration `20261123090000_audio.sql` (bucket, `media_files`, policies), Edge Function
+  `purge-old-recordings`, segredo `CRON_SECRET` (na função e no environment `staging` do
+  GitHub) e a variable `SUPABASE_URL`.
+- **O que fazer:** comandos no PR de áudio e no README ("Publicar a limpeza automática").
+
+### 37. Testar a gravação em aparelhos de verdade
+
+- **O quê:** o E2E grava com o microfone falso do Chromium. Falta conferir no **iPhone/Safari**
+  (AAC, Wake Lock a partir do iOS 16.4, gravação com a tela bloqueada) e num Android barato
+  (consumo de bateria numa gravação de 1–2 h).
+- **Atenção:** no iPhone a gravação para se a tela bloquear ou o app for para o fundo; os pedaços
+  gravados até ali ficam salvos e aparecem como "não enviada".
+
+### 38. Arquivos do Storage fora do backup
+
+- **O quê:** o backup diário (PR "ops/backup") leva só o banco. Os áudios de referência (que não
+  expiram) precisam de cópia à parte se forem importantes: baixar pelo painel (Storage → audios).
+
+### 39. Disco do Docker nesta máquina
+
+- **O quê:** `docker_data.vhdx` (~9 GB) não encolhe sozinho depois que as imagens são apagadas.
+  Para recuperar o espaço no C:, compactar o disco virtual do Docker Desktop (como administrador)
+  ou usar _Troubleshoot → Clean / Purge data_ (apaga também os volumes de outros projetos).
+
 ## Resolvidas recentemente
 
 - **Cadastro de integrantes** — Edge Function `invite-member`, tela, primeiro acesso e

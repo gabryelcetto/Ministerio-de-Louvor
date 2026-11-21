@@ -2,7 +2,10 @@
 // Cada passo vira ✅/❌ no relatório; uma falha não interrompe os passos seguintes.
 // Uso: BASE=http://127.0.0.1:5173 DEMO_PASSWORD=... node e2e/fluxos.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { chromium } from 'playwright';
+import { makeWav } from './wav.mjs';
 
 const BASE = process.env.BASE ?? 'http://localhost:5173';
 const OUT = process.env.OUT ?? 'e2e-output';
@@ -15,9 +18,15 @@ const DESKTOP = { viewport: { width: 1366, height: 900 } };
 
 const results = [];
 let shot = 0;
-const browser = await chromium.launch(
-  process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {},
-);
+// Microfone falso (um bipe gerado pelo Chromium) para testar a gravação de ensaio.
+const browser = await chromium.launch({
+  ...(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {}),
+  args: [
+    '--use-fake-ui-for-media-stream',
+    '--use-fake-device-for-media-stream',
+    '--autoplay-policy=no-user-gesture-required',
+  ],
+});
 
 async function session(email, device, password = PASSWORD) {
   const context = await browser.newContext({
@@ -25,6 +34,7 @@ async function session(email, device, password = PASSWORD) {
     locale: 'pt-BR',
     timezoneId: 'America/Sao_Paulo',
     serviceWorkers: 'block',
+    permissions: ['microphone'],
   });
   const page = await context.newPage();
   page.apiErrors = [];
@@ -699,6 +709,183 @@ let temporaryPassword = '';
   const { context, page } = await session(NEW_EMAIL, MOBILE, NEXT_PASSWORD);
   await step(page, 'novo', 'Entra com a senha trocada em Configurações', async () => {
     await expectText(page, /Novato/);
+  });
+  await context.close();
+}
+
+// =============================================================================== ÁUDIO
+const ENSAIO_GERAL = '10000000-0000-4000-8000-000000000001';
+const playerOf = (page) => page.getByTestId('audio-player').first();
+const attr = (loc, name) => loc.getAttribute(name);
+
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE);
+  const who = 'integrante';
+
+  await step(page, who, 'Áudio de referência: recusa arquivo acima de 45 MB', async () => {
+    await page.goto(`${BASE}/repertorio/${SONG}`);
+    await page.waitForLoadState('networkidle');
+    // Arquivo grande em disco temporário (fora dos artefatos do CI).
+    const big = join(tmpdir(), 'grande-ficticio.wav');
+    writeFileSync(big, makeWav({ minBytes: 46 * 1024 * 1024 }));
+    await page.getByLabel('Arquivo de áudio de referência').setInputFiles(big);
+    await expectText(page, /o limite é 45 MB/);
+  });
+
+  await step(page, who, 'Áudio de referência: envia (fictício) e aparece com player', async () => {
+    await page.getByLabel('Arquivo de áudio de referência').setInputFiles({
+      name: 'referencia-ficticia.wav',
+      mimeType: 'audio/wav',
+      buffer: makeWav({ seconds: 6 }),
+    });
+    await playerOf(page).waitFor({ timeout: 20000 });
+    await expectText(page, /Áudio 1/);
+  });
+
+  await step(page, who, 'Player: toca com SoundTouch (tom e velocidade no aparelho)', async () => {
+    const player = playerOf(page);
+    await player.getByRole('button', { name: /^Tocar/ }).click();
+    await poll(
+      async () => (await attr(player, 'data-engine')) !== 'parado',
+      'motor de áudio não iniciou',
+    );
+    const engine = await attr(player, 'data-engine');
+    if (engine !== 'soundtouch') throw new Error(`motor: ${engine}`);
+    await poll(
+      () =>
+        page.evaluate(
+          () =>
+            (document.querySelector('[data-testid="audio-player"] audio')?.currentTime ?? 0) > 0.3,
+        ),
+      'o áudio não avançou',
+    );
+    return engine;
+  });
+
+  await step(page, who, 'Player: velocidade 75% sem mudar o tom', async () => {
+    const player = playerOf(page);
+    await player.getByRole('button', { name: '75%' }).click();
+    await poll(async () => (await attr(player, 'data-speed')) === '0.75', 'velocidade não mudou');
+    const rate = await page.evaluate(
+      () => document.querySelector('[data-testid="audio-player"] audio')?.playbackRate,
+    );
+    if (rate !== 0.75) throw new Error(`playbackRate ${rate}`);
+  });
+
+  await step(page, who, 'Player: tom acompanha a cifra e pode ser ajustado à mão', async () => {
+    const player = playerOf(page);
+    const before = Number(await attr(player, 'data-pitch'));
+    await page.getByRole('button', { name: 'Subir meio tom', exact: true }).click(); // barra de tom da CIFRA
+    await poll(
+      async () => Number(await attr(player, 'data-pitch')) === before + 1,
+      'tom do áudio não acompanhou a cifra',
+    );
+    await player.getByRole('button', { name: 'Descer meio tom do áudio' }).click();
+    await player.getByRole('button', { name: 'Descer meio tom do áudio' }).click();
+    await poll(
+      async () => Number(await attr(player, 'data-pitch')) === before - 1,
+      'ajuste manual não funcionou',
+    );
+    const follow = player.getByRole('checkbox', { name: /Acompanhar o tom da cifra/ });
+    if (await follow.isChecked()) throw new Error('ajuste manual deveria desligar o acompanhar');
+    await player.getByRole('button', { name: /^Pausar/ }).click();
+    return `pitch ${before} → ${before - 1}`;
+  });
+
+  await step(page, who, 'Gravar ensaio: grava, pausa, retoma, para e envia', async () => {
+    await page.goto(`${BASE}/escalas/${ENSAIO_GERAL}`);
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: 'Gravar ensaio' }).click();
+    await poll(
+      async () => /0:0[2-9]/.test(await page.getByTestId('cronometro').innerText()),
+      'cronômetro parado',
+      15000,
+    );
+    await page.getByRole('button', { name: 'Pausar' }).click();
+    const paused = await page.getByTestId('cronometro').innerText();
+    await page.waitForTimeout(1500);
+    if ((await page.getByTestId('cronometro').innerText()) !== paused)
+      throw new Error('cronômetro andou pausado');
+    await page.getByRole('button', { name: 'Retomar' }).click();
+    await page.waitForTimeout(2500);
+    await page.getByRole('button', { name: 'Parar' }).click();
+    const pendente = page.getByRole('list', { name: 'Gravações não enviadas' });
+    await pendente.getByRole('button', { name: 'Enviar' }).click();
+    await poll(async () => (await pendente.count()) === 0, 'gravação não foi enviada', 30000);
+    await page
+      .getByText(/Gravação 1/)
+      .first()
+      .waitFor({ timeout: 15000 });
+    await expectText(page, /Isa/);
+  });
+
+  await step(page, who, 'Gravar ensaio: app recarregado no meio não perde a gravação', async () => {
+    await page.getByRole('button', { name: 'Gravar ensaio' }).click();
+    await poll(
+      async () => /0:0[6-9]/.test(await page.getByTestId('cronometro').innerText()),
+      'cronômetro parado',
+      20000,
+    );
+    await page.reload(); // simula o app fechando no meio (os pedaços já estão no IndexedDB)
+    await page.waitForLoadState('networkidle');
+    const pendente = page.getByRole('list', { name: 'Gravações não enviadas' });
+    await pendente.waitFor({ timeout: 15000 });
+    await pendente.getByRole('button', { name: 'Enviar' }).click();
+    await poll(
+      async () => (await pendente.count()) === 0,
+      'gravação recuperada não foi enviada',
+      30000,
+    );
+    await page
+      .getByText(/Gravação 2/)
+      .first()
+      .waitFor({ timeout: 15000 });
+  });
+
+  await context.close();
+}
+
+{
+  const { context, page } = await session('lider@demo.local', MOBILE);
+  await step(page, 'lucas', 'Gravações: ouve, mas não apaga o áudio de outra pessoa', async () => {
+    await page.goto(`${BASE}/escalas/${ENSAIO_GERAL}`);
+    await page.waitForLoadState('networkidle');
+    await page
+      .getByText(/Gravação 1/)
+      .first()
+      .waitFor();
+    if (await page.getByRole('button', { name: /^Apagar Gravação/ }).count())
+      throw new Error('botão Apagar visível para quem não é autor');
+    await playerOf(page).waitFor();
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  await step(page, 'admin', 'Gravações: admin pode apagar áudio de qualquer pessoa', async () => {
+    await page.goto(`${BASE}/escalas/${ENSAIO_GERAL}`);
+    await page.waitForLoadState('networkidle');
+    await page
+      .getByRole('button', { name: /^Apagar Gravação/ })
+      .first()
+      .waitFor();
+  });
+  await step(page, 'admin', 'Configurações: espaço usado do 1 GB', async () => {
+    await page.goto(`${BASE}/configuracoes`);
+    await page.waitForLoadState('networkidle');
+    await expectText(page, 'Espaço dos áudios');
+    await expectText(page, /de 1 GB usados/);
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE);
+  await step(page, 'integrante', 'Configurações: integrante não vê o espaço usado', async () => {
+    await page.goto(`${BASE}/configuracoes`);
+    await page.waitForLoadState('networkidle');
+    if (await page.getByText('Espaço dos áudios').count()) throw new Error('card visível');
   });
   await context.close();
 }

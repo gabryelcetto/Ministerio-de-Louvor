@@ -1,0 +1,57 @@
+name: Limpeza de gravações antigas
+
+# Todo dia chama a Edge Function `purge-old-recordings`, que apaga (pela API do Storage)
+# gravações de ensaio com mais de 90 dias e uploads que não terminaram. Áudios de referência
+# não expiram. A função só aceita quem manda o segredo próprio (secret CRON_SECRET), o MESMO
+# valor configurado na função com `supabase secrets set CRON_SECRET=...` (ver README).
+
+on:
+  schedule:
+    - cron: '23 7 * * *' # 04:23 em Brasília (07:23 UTC)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Só listar o que seria apagado (não apaga nada)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: purge-recordings
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    name: Chamar purge-old-recordings
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+    steps:
+      - name: Conferir configuração
+        run: |
+          missing=0
+          [ -n "$SUPABASE_URL" ] || { echo "::error::Falta a variable SUPABASE_URL no environment staging."; missing=1; }
+          [ -n "$CRON_SECRET" ] || { echo "::error::Falta o secret CRON_SECRET no environment staging."; missing=1; }
+          exit $missing
+
+      - name: Limpar
+        run: |
+          query=""
+          [ "$DRY_RUN" = "1" ] && query="?dry_run=1"
+          status=$(curl -sS -o resposta.json -w "%{http_code}" -X POST \
+            -H "x-cron-secret: $CRON_SECRET" \
+            "$SUPABASE_URL/functions/v1/purge-old-recordings$query")
+          cat resposta.json; echo
+          echo "HTTP $status"
+          # 207 = apagou parte e falhou parte: avisa, mas não quebra (tenta de novo amanhã).
+          case "$status" in
+            200) ;;
+            207) echo "::warning::Alguns arquivos não foram apagados (ver resposta)." ;;
+            *) echo "::error::A limpeza falhou (HTTP $status)."; exit 1 ;;
+          esac

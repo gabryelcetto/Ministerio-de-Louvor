@@ -247,3 +247,47 @@ Automatizado em `e2e/fluxos.mjs` (seções NOVA MÚSICA, LUCAS e ADMIN desktop),
 | 5   | Console: `rpc('get_recent_activity')` | 42501                                                               | Lista                                               |
 | 6   | Histórico de uma música               | Visível (sem Restaurar)                                             | Visível com Restaurar                               |
 | 7   | **Arquivar** (admin)                  | —                                                                   | Some do repertório; aparece "Arquivou" na atividade |
+
+---
+
+# Áudios
+
+Automatizado em `e2e/fluxos.mjs` (seção ÁUDIO, com microfone falso do Chromium e um tom
+sintético gerado no teste), `e2e/api-checks.mjs` (Storage e limpeza) e
+`supabase/tests/media.test.sql`. Nenhum áudio real no repositório.
+
+## Gravar ensaio (`/escalas/<ensaio>`)
+
+| #   | Passo                                      | Esperado                                                                        |
+| --- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| 1   | Abrir um evento do tipo **ensaio**         | Seção "Gravações do ensaio" (em culto/evento não aparece)                       |
+| 2   | **Gravar ensaio** (autorizar o microfone)  | Cronômetro andando; tamanho de X de 45 MB; "tela acesa" quando o Wake Lock vale |
+| 3   | **Pausar** / **Retomar**                   | Cronômetro congela e volta                                                      |
+| 4   | **Parar**                                  | "Gravação não enviada" com **Enviar** / **Descartar**                           |
+| 5   | **Enviar**                                 | Barra de progresso; aparece em "Gravação N · autor · data · duração"            |
+| 6   | Modo avião durante o envio                 | Mensagem de conexão + **Tentar de novo**; a gravação continua no aparelho       |
+| 7   | Fechar o app no meio da gravação e reabrir | A gravação aparece como "não enviada"                                           |
+| 8   | Gravar ~3 h (ou simular 40 MB)             | Aviso de limite; para sozinha antes de 45 MB                                    |
+| 9   | Outro integrante abre o ensaio             | Ouve; **sem** botão Apagar na gravação dos outros                               |
+| 10  | Admin                                      | Botão Apagar em todas                                                           |
+
+## Áudio de referência e player (tela da música)
+
+| #   | Passo                                | Esperado                                                          |
+| --- | ------------------------------------ | ----------------------------------------------------------------- |
+| 1   | **Enviar áudio** com arquivo > 45 MB | "O arquivo tem X MB; o limite é 45 MB…" (não envia)               |
+| 2   | Arquivo que não é áudio              | "Escolha um arquivo de áudio…"                                    |
+| 3   | Arquivo de áudio válido              | Barra de progresso; aparece com player                            |
+| 4   | Tocar; **75%** / **50%**             | Mais devagar, mesmo tom                                           |
+| 5   | Subir meio tom na **cifra**          | Tom do áudio sobe junto (+1); "Acompanhar o tom da cifra" marcado |
+| 6   | − / + do **tom do áudio**            | Ajuste manual; "Acompanhar" desmarca                              |
+| 7   | Navegador sem AudioWorklet           | Aviso; velocidade continua funcionando (sem mudar o tom)          |
+
+## Espaço e limpeza
+
+| #   | Passo                                            | Esperado                                              |
+| --- | ------------------------------------------------ | ----------------------------------------------------- |
+| 1   | Configurações (admin)                            | "Espaço dos áudios": X de 1 GB, ensaios e referências |
+| 2   | Configurações (integrante)                       | Sem o card                                            |
+| 3   | Actions → Limpeza de gravações antigas → dry run | Lista do que seria apagado, sem apagar                |
+| 4   | Chamar a função sem o segredo                    | 401                                                   |
