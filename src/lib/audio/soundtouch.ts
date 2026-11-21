@@ -9,8 +9,14 @@
  * O <audio> continua tocando o arquivo em fluxo (não decodifica tudo na memória), o que importa
  * para gravações de ensaio longas.
  */
-import { SoundTouchNode } from '@soundtouchjs/audio-worklet';
 import processorUrl from '@soundtouchjs/audio-worklet/processor?url';
+
+/**
+ * A biblioteca faz `class SoundTouchNode extends AudioWorkletNode` ao ser carregada: num navegador
+ * sem AudioWorklet isso quebraria o app inteiro na abertura. Por isso ela só é carregada aqui,
+ * na primeira vez que alguém toca um áudio (e só se o navegador suportar).
+ */
+const loadSoundTouch = () => import('@soundtouchjs/audio-worklet');
 
 let context: AudioContext | null = null;
 let registered: Promise<void> | null = null;
@@ -24,6 +30,7 @@ export function isSoundTouchSupported(): boolean {
 }
 
 async function getContext(): Promise<AudioContext> {
+  const { SoundTouchNode } = await loadSoundTouch();
   context ??= new AudioContext();
   registered ??= SoundTouchNode.register(context, processorUrl).catch((error: unknown) => {
     registered = null;
@@ -50,6 +57,7 @@ export async function attachSoundTouch(audio: HTMLAudioElement): Promise<PitchCh
   const existing = chains.get(audio);
   if (existing) return existing;
   const ctx = await getContext();
+  const { SoundTouchNode } = await loadSoundTouch();
   const node = new SoundTouchNode({ context: ctx });
   const source = ctx.createMediaElementSource(audio);
   source.connect(node);
