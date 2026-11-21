@@ -25,15 +25,16 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: brand.shortName,
-        short_name: brand.shortName,
+        short_name: brand.iconLabel,
         description: brand.description,
         lang: 'pt-BR',
         start_url: '/',
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#fbf7ee', // creme do ícone (tela de abertura do app instalado)
-        theme_color: '#1b2a4a',
+        // Fundo da chama (tela de abertura do app instalado e barra do sistema).
+        background_color: '#121214',
+        theme_color: '#121214',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },

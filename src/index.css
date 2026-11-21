@@ -81,6 +81,10 @@
   --event-evento-soft: var(--ds-chip);
   /* Acordes na cifra. */
   --chord: var(--ds-chord);
+  /* Chama do logotipo (iguais nos dois temas, como no ícone do app). */
+  --ds-flame: #f59e0b;
+  --ds-flame-core: #fff3e0;
+  --ds-flame-tile: #121214;
   /* Fundo escurecido atrás de menus e diálogos. */
   --overlay: rgb(18 18 20 / 0.55);
 }

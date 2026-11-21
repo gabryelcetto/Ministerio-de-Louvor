@@ -107,8 +107,10 @@ describe('repertório', () => {
   it('busca, filtra por categoria e abre a música', async () => {
     const { user, router } = renderApp('/repertorio', { as: 'member' });
     await findHeading('Repertório');
+    await screen.findAllByRole('link', { name: /Grande é o Senhor/ });
     await user.type(screen.getByLabelText('Buscar música'), 'grande');
-    const categories = screen.getByRole('group', { name: 'Filtrar por categoria' });
+    // As categorias chegam numa consulta própria: espera aparecer antes de clicar.
+    const categories = await screen.findByRole('group', { name: 'Filtrar por categoria' });
     for (const b of within(categories).getAllByRole('button')) await user.click(b);
     await user.click(within(categories).getAllByRole('button')[0]!);
     await user.click((await screen.findAllByRole('link', { name: /Grande é o Senhor/ }))[0]!);
