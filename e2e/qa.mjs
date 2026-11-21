@@ -138,6 +138,9 @@ async function login(page, email, password = PASSWORD) {
   await page.getByLabel('Senha').fill(password);
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 20000 });
+  // Espera o Início terminar de carregar: sair no meio de uma consulta faz o WebKit registrar
+  // "Fetch API cannot load … due to access control checks" (falso positivo do roteiro).
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
 }
 
 async function settle(page) {
@@ -497,6 +500,10 @@ async function edgeCases() {
       (await lyricsField(page)
         .inputValue()
         .catch(() => '')) === text;
+    const onScreen = await page
+      .locator('form [role="alert"], form button[type="submit"]')
+      .allInnerTexts()
+      .catch(() => []);
     await context.setOffline(false);
     if (!shown || !kept) {
       return {
@@ -504,7 +511,7 @@ async function edgeCases() {
           passos: 'Editar letra → ficar sem internet → Salvar',
           tipo: 'sem internet ao salvar',
           esperado: 'mensagem "Sem conexão…" e o texto continua no campo',
-          obtido: `${shown ? 'mensagem ok' : 'sem a mensagem de conexão'}; ${kept ? 'texto mantido' : 'texto perdido'}`,
+          obtido: `${shown ? 'mensagem ok' : 'sem a mensagem de conexão em 15 s'}; ${kept ? 'texto mantido' : 'texto perdido'}; na tela: ${onScreen.join(' | ').slice(0, 150)}`,
           gravidade: kept ? 'médio' : 'alto',
         },
       };
@@ -526,7 +533,24 @@ async function edgeCases() {
     await context.setOffline(true);
     await pending.getByRole('button', { name: 'Enviar' }).click();
     const alert = pending.getByRole('alert');
-    await alert.waitFor({ timeout: 20000 });
+    const appeared = await alert.waitFor({ timeout: 20000 }).then(
+      () => true,
+      () => false,
+    );
+    if (!appeared) {
+      const onScreen = (await pending.innerText()).replace(/\s+/g, ' ').slice(0, 120);
+      await context.setOffline(false);
+      return {
+        problem: {
+          passos: 'Ensaio → Gravar → Parar → ficar sem internet → Enviar',
+          tipo: 'envio de áudio parado sem internet',
+          esperado:
+            'erro "Sem conexão…" logo, com "Tentar de novo"; a gravação continua no aparelho',
+          obtido: `sem resposta em 20 s; na tela: ${onScreen}`,
+          gravidade: 'médio',
+        },
+      };
+    }
     const text = await alert.innerText();
     await context.setOffline(false);
     // Limpa a gravação de teste.
