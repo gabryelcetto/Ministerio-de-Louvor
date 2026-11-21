@@ -19,7 +19,7 @@ jobs:
   e2e:
     name: Supabase local + Playwright
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -118,7 +118,8 @@ jobs:
         if: ${{ !cancelled() && steps.app.outcome == 'success' }}
         run: |
           npm i --no-save playwright@1.65.1
-          npx playwright install --with-deps chromium
+          # WebKit (motor do Safari/iPhone) e Firefox para o QA nos três navegadores.
+          npx playwright install --with-deps chromium webkit firefox
 
       - name: Varredura das telas (3 perfis × celular/desktop)
         if: ${{ !cancelled() && steps.pw.outcome == 'success' }}
@@ -131,6 +132,21 @@ jobs:
         run: node e2e/fluxos.mjs
         env:
           BASE: http://127.0.0.1:5173
+
+      - name: QA (Chromium, WebKit e Firefox × 4 tamanhos, axe, casos de borda)
+        if: ${{ !cancelled() && steps.pw.outcome == 'success' }}
+        run: node e2e/qa.mjs
+        env:
+          BASE: http://127.0.0.1:5173
+          OUT: qa-output
+
+      - name: Relatório de QA (prints e resultados)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-output
+          path: qa-output
+          if-no-files-found: ignore
 
       - name: Capturas, relatório e tipos
         if: always()
