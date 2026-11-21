@@ -134,6 +134,8 @@ const menuItems = async (page) => {
 };
 /** Campo da cifra no editor (o rótulo "Cifra" também é o da aba, que não é textbox). */
 const chordsBox = (page) => page.getByRole('textbox', { name: 'Cifra', exact: true });
+/** Escolhe uma opção de tema tocando no cartão (o <input> do rádio fica escondido). */
+const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click();
 
 // =============================================================================== TEMA (1º acesso)
 {
@@ -149,7 +151,11 @@ const chordsBox = (page) => page.getByRole('textbox', { name: 'Cifra', exact: tr
       await dialog.getByRole('radio', { name: new RegExp(name) }).waitFor();
     if (!(await dialog.getByRole('radio', { name: /Automático/ }).isChecked()))
       throw new Error('Automático não veio marcado');
-    await dialog.getByRole('radio', { name: /Escuro/ }).click();
+    await pickTheme(dialog, 'Escuro');
+    await poll(
+      () => dialog.getByRole('radio', { name: /Escuro/ }).isChecked(),
+      'Escuro não ficou marcado',
+    );
     await dialog.getByRole('button', { name: 'Continuar' }).click();
     await dialog.waitFor({ state: 'hidden' });
     const saved = await page.evaluate(() => localStorage.getItem('louvor.theme'));
@@ -173,19 +179,22 @@ const chordsBox = (page) => page.getByRole('textbox', { name: 'Cifra', exact: tr
   const { context, page } = await session('integrante@demo.local', MOBILE);
   const who = 'integrante';
 
-  await step(page, who, 'Início com saudação e próximo culto', async () => {
+  await step(page, who, 'Início com saudação e a próxima escala', async () => {
     await expectText(page, /Isa/);
     // Topo das telas principais: chama + "Louvor ADVOP" e o sino.
     await page.locator('header').getByText('Louvor ADVOP').first().waitFor();
     await page.getByRole('link', { name: /^Notificações:/ }).waitFor();
     const title = await page.title();
     if (title !== 'Ministério de Louvor · ADVOP') throw new Error(`título da aba: ${title}`);
-    await expectText(page, 'Culto de celebração');
+    await expectText(page, /Sua próxima escala/i);
     await expectText(page, 'Ensaio geral');
     await expectText(page, /Você toca .*bateria/i);
+    await main(page).getByRole('link', { name: 'Ver repertório' }).waitFor();
   });
 
   await step(page, who, 'Música do repertório do culto abre no tom do dia', async () => {
+    await page.goto(`${BASE}/escalas/10000000-0000-4000-8000-000000000002`);
+    await page.waitForLoadState('networkidle');
     await main(page).locator('a[href*="/repertorio/"][href*="tom="]').first().click();
     await page.waitForURL(/\/repertorio\/.+tom=/);
     await page.waitForLoadState('networkidle');
@@ -329,10 +338,12 @@ const chordsBox = (page) => page.getByRole('textbox', { name: 'Cifra', exact: tr
       if (links.join('|') !== expected.join('|')) throw new Error(`itens: ${links.join(', ')}`);
       await nav.getByRole('link', { name: 'Repertório' }).click();
       await page.waitForURL(/\/repertorio$/);
-      const current = await nav
-        .getByRole('link', { name: 'Repertório' })
-        .getAttribute('aria-current');
-      if (current !== 'page') throw new Error(`aria-current: ${current}`);
+      await poll(
+        async () =>
+          (await nav.getByRole('link', { name: 'Repertório' }).getAttribute('aria-current')) ===
+          'page',
+        'Repertório não ficou marcado como atual',
+      );
       return links.join(', ');
     },
   );
@@ -368,7 +379,7 @@ const chordsBox = (page) => page.getByRole('textbox', { name: 'Cifra', exact: tr
     await page.goto(`${BASE}/configuracoes#aparencia`);
     await page.waitForLoadState('networkidle');
     const group = page.getByRole('radiogroup', { name: 'Tema' });
-    await group.getByRole('radio', { name: /Escuro/ }).click();
+    await pickTheme(group, 'Escuro');
     await poll(
       () => page.evaluate(() => document.documentElement.classList.contains('dark')),
       'o app não ficou escuro',
@@ -379,10 +390,7 @@ const chordsBox = (page) => page.getByRole('textbox', { name: 'Cifra', exact: tr
     await page.waitForLoadState('networkidle');
     if (!(await page.evaluate(() => document.documentElement.classList.contains('dark'))))
       throw new Error('o tema escuro não ficou depois de recarregar');
-    await page
-      .getByRole('radiogroup', { name: 'Tema' })
-      .getByRole('radio', { name: /Automático/ })
-      .click();
+    await pickTheme(page.getByRole('radiogroup', { name: 'Tema' }), 'Automático');
     await poll(
       async () => (await page.evaluate(() => localStorage.getItem('louvor.theme'))) === 'system',
       'não voltou ao Automático',
