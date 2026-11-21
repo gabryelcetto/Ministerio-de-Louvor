@@ -45,7 +45,7 @@ language sql
 immutable
 set search_path = ''
 as $$
-  select (1073741824 * 0.9)::bigint;
+  select floor(1073741824 * 0.9)::bigint;
 $$;
 
 -- Funções voláteis de propósito: cada chamada enxerga o que outras transações já gravaram
