@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 // api.ts importa o cliente Supabase, que valida as variáveis de ambiente ao carregar.
-vi.mock('@/lib/supabase', () => ({ supabase: {} }));
+vi.mock('@/services/supabase', () => ({ supabase: {} }));
 
 const { groupDashboardAssignments, parseDashboard } = await import('./api');
 

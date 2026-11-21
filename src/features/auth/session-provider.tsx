@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import { shouldClearCache } from './session-cache';
 import { SessionContext } from './session-context';
 

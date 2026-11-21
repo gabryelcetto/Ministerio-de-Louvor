@@ -36,7 +36,23 @@ jobs:
           deno-version: v2.x
       - name: Tipos da Edge Function (deno check)
         run: deno check supabase/functions/invite-member/index.ts supabase/functions/purge-old-recordings/index.ts supabase/functions/reset-member-password/index.ts
-      - run: npm test
+      # Teste estrutural: cobertura do Vitest (provider v8). Reprova abaixo dos limites do
+      # vitest.config.ts: projeto ≥ 70% de linhas; src/lib ≥ 90% de linhas e ≥ 85% de branches.
+      - name: Testes com cobertura
+        run: npm run test:coverage
+      - name: Resumo da cobertura
+        if: ${{ !cancelled() }}
+        run: node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+      - name: Relatório de cobertura (HTML)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: coverage
+          if-no-files-found: ignore
+      # Testes de arquitetura: src/lib sem React/Supabase, features só pela API pública, sem ciclos.
+      - name: Arquitetura (dependency-cruiser)
+        run: npm run test:arch
       - name: Build
         run: npm run build
         env:

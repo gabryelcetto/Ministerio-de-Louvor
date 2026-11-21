@@ -3,10 +3,9 @@ import { useState } from 'react';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { FormError } from '@/components/common/form-error';
 import { Button } from '@/components/ui/button';
-import { useSession } from '@/features/auth/session-context';
+import { useSession, usePermission } from '@/features/auth';
 import { formatBytes, formatDuration } from '@/lib/audio/limits';
 import { formatShortDate, formatTime } from '@/lib/dates';
-import { usePermission } from '@/lib/permissions';
 import { mediaTitle, useDeleteAudio, type MediaItem, type MediaKind } from '../api';
 import { AudioPlayer } from './audio-player';
 

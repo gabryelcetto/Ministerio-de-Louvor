@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 // O módulo importa o cliente Supabase (que exige variáveis de ambiente); aqui não há rede.
-vi.mock('@/lib/supabase', () => ({ supabase: {} }));
+vi.mock('@/services/supabase', () => ({ supabase: {} }));
 
 const { RecorderControls, UploadProgress } = await import('./audio-recorder');
 type View = Parameters<typeof RecorderControls>[0]['recorder'];

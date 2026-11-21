@@ -2,7 +2,8 @@ import { CheckCircle2, Download } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Button, type ButtonProps } from '@/components/ui/button';
-import { promptInstall, useInstallState } from '@/lib/install';
+import { useInstallState } from '@/hooks/use-install-state';
+import { promptInstall } from '@/lib/install';
 
 /**
  * "Instalar app": abre a janela do navegador quando ele oferece (Android/Chrome); senão, leva

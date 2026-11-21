@@ -13,7 +13,7 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'rea
 import { Link, useParams, useSearchParams } from 'react-router';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
-import { usePermission } from '@/lib/permissions';
+import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import { useSong, type SongDetail } from '../api';
 import {
@@ -28,7 +28,7 @@ import {
 } from '../song-key';
 import { chordProToLyrics } from '../editor-checks';
 import { ChordSheet } from './chord-sheet';
-import { ReferenceAudios } from '@/features/audio/components/reference-audios';
+import { ReferenceAudios } from '@/features/audio';
 import { shortestSemitones } from '@/lib/audio/semitones';
 import { ArchiveSongButton, SongDataEditor } from './song-data-editor';
 import { ChordsEditor, LyricsEditor, OfficialKeyEditor } from './song-editors';

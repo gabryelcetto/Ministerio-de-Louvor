@@ -10,14 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { EVENT_TYPE_STYLES } from '@/features/agenda/event-type';
-import {
-  matchesSection,
-  SECTION_FILTER_LABEL,
-  type SectionFilter,
-} from '@/features/integrantes/sections';
+import { EVENT_TYPE_STYLES } from '@/features/agenda';
+import { matchesSection, SECTION_FILTER_LABEL, type SectionFilter } from '@/features/integrantes';
 import { formatShortDate, formatTime } from '@/lib/dates';
-import { usePermission } from '@/lib/permissions';
+import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import type { EventType } from '@/types/app.types';
 import {

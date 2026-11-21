@@ -17,10 +17,9 @@ import { useRef } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { brandTitle } from '@/config/brand';
-import { signOut } from '@/features/auth/api';
-import { useMyPermissions, useMyProfile } from '@/features/auth/hooks/use-me';
+import { signOut, useMyPermissions, useMyProfile } from '@/features/auth';
 import type { PermissionKey } from '@/types/app.types';
-import { unreadLabel, useUnreadCount } from '@/features/notificacoes/api';
+import { unreadLabel, useUnreadCount } from '@/features/notificacoes';
 import { cn } from '@/lib/utils';
 import { isPathActive, splitMobileNav, type NavPlacement } from './nav';
 

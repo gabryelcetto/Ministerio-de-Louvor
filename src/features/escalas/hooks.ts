@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/features/auth/session-context';
+import { useSession } from '@/features/auth';
 import { fetchEventDetail, fetchMySchedules } from './api';
 
 export function useMySchedules() {

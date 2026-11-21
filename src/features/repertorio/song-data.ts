@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { requireAffected } from '@/lib/errors';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import { normalizeKey } from '@/lib/chords';
 import { invalidateAfterSave, songKeys } from './editing';
 

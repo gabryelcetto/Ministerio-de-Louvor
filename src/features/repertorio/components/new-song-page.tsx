@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useMyPermissions } from '@/features/auth/hooks/use-me';
+import { useMyPermissions } from '@/features/auth';
 import { convertPastedChords, guessKey, lyricsFromChordPro, withDeclaredKey } from '@/lib/chords';
 import { useSongCategories } from '../api';
 import { chordSheetWarnings } from '../editor-checks';

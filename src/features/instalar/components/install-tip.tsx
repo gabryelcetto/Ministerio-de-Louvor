@@ -7,8 +7,8 @@ import {
   isInstallTipDismissed,
   promptInstall,
   shouldOfferInstall,
-  useInstallState,
 } from '@/lib/install';
+import { useInstallState } from '@/hooks/use-install-state';
 
 /** Aviso discreto no Início para quem ainda não instalou. Dispensado, não volta. */
 export function InstallTip() {

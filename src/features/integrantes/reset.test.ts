@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 // O módulo importa o cliente Supabase (que exige variáveis de ambiente); aqui não há rede.
 const invoke = vi.fn();
-vi.mock('@/lib/supabase', () => ({ supabase: { functions: { invoke } } }));
+vi.mock('@/services/supabase', () => ({ supabase: { functions: { invoke } } }));
 
 const { FunctionsHttpError } = await import('@supabase/supabase-js');
 const { buildResetMessage, canResetPassword, resetMemberPassword } = await import('./reset');

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { brand } from '@/config/brand';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import {
   DISPLAY_NAME_MAX,
   NAME_MAX,

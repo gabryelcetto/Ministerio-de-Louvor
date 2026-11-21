@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { requireAffected } from '@/lib/errors';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import type { Section } from './sections';
 
 /** Funções do ministério com o grupo (cantores/instrumentistas), para a tela de gestão. */
