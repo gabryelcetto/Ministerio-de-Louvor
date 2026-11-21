@@ -44,10 +44,72 @@ describe('escala / detalhe do evento', () => {
     );
   });
 
-  it('integrante não vê o menu de administração', async () => {
-    renderApp(`/escalas/${SERVICE_ID}`, { as: 'member' });
+  it('integrante: só Compartilhar e Adicionar à agenda no ⋯; "Como chegar" abre o mapa', async () => {
+    const { user } = renderApp(`/escalas/${SERVICE_ID}`, { as: 'member' });
     await findHeading('Culto de domingo');
-    expect(screen.queryByRole('button', { name: 'Mais opções' })).toBeNull();
+    const maps = screen.getByRole('link', { name: /Como chegar/ });
+    expect(maps.getAttribute('href')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=Templo',
+    );
+    expect(maps.getAttribute('rel')).toBe('noopener noreferrer');
+    await user.click(await screen.findByRole('button', { name: 'Mais opções' }));
+    expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual([
+      'Compartilhar',
+      'Adicionar à agenda',
+    ]);
+  });
+
+  it('compartilhar sem Web Share copia o texto e abre o WhatsApp', async () => {
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    const open = vi.fn();
+    vi.stubGlobal('open', open);
+    const { user } = renderApp(`/escalas/${SERVICE_ID}`, { as: 'member' });
+    await findHeading('Culto de domingo');
+    await user.click(await screen.findByRole('button', { name: 'Mais opções' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Compartilhar' }));
+    expect(await screen.findByText(/Texto copiado/)).toBeTruthy();
+    const text = writeText.mock.calls[0]![0] as string;
+    expect(text).toContain('*Culto de domingo*');
+    expect(text).toContain('*Repertório*');
+    expect(text).toContain(`/escalas/${SERVICE_ID}`);
+    expect(open.mock.calls[0]![0]).toMatch(/^https:\/\/wa\.me\/\?text=/);
+  });
+
+  it('adicionar à agenda baixa o .ics do evento', async () => {
+    const created: Blob[] = [];
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((b) => {
+      created.push(b as Blob);
+      return 'blob:ics';
+    });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const names: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      names.push(this.download);
+    });
+    const { user } = renderApp(`/escalas/${SERVICE_ID}`, { as: 'member' });
+    await findHeading('Culto de domingo');
+    await user.click(await screen.findByRole('button', { name: 'Mais opções' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Adicionar à agenda' }));
+    expect(names[0]).toMatch(/^culto-de-domingo-\d{4}-\d{2}-\d{2}\.ics$/);
+    expect(await created[0]!.text()).toContain('SUMMARY:Culto de domingo');
+    expect(screen.getByText(/Arquivo da agenda baixado/)).toBeTruthy();
+    vi.restoreAllMocks();
+  });
+
+  it('admin: duplicar evento numa nova data e abrir a cópia', async () => {
+    const { user, router } = renderApp(`/escalas/${SERVICE_ID}`, { as: 'admin' });
+    await findHeading('Culto de domingo');
+    await user.click(await screen.findByRole('button', { name: 'Mais opções' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Duplicar evento' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Duplicar evento' });
+    const input = within(dialog).getByLabelText('Nova data e hora (horário de Brasília)');
+    expect((input as HTMLInputElement).value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    await user.click(within(dialog).getByRole('button', { name: 'Duplicar' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/escalas/ev-dup'));
+    const call = fake.calls.find((c) => c.name === 'duplicate_event')!;
+    expect(call.ops[0]!.args[0]).toMatchObject({ p_event_id: SERVICE_ID });
   });
 
   it('admin: editar escala e cancelar/reativar evento pelo ⋯', async () => {
@@ -55,6 +117,10 @@ describe('escala / detalhe do evento', () => {
     await findHeading('Culto de domingo');
     await user.click(await screen.findByRole('button', { name: 'Mais opções' }));
     expect(screen.getAllByRole('menuitem').map((i) => i.textContent)).toEqual([
+      'Compartilhar',
+      'Adicionar à agenda',
+      'Editar evento',
+      'Duplicar evento',
       'Editar escala',
       'Cancelar evento',
     ]);
@@ -132,5 +198,30 @@ describe('escala / detalhe do evento', () => {
   it('evento inexistente', async () => {
     renderApp('/escalas/99999999-0000-4000-8000-000000000000', { as: 'member' });
     expect(await findHeading('Evento não encontrado')).toBeTruthy();
+  });
+
+  it('editar evento: carrega os dados, valida e salva', async () => {
+    const { user, router } = renderApp(`/escalas/${SERVICE_ID}/editar`, { as: 'admin' });
+    await findHeading('Editar evento');
+    const title = await screen.findByLabelText('Título');
+    expect((title as HTMLInputElement).value).toBe('Culto de domingo');
+    await user.clear(title);
+    await user.click(screen.getByRole('button', { name: 'Salvar evento' }));
+    expect(await screen.findByText('Informe o título.')).toBeTruthy();
+    await user.type(title, 'Culto especial');
+    await user.clear(screen.getByLabelText('Local (opcional)'));
+    await user.type(screen.getByLabelText('Local (opcional)'), 'Praça');
+    await user.click(screen.getByRole('button', { name: 'Salvar evento' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/escalas/${SERVICE_ID}`));
+    expect(fake.writes('events', 'update')[0]).toMatchObject({
+      title: 'Culto especial',
+      location: 'Praça',
+      type: 'culto',
+    });
+  });
+
+  it('editar evento sem permissão', async () => {
+    renderApp(`/escalas/${SERVICE_ID}/editar`, { as: 'member' });
+    expect(await screen.findByText('Você não tem permissão para editar eventos.')).toBeTruthy();
   });
 });

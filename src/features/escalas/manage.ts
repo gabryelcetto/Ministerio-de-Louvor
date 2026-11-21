@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { requireAffected } from '@/lib/errors';
 import { zonedLocalToIso } from '@/lib/dates';
 import { supabase } from '@/services/supabase';
-import type { EventType } from '@/types/app.types';
+import type { EventType, Json } from '@/types/app.types';
 import { displayName } from './schedule-utils';
 
 /**
@@ -178,25 +178,6 @@ export async function fetchSchedulingData(now: Date = new Date()): Promise<Sched
   };
 }
 
-export async function createEvent(draft: EventDraft): Promise<string> {
-  const startsAt = zonedLocalToIso(draft.startsAt);
-  if (!startsAt) throw new Error('Data de início inválida.');
-  const { data, error } = await supabase
-    .from('events')
-    .insert({
-      type: draft.type,
-      title: draft.title.trim(),
-      starts_at: startsAt,
-      ends_at: draft.endsAt.trim() ? zonedLocalToIso(draft.endsAt) : null,
-      location: draft.location.trim() || null,
-      notes: draft.notes.trim() || null,
-    })
-    .select('id');
-  if (error) throw error;
-  const [row] = requireAffected(data);
-  return row!.id;
-}
-
 export async function addAssignments(
   rows: ReturnType<typeof assignmentsToInsert>,
 ): Promise<number> {
@@ -258,6 +239,91 @@ export function useSetEventStatus() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: setEventStatus,
+    onSuccess: () => invalidateSchedules(client),
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fase G (item 3): evento + equipe numa transação, repetição semanal, edição e duplicação.
+// ---------------------------------------------------------------------------------------------
+
+/** Linha da equipe como a RPC espera. */
+export interface TeamRow {
+  user_id: string;
+  function_id: number;
+  notes: string | null;
+}
+
+/**
+ * Cria o evento (ou N eventos, um por semana) com a equipe numa gravação só: se algo falhar,
+ * nada fica pela metade (create_event_with_team). Devolve os ids criados.
+ */
+export async function createEventWithTeam(
+  draft: EventDraft,
+  team: readonly TeamRow[],
+  repeatWeeks = 1,
+): Promise<string[]> {
+  const startsAt = zonedLocalToIso(draft.startsAt);
+  if (!startsAt) throw new Error('Data de início inválida.');
+  const { data, error } = await supabase.rpc('create_event_with_team', {
+    p_type: draft.type,
+    p_title: draft.title.trim(),
+    p_starts_at: startsAt,
+    // null quando vazio (o gerador tipa timestamptz/text como string).
+    p_ends_at: (draft.endsAt.trim() ? zonedLocalToIso(draft.endsAt) : null) as string,
+    p_location: draft.location,
+    p_notes: draft.notes,
+    p_assignments: team as unknown as Json,
+    p_repeat_weeks: repeatWeeks,
+  });
+  if (error) throw error;
+  return data;
+}
+
+/** Editar tipo, título, data, início, fim, local e observações (events.manage, RLS). */
+export async function updateEvent(eventId: string, draft: EventDraft): Promise<void> {
+  const startsAt = zonedLocalToIso(draft.startsAt);
+  if (!startsAt) throw new Error('Data de início inválida.');
+  const { data, error } = await supabase
+    .from('events')
+    .update({
+      type: draft.type,
+      title: draft.title.trim(),
+      starts_at: startsAt,
+      ends_at: draft.endsAt.trim() ? zonedLocalToIso(draft.endsAt) : null,
+      location: draft.location.trim() || null,
+      notes: draft.notes.trim() || null,
+    })
+    .eq('id', eventId)
+    .select('id');
+  if (error) throw error;
+  requireAffected(data);
+}
+
+/** Duplica o evento (dados, equipe e repertório) numa nova data. Devolve o id da cópia. */
+export async function duplicateEvent(eventId: string, startsAtLocal: string): Promise<string> {
+  const startsAt = zonedLocalToIso(startsAtLocal);
+  if (!startsAt) throw new Error('Informe a nova data.');
+  const { data, error } = await supabase.rpc('duplicate_event', {
+    p_event_id: eventId,
+    p_starts_at: startsAt,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export function useUpdateEvent(eventId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (draft: EventDraft) => updateEvent(eventId, draft),
+    onSuccess: () => invalidateSchedules(client),
+  });
+}
+
+export function useDuplicateEvent(eventId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (startsAtLocal: string) => duplicateEvent(eventId, startsAtLocal),
     onSuccess: () => invalidateSchedules(client),
   });
 }

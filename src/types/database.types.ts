@@ -542,6 +542,9 @@ isOneToOne: false
 "complete_password_change":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
+"create_event_with_team":
+{ Args: { "p_assignments"?: Json,"p_ends_at": string,"p_location": string,"p_notes": string,"p_repeat_weeks"?: number,"p_starts_at": string,"p_title": string,"p_type": string }; Returns: string[]
+                           },
 "create_song":
 { Args: { "p_artist": string,"p_category": string,"p_chords": string,"p_lyrics": string,"p_media_url": string,"p_notes": string,"p_official_key": string,"p_original_key": string,"p_title": string }; Returns: string
                            },
@@ -550,6 +553,9 @@ isOneToOne: false
                            },
 "delete_announcement":
 { Args: { "p_id": string }; Returns: undefined
+                           },
+"duplicate_event":
+{ Args: { "p_event_id": string,"p_starts_at": string }; Returns: string
                            },
 "get_announcement_audience_status":
 { Args: { "p_id": string }; Returns: {

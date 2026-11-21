@@ -3,11 +3,13 @@ import {
   dateBlock,
   dayKey,
   formatDayLabel,
+  formatShortDate,
   formatTime,
   formatTimeRange,
   greeting,
   groupByDay,
   isoToZonedLocal,
+  weeklyOccurrences,
   zonedLocalToIso,
 } from './dates';
 
@@ -72,5 +74,25 @@ describe('bloco de data dos cards de evento', () => {
     expect(dateBlock('2026-11-22T22:00:00Z')).toEqual({ weekday: 'DOM', day: '22' });
     expect(dateBlock('2026-11-22T02:00:00Z')).toEqual({ weekday: 'SÁB', day: '21' });
     expect(dateBlock(new Date('2026-11-25T15:00:00Z'))).toEqual({ weekday: 'QUA', day: '25' });
+  });
+});
+
+describe('repetir toda semana', () => {
+  it('mesmo horário de Brasília, virando o mês e o ano', () => {
+    expect(weeklyOccurrences('2026-12-24T19:30', 3)).toEqual([
+      '2026-12-24T22:30:00.000Z',
+      '2026-12-31T22:30:00.000Z',
+      '2027-01-07T22:30:00.000Z',
+    ]);
+    expect(weeklyOccurrences('2026-11-26T20:00', 2).map((d) => formatShortDate(d))).toEqual([
+      formatShortDate('2026-11-26T23:00:00Z'),
+      formatShortDate('2026-12-03T23:00:00Z'),
+    ]);
+  });
+
+  it('entrada inválida ou zero semanas: nada', () => {
+    expect(weeklyOccurrences('', 3)).toEqual([]);
+    expect(weeklyOccurrences('2026-12-24T19:30', 0)).toEqual([]);
+    expect(weeklyOccurrences('2026-12-24T19:30', 1)).toEqual(['2026-12-24T22:30:00.000Z']);
   });
 });

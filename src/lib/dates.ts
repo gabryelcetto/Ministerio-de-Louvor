@@ -164,3 +164,21 @@ export function dateBlock(value: string | Date): { weekday: string; day: string 
     day: dayOfMonthFormat.format(date),
   };
 }
+
+/**
+ * "Repetir toda semana por N semanas": as datas, no mesmo horário de São Paulo (como o banco
+ * faz em create_event_with_team). Valor de datetime-local → instantes ISO.
+ */
+export function weeklyOccurrences(local: string, weeks: number): string[] {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local.trim());
+  if (!match || weeks < 1) return [];
+  const [, y, mo, d, h, mi] = match;
+  const out: string[] = [];
+  for (let i = 0; i < weeks; i++) {
+    const day = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d) + 7 * i));
+    const iso = day.toISOString().slice(0, 10);
+    const instant = zonedLocalToIso(`${iso}T${h}:${mi}`);
+    if (instant) out.push(instant);
+  }
+  return out;
+}

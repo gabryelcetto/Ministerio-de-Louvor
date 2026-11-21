@@ -320,6 +320,8 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
       my_permissions: as === 'admin' ? ALL_PERMISSIONS : MEMBER_PERMISSIONS,
       preview_announcement_audience: 3,
       save_announcement: 'an-novo',
+      create_event_with_team: ['ev-novo'],
+      duplicate_event: 'ev-dup',
       mark_announcement_read: null,
       delete_announcement: null,
       remind_announcement: 1,

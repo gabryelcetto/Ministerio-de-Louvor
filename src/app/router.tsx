@@ -7,6 +7,7 @@ import { AnnouncementsPage } from '@/features/comunicados/components/announcemen
 import { SettingsPage } from '@/features/configuracoes/components/settings-page';
 import { DashboardPage } from '@/features/dashboard/components/dashboard-page';
 import { EventDetailPage } from '@/features/escalas/components/event-detail-page';
+import { EventEditPage } from '@/features/escalas/components/event-edit-page';
 import { MySchedulesPage } from '@/features/escalas/components/my-schedules-page';
 import { ScheduleBuilderPage } from '@/features/escalas/components/schedule-builder-page';
 import { InstallPage } from '@/features/instalar/components/install-page';
@@ -38,6 +39,7 @@ export const routes: RouteObject[] = [
           { path: 'escalas/montar', element: <ScheduleBuilderPage /> },
           // As notificações do banco apontam para /escalas/<id do evento>.
           { path: 'escalas/:eventId', element: <EventDetailPage /> },
+          { path: 'escalas/:eventId/editar', element: <EventEditPage /> },
           { path: 'repertorio', element: <SongsPage /> },
           { path: 'repertorio/nova', element: <NewSongPage /> },
           { path: 'repertorio/:songId', element: <SongPage /> },

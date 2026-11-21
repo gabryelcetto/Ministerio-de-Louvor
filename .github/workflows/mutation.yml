@@ -11,6 +11,7 @@ on:
     paths:
       - 'src/lib/**'
       - 'src/features/escalas/schedule-utils*'
+      - 'src/features/escalas/share-text*'
       - 'src/features/integrantes/sections*'
       - 'src/features/repertorio/editor-checks*'
       - 'src/features/repertorio/history-format*'
