@@ -167,7 +167,7 @@ export function MorePage() {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="flex min-h-14 items-center gap-3 rounded-xl border bg-card px-4 font-semibold text-destructive hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-h-14 items-center gap-3 rounded-xl border bg-card px-4 font-semibold text-destructive hover:border-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <LogOut aria-hidden="true" className="size-5" />
           Sair

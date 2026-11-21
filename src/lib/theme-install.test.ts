@@ -97,3 +97,19 @@ describe('instalação do app', () => {
     expect(shouldOfferInstall({ ...base, platform: 'ios', installed: true })).toBe(false);
   });
 });
+
+describe('hover e vermelho sem perder contraste (axe do QA)', () => {
+  const button = readFileSync(new URL('../components/ui/button.tsx', import.meta.url), 'utf8');
+  it('botões cheios escurecem (claro) ou clareiam (escuro) no hover, sem transparência', () => {
+    expect(button).not.toMatch(/hover:bg-(primary|destructive)\/\d+/);
+    expect(button).toContain('hover:bg-primary-hover');
+    expect(button).toContain('hover:bg-destructive-hover');
+    expect(css).toMatch(/--primary-hover: color-mix\(in oklab, var\(--primary\) 88%, black\)/);
+    expect(css).toMatch(/--primary-hover: color-mix\(in oklab, var\(--primary\) 88%, white\)/);
+  });
+  it('no escuro, o texto sobre o vermelho é escuro (branco sobre #EF4444 dá 3,76:1)', () => {
+    expect(contrastRatio('#ffffff', '#EF4444')).toBeLessThan(4.5);
+    expect(contrastRatio('#121214', '#EF4444')).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain('--destructive-foreground: var(--ds-bg);');
+  });
+});

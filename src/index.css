@@ -68,6 +68,9 @@
   --muted-foreground: var(--ds-muted);
   --destructive: var(--ds-rec);
   --destructive-foreground: #ffffff;
+  /* Hover dos botões cheios: escurece no claro (clarear derrubaria o contraste do texto). */
+  --primary-hover: color-mix(in oklab, var(--primary) 88%, black);
+  --destructive-hover: color-mix(in oklab, var(--destructive) 88%, black);
   --border: var(--ds-line);
   --input: var(--ds-line);
   --ring: var(--ds-accent);
@@ -91,6 +94,14 @@
 
 /* Tailwind v4: dark: segue a classe .dark (e não só o tema do aparelho). */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Escuro: texto escuro sobre o vermelho (branco sobre #EF4444 fica abaixo de 4,5:1) e hover que
+   clareia (o texto dos botões cheios é escuro). */
+.dark {
+  --destructive-foreground: var(--ds-bg);
+  --primary-hover: color-mix(in oklab, var(--primary) 88%, white);
+  --destructive-hover: color-mix(in oklab, var(--destructive) 88%, white);
+}
 
 @theme inline {
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -120,6 +131,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-destructive-hover: var(--destructive-hover);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

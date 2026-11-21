@@ -74,7 +74,9 @@ export function OverflowMenu({
   const itemClass = (destructive?: boolean) =>
     cn(
       'flex min-h-12 w-full items-center gap-3 rounded-lg px-3 text-left text-[0.9375rem] font-medium hover:bg-muted focus-visible:bg-muted focus-visible:outline-none',
-      destructive && 'text-destructive',
+      // Vermelho como texto só tem contraste AA sobre a superfície: sem fundo cinza no hover/foco.
+      destructive &&
+        'text-destructive hover:bg-transparent hover:underline focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-destructive',
     );
 
   return (
