@@ -325,6 +325,102 @@ if (created?.temporaryPassword) {
   }
 }
 
+// ---------------------------------------------------------------- Edge Function reset-member-password
+const RESET_URL = `${API_URL}/functions/v1/reset-member-password`;
+
+async function callReset(client, body) {
+  const { data: s } = client ? await client.auth.getSession() : { data: { session: null } };
+  const res = await fetch(RESET_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: ANON_KEY,
+      ...(s.session ? { Authorization: `Bearer ${s.session.access_token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  let json = null;
+  try {
+    json = await res.json();
+  } catch {
+    // corpo vazio
+  }
+  return { status: res.status, json, cacheControl: res.headers.get('cache-control') };
+}
+
+{
+  const adminId = (await admin.auth.getUser()).data.user.id;
+  const target = created?.userId;
+  {
+    const r = await callReset(null, { userId: target ?? adminId });
+    check(r.status === 401, 'sem login: reset-member-password responde 401', `${r.status}`);
+  }
+  {
+    const r = await callReset(member, { userId: target ?? adminId });
+    check(
+      r.status === 403 && r.json?.error === 'Você não tem permissão para redefinir senhas.',
+      'integrante: reset-member-password recusa (403, mensagem em português)',
+      `${r.status} ${r.json?.error}`,
+    );
+  }
+  {
+    const r = await callReset(member, { userId: adminId });
+    check(r.status === 403, 'integrante não redefine a senha do admin', `${r.status}`);
+  }
+  {
+    const r = await callReset(admin, { userId: adminId });
+    check(
+      r.status === 400 && r.json?.error === 'Para trocar a sua própria senha, use Configurações.',
+      'admin não redefine a própria senha por aqui (400)',
+      `${r.status} ${r.json?.error}`,
+    );
+  }
+  {
+    const r = await callReset(admin, { userId: 'nao-e-uuid' });
+    check(r.status === 400, 'id inválido: 400', `${r.status} ${r.json?.error}`);
+  }
+  if (target) {
+    const r = await callReset(admin, { userId: target });
+    const temporary = r.json?.temporaryPassword ?? '';
+    check(
+      r.status === 200 &&
+        /^[A-Za-z2-9]{4}(-[A-Za-z2-9]{4}){3}$/.test(temporary) &&
+        r.json?.email === newMember.email,
+      'admin redefine a senha: 200 com senha provisória forte',
+      `${r.status} ${r.json?.error ?? ''}`,
+    );
+    check(
+      /no-store/.test(r.cacheControl ?? ''),
+      'resposta com a senha não vai para cache (no-store)',
+      r.cacheControl ?? 'sem cabeçalho',
+    );
+    const old = createClient(API_URL, ANON_KEY, { auth: { persistSession: false } });
+    const { error: oldError } = await old.auth.signInWithPassword({
+      email: newMember.email,
+      password: 'SenhaDaApi2026',
+    });
+    check(Boolean(oldError), 'a senha antiga deixa de funcionar', oldError?.message ?? 'entrou');
+    const fresh = createClient(API_URL, ANON_KEY, { auth: { persistSession: false } });
+    const { error: loginError } = await fresh.auth.signInWithPassword({
+      email: newMember.email,
+      password: temporary,
+    });
+    check(!loginError, 'entra com a senha provisória da redefinição', loginError?.message ?? '');
+    const { data: profile } = await fresh.from('profiles').select('must_change_password').single();
+    check(
+      profile?.must_change_password === true,
+      'depois da redefinição: troca de senha obrigatória',
+      JSON.stringify(profile),
+    );
+    const { data: songs } = await fresh.from('songs').select('id');
+    check(
+      (songs ?? []).length === 0,
+      'com a senha provisória: não lê nada até trocar a senha',
+      `${songs?.length}`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------- áudios (Storage)
 {
   const ENSAIO = '10000000-0000-4000-8000-000000000001'; // "Ensaio geral" do seed

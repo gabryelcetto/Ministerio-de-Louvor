@@ -8,6 +8,7 @@ import { EventDetailPage } from '@/features/escalas/components/event-detail-page
 import { MySchedulesPage } from '@/features/escalas/components/my-schedules-page';
 import { ScheduleBuilderPage } from '@/features/escalas/components/schedule-builder-page';
 import { InstallPage } from '@/features/instalar/components/install-page';
+import { FunctionsPage } from '@/features/integrantes/components/functions-page';
 import { InviteMemberPage } from '@/features/integrantes/components/invite-member-page';
 import { MembersPage } from '@/features/integrantes/components/members-page';
 import { NotificationsPage } from '@/features/notificacoes/components/notifications-page';
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
           { path: 'integrantes', element: <MembersPage /> },
           { path: 'atividade', element: <ActivityPage /> },
           { path: 'integrantes/cadastrar', element: <InviteMemberPage /> },
+          { path: 'integrantes/funcoes', element: <FunctionsPage /> },
           { path: 'configuracoes', element: <SettingsPage /> },
           { path: 'instalar', element: <InstallPage /> },
         ],

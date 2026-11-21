@@ -10,6 +10,7 @@ export interface MemberRow {
   full_name: string;
   display_name: string | null;
   access_role: AccessRole;
+  is_owner: boolean;
   status: ProfileStatus;
   member_functions: { function: { name: string; sort_order: number; section: string } | null }[];
 }
@@ -19,6 +20,8 @@ export interface Member {
   name: string;
   fullName: string;
   role: AccessRole;
+  /** Dono do ministério (ninguém redefine a senha dele pela tela de integrantes). */
+  isOwner: boolean;
   active: boolean;
   functions: string[];
   /** Cantor(a) e/ou Instrumentista (só selo; não dá permissão). */
@@ -31,7 +34,7 @@ export async function fetchMembers(): Promise<MemberRow[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, full_name, display_name, access_role, status, member_functions(function:ministry_functions(name, sort_order, section))',
+      'id, full_name, display_name, access_role, is_owner, status, member_functions(function:ministry_functions(name, sort_order, section))',
     );
   if (error) throw error;
   return data;
@@ -57,6 +60,7 @@ export function buildMembers(
       name: displayName(row),
       fullName: row.full_name.trim(),
       role: row.access_role,
+      isOwner: row.is_owner,
       active: row.status === 'active',
       sections: sectionsOf(row.member_functions.map((mf) => mf.function).filter((f) => f !== null)),
       functions: row.member_functions

@@ -16,7 +16,7 @@ select plan(32);
 -- ---------------------------------------------------------------------------
 select set_config('request.jwt.claims', '', true);
 
-insert into public.ministry_functions (name) values ('Teste função') on conflict (name) do nothing;
+insert into public.ministry_functions (name, section) values ('Teste função', 'instrumental') on conflict (name) do nothing;
 
 insert into auth.users (id, email, instance_id, aud, role) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'admin@teste.local', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),

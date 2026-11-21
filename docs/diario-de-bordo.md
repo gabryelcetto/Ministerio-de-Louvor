@@ -910,3 +910,46 @@ as migrations a partir da de GRANT.
 - **"Arquivos órfãos"** (upload terminou, registro não) também são limpos depois de 1 dia.
 - **service_role com GRANT explícito** em `media_files`: em projeto novo nem ela tem privilégio
   garantido em `public` (mesma lição do 403).
+
+## Admin redefine senha de integrante + funções do ministério (21/11/2026, noite)
+
+### Arquivos criados/alterados
+
+- `supabase/migrations/20261124090000_member_password_reset.sql` (idempotente):
+  - `assert_can_reset_password()` (interna, sem EXECUTE para ninguém da API): `members.manage`,
+    dono intocável, outro admin só pelo dono, a própria senha não;
+  - `prepare_password_reset()` (nome e e-mail do alvo) e `mark_password_reset()`
+    (`must_change_password = true` + `audit_logs`), as duas para `authenticated`;
+  - `ministry_functions.section` sem valor padrão (pendência 34).
+- `supabase/functions/reset-member-password/` + `_shared/reset.ts` (entrada/saída e validação,
+  usados também pelo app).
+- `supabase/config.toml` (`verify_jwt = true`) e `ci.yml` (`deno check` da função nova).
+- App (`src/features/integrantes/`):
+  - `edge.ts`: chamada de Edge Function com erro em português (reaproveitada pelo cadastro);
+  - `reset.ts`: regra do botão (espelho do banco), mensagem do WhatsApp e chamada;
+  - `functions.ts` + `components/functions-page.tsx`: tela **Funções do ministério**;
+  - `components/temporary-password.tsx`: cartão da senha provisória, agora comum ao cadastro e à
+    redefinição;
+  - `components/reset-password-button.tsx`: botão, confirmação e resultado;
+  - `api.ts`: `is_owner` na lista de integrantes.
+- Testes:
+  - `supabase/tests/password-reset.test.sql` (17);
+  - `rls.test.sql` e `members.test.sql` passam o grupo ao criar função;
+  - Vitest: `reset.test.ts`, `functions.test.ts` e `api.test.ts`;
+  - E2E: API (sem login 401, integrante 403, a própria senha 400, admin 200 com `no-store`,
+    senha antiga deixa de valer, provisória entra e fica bloqueada) e fluxos de tela (integrante
+    sem botão, cancelar, redefinir, entrar com a provisória e trocar; funções com grupo
+    obrigatório, nome repetido e troca de grupo).
+
+### Decisões
+
+- **Regras no banco, duas RPCs chamadas como o usuário** (antes e depois da troca no Auth): a
+  service role só troca a senha. Se `mark_password_reset` falhar depois da troca, a função avisa
+  que a senha mudou mas a troca obrigatória não foi marcada (o admin tenta de novo).
+- **O dono nunca tem a senha redefinida por aqui**, nem por ele mesmo: a própria senha se troca
+  em Configurações, que confere a senha atual.
+- **Sessões abertas não são derrubadas** (pendência 41): o banco já bloqueia tudo enquanto
+  `must_change_password` estiver ligado.
+- **Grupo obrigatório sem migração de dados:** as funções existentes já têm grupo; só saiu o
+  valor padrão, e a tela pergunta. Assim, esquecer o grupo vira erro em vez de "instrumental"
+  silencioso.

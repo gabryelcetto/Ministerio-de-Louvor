@@ -35,7 +35,7 @@ jobs:
         with:
           deno-version: v2.x
       - name: Tipos da Edge Function (deno check)
-        run: deno check supabase/functions/invite-member/index.ts supabase/functions/purge-old-recordings/index.ts
+        run: deno check supabase/functions/invite-member/index.ts supabase/functions/purge-old-recordings/index.ts supabase/functions/reset-member-password/index.ts
       - run: npm test
       - name: Build
         run: npm run build

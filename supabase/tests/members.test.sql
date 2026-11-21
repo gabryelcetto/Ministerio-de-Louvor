@@ -18,7 +18,7 @@ insert into public.permissions (key, description) values
 on conflict (key) do nothing;
 insert into public.role_permissions (role, permission_key)
 select 'admin', key from public.permissions on conflict do nothing;
-insert into public.ministry_functions (name) values ('Teste violão'), ('Teste baixo')
+insert into public.ministry_functions (name, section) values ('Teste violão', 'instrumental'), ('Teste baixo', 'instrumental')
 on conflict (name) do nothing;
 
 insert into auth.users (id, email, instance_id, aud, role, created_at, last_sign_in_at) values

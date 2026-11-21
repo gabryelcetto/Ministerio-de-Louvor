@@ -240,6 +240,45 @@ Não há segredo para configurar: `SUPABASE_URL`, `SUPABASE_ANON_KEY` e
 `http://127.0.0.1:54321/functions/v1/<nome>` (se não servir, rode `npx supabase functions serve`).
 O código compartilhado com o app (regra de senha, validação) fica em `supabase/functions/_shared`.
 
+## Redefinir a senha de um integrante (Edge Function `reset-member-password`)
+
+Não há "esqueci minha senha" por e-mail (sem SMTP). Quem esqueceu pede a um admin, que usa
+**Integrantes → Redefinir senha** no cartão da pessoa. A Edge Function
+[`supabase/functions/reset-member-password`](supabase/functions/reset-member-password/index.ts):
+
+1. confere o login e chama `prepare_password_reset` **como o próprio usuário**: o banco exige
+   `members.manage` e aplica as regras abaixo;
+2. só então troca a senha no Auth com a service role, por uma senha provisória forte gerada no
+   servidor;
+3. chama `mark_password_reset` (de novo como o usuário): marca `must_change_password = true` e
+   registra em `audit_logs` (`reset_password`);
+4. devolve a senha **uma única vez** (`Cache-Control: no-store`). A tela mostra a senha, os botões
+   de copiar e a mensagem pronta para o WhatsApp, como no cadastro.
+
+Regras (no banco, migration `20261124090000_member_password_reset.sql`):
+
+- ninguém redefine a senha do **dono** por aqui;
+- a senha de outro **admin** só o dono redefine;
+- a **própria** senha se troca em Configurações;
+- a pessoa entra com a senha provisória e é **obrigada a trocar** (o banco bloqueia tudo até lá,
+  inclusive sessões que já estavam abertas).
+
+Publicar (depois do merge):
+
+```bash
+npx supabase db push --dry-run   # deve listar só 20261124090000_member_password_reset.sql
+npx supabase db push
+npx supabase functions deploy reset-member-password --use-api
+```
+
+`verify_jwt = true` no `config.toml`; nenhum segredo novo.
+
+### Funções do ministério
+
+**Integrantes → Funções do ministério** (`members.manage`) lista as funções e o grupo de cada uma
+(**Cantores** ou **Instrumentistas**) e cadastra funções novas. O grupo é obrigatório: o app
+pergunta e o banco recusa função sem grupo. O grupo só define selos e filtros; não dá permissão.
+
 ## Deploy do banco pelo GitHub Actions
 
 O workflow [`.github/workflows/deploy-db.yml`](.github/workflows/deploy-db.yml) ("Deploy banco")
