@@ -126,3 +126,12 @@ export function keySource(
   if (song?.original_key?.trim()) return 'original';
   return null;
 }
+
+/** Endereço da música já no tom do dia (e com o evento, para o subtítulo "Culto em A"). */
+export function songInEventHref(songId: string, key: string | null, eventId?: string): string {
+  const params = new URLSearchParams();
+  if (key) params.set('tom', key);
+  if (eventId) params.set('evento', eventId);
+  const query = params.toString();
+  return `/repertorio/${songId}${query ? `?${query}` : ''}`;
+}

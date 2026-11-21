@@ -37,6 +37,16 @@ const hourFormat = new Intl.DateTimeFormat('en-US', {
   hourCycle: 'h23',
 });
 
+const weekdayShortFormat = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: APP_TIME_ZONE,
+  weekday: 'short',
+});
+
+const dayOfMonthFormat = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: APP_TIME_ZONE,
+  day: 'numeric',
+});
+
 const toDate = (value: string | Date) => (typeof value === 'string' ? new Date(value) : value);
 
 /** "2026-11-23": identifica o dia no fuso da igreja (bom para agrupar). */
@@ -144,4 +154,13 @@ export function isoToZonedLocal(value: string | Date): string {
     partsFormat.formatToParts(toDate(value)).map((p) => [p.type, p.value]),
   );
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+/** Bloco de data dos cards de evento: { weekday: "DOM", day: "23" } (fuso da igreja). */
+export function dateBlock(value: string | Date): { weekday: string; day: string } {
+  const date = toDate(value);
+  return {
+    weekday: weekdayShortFormat.format(date).replace('.', '').toUpperCase(),
+    day: dayOfMonthFormat.format(date),
+  };
 }

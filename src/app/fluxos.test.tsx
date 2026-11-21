@@ -260,7 +260,7 @@ describe('integrantes', () => {
 describe('início, agenda, comunicados, escalas e instalar', () => {
   it('início mostra próximas escalas e a dica de instalar pode ser dispensada', async () => {
     const { user } = renderApp('/', { as: 'member' });
-    await findHeading(/Isa!/);
+    await findHeading(/Isa/);
     const dismiss = screen.queryByRole('button', { name: /Dispensar|Fechar aviso/ });
     if (dismiss) await user.click(dismiss);
     expect((await screen.findAllByText(/Culto de domingo/)).length).toBeGreaterThan(0);

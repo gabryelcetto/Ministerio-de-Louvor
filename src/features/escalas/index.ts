@@ -1,3 +1,4 @@
 /** API pública da feature escalas (outras features importam só daqui). */
 export { SongRow } from './components/song-row';
-export { displayName, type EventSummary } from './schedule-utils';
+export { useEventDetail } from './hooks';
+export { displayName, songInEventHref, type EventSummary } from './schedule-utils';
