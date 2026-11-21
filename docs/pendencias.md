@@ -92,9 +92,9 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 ### 20. Ícone feito por script
 
-- **O quê:** o ícone (colcheia azul-marinho com bandeirola dourada, fundo creme) é desenhado por
-  `scripts/generate-icons.mjs`. É original e simples; se o ministério tiver um logo, trocar o
-  desenho no script (ou os arquivos em `public/`).
+- **O quê:** o ícone (chama do Louvor ADVOP sobre fundo `#121214`, desenho aprovado) é gerado
+  por `scripts/generate-icons.mjs` (`npm i --no-save sharp` antes). Se o desenho mudar, trocar o
+  SVG no script e no `<FlameLogo>` e rodar de novo.
 
 ### 21. Workflow "Deploy banco" ainda não executado
 
@@ -278,6 +278,25 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 
 - **O quê:** no happy-dom, o `isDirty` não muda ao digitar; o teste de "Editar dados" envia o
   formulário direto (`fireEvent.submit`). No navegador o botão funciona (coberto pelo E2E).
+
+### 50. Novo visual: conferir em celulares de verdade — médio
+
+- **O quê:** o visual "Louvor ADVOP" foi testado com Vitest (happy-dom) e, no CI, com Playwright
+  (Chromium, WebKit e Firefox emulando celular). Falta conferir em aparelho: cor da barra do
+  navegador no claro/escuro, área segura do iPhone (barra inferior e dock), Wake Lock no modo
+  tocar e a troca de tema com o app instalado.
+- **O que fazer:** abrir o app no celular (Ctrl+Shift+R no computador ou fechar e abrir o app
+  instalado, por causa do cache do PWA) e seguir o checklist do PR.
+
+### 51. Roteiros E2E e capturas atualizados sem rodar nesta máquina — médio
+
+- **O quê:** `e2e/fluxos.mjs`, `e2e/qa.mjs`, `e2e/varredura.mjs` e `tests/e2e/capturas.spec.ts`
+  foram atualizados para o novo visual (menu ⋯, tela Mais, dock, modal de tema), mas só rodam no
+  workflow **E2E (dados reais)** (sem Docker e sem Playwright aqui). A primeira execução no PR é
+  a validação.
+- **Sem teste com dados reais:** "Cancelar evento"/"Reativar evento" (menu ⋯ da escala) só tem
+  teste de tela com o Supabase de mentira; o RLS de `events` já é coberto pelo pgTAP.
+- **O que fazer:** olhar o resultado do E2E no PR; se algum seletor falhar, ajustar o roteiro.
 
 ## Resolvidas recentemente
 

@@ -1033,3 +1033,72 @@ as migrations a partir da de GRANT.
 - **QA reprova só com crítico ou alto;** médios e baixos ficam nas pendências.
 - **Sem instalar navegadores nesta máquina** (disco com 0,5 a 2 GB livres): QA e mutação
   completa rodam no CI; a mutação de referência rodou localmente pelo PowerShell em `C:\`.
+
+## Novo visual "Louvor ADVOP" (21/11/2026)
+
+PR "feat(design): novo visual Louvor ADVOP" (branch `feat/design-advop`, a partir da `main`). Sem
+migration: tudo é interface, textos e testes.
+
+### Arquivos criados/alterados
+
+- **Tokens:** `src/index.css` — paleta aprovada em `:root, .light` (claro) e `.dark` (escuro),
+  mapeada para as classes do Tailwind v4 (`@theme inline`) e para as variáveis do shadcn
+  (`--primary` = accent, `--accent` = accent-soft, `--muted` = chip…), utilitários de tipo
+  (`text-screen-title`, `text-card-title`, `section-label`, `text-caption`). Fonte Inter
+  (`@fontsource/inter`, 400–800) importada no `src/main.tsx`. `src/lib/contrast.ts` + teste:
+  contraste AA dos pares de texto nos dois temas.
+- **Tema:** `src/lib/theme.ts` (puro: ler/salvar a escolha, resolver "automático", aplicar a
+  classe e a cor da barra do navegador), `src/hooks/use-theme.ts` e
+  `src/hooks/theme-provider.tsx` (estende o hook de tema que já existia em `src/hooks`),
+  `src/app/theme-choice-dialog.tsx` (modal de primeiro acesso),
+  `src/components/theme/theme-options.tsx` (Claro / Escuro / Automático com miniaturas) e o
+  script anti-flash no `index.html`.
+- **Ícone:** `scripts/generate-icons.mjs` (sharp `--no-save`), PNGs em `public/`, manifest
+  "Louvor ADVOP"/"Louvor" com fundo `#121214`, `<FlameLogo>`.
+- **Casca:** `src/app/app-shell.tsx` (barra inferior, lateral, topo com sino),
+  `src/app/more-page.tsx` (tela Mais), `src/components/layout/screen-header.tsx` (voltar + título
+  - ⋯) e `overflow-menu.tsx` (menu ⋯ com teclado).
+- **Telas:** Início (`dashboard-page.tsx`, `my-role.ts`), Repertório (`songs-page.tsx`), Música
+  (`song-page.tsx`, dock de tom/áudio, `reading-prefs.ts`, `song-key.ts`, `use-wake-lock.ts`,
+  `features/audio/song-audio*.ts(x)`), Escala (`event-detail-page.tsx`, `groupTeamBySection`,
+  cancelar/reativar evento), Nova música (`new-song-page.tsx`, `firstChordKey`,
+  `newSongSchema`).
+- **Textos e rede:** `src/lib/messages.ts`, `src/lib/network.ts` (tempo limite e "sem
+  internet" no cliente Supabase), `src/lib/audio/upload.ts` (falha na hora offline, desiste
+  após 30 s sem progresso, `UploadError` é `UserFacingError`), `src/hooks/use-single-flight.ts`.
+- **E2E:** `e2e/fluxos.mjs`, `e2e/qa.mjs`, `e2e/varredura.mjs` no novo visual;
+  `tests/e2e/capturas.spec.ts` + `playwright.config.ts` e o passo/artefato `capturas-design` no
+  workflow E2E.
+
+### Decisões
+
+- **Tokens como variáveis CSS, não como tema do Tailwind fixo:** trocar de tema é só trocar a
+  classe `.dark` no `<html>`; as mesmas classes servem aos dois temas e as variáveis do shadcn
+  apontam para a paleta, então os componentes antigos herdaram o visual sem reescrever.
+  O bloco `.light` existe para as miniaturas da escolha de tema, que mostram o tema claro dentro
+  do app escuro (e vice-versa) usando os mesmos tokens.
+- **ThemeProvider em `src/hooks`** (regra de arquitetura: `src/lib` sem React). A lógica pura
+  (ler, migrar a chave antiga `tema`, resolver "automático") fica em `src/lib/theme.ts` e é
+  testada sem navegador. O provider só guarda o estado, ouve o `prefers-color-scheme` e aplica.
+  `preview()` deixa o modal mostrar o tema antes de "Continuar" e o login seguir o celular.
+- **Script anti-flash no `index.html`:** o React só aplica o tema depois de carregar; sem o
+  script, quem usa o escuro via um clarão branco ao abrir o app à noite (no palco). O script é
+  pequeno, repete a regra de `src/lib/theme.ts` (mesma chave, mesmas cores) e no `/login` usa
+  sempre o tema do celular.
+- **Modal de primeiro acesso:** fechar sem escolher salva "Automático" — a pergunta não volta.
+- **"Excluir" no menu ⋯** é o arquivamento que já existia (some da lista, mantém histórico e
+  escalas antigas); a atividade diz "Excluiu/Restaurou a música".
+- **Cancelar evento sem migration:** o RLS de `events` já deixa quem tem `schedules.manage`
+  mudar o `status`.
+- **Nova música tolerante:** só o título é obrigatório; link sem `https://` é avisado e
+  ignorado, campos longos são cortados — nada opcional impede salvar.
+- **Áudio no dock:** a lista de áudios escolhe qual toca no player fixo ("Ouvir no player"); o
+  tom do áudio acompanha a transposição da cifra (ou é ajustado à mão em "Ajustes do áudio").
+- **Salvar uma vez só:** a trava fica num `ref` (`useSingleFlight`) porque o estado do React
+  ("Salvando…") só muda depois do segundo clique de um duplo clique. Na Nova música a trava
+  continua depois de salvar, até a tela navegar.
+- **Tempo limite no `fetch` do cliente Supabase (15 s) e falha imediata com
+  `navigator.onLine === false`:** o erro é o mesmo do navegador sem rede (`TypeError: Failed to
+fetch`), então supabase-js, Auth e `friendlyError` já o tratam como "Sem conexão. Tente de
+  novo.". O texto digitado e a gravação ficam onde estavam.
+- **Capturas só com o seed:** o passo roda antes dos roteiros que criam dados.
