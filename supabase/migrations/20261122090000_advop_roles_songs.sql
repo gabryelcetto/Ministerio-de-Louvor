@@ -31,7 +31,19 @@ comment on column public.ministry_functions.section is
 --  que vale para colunas novas; nada para anon.)
 
 -- 3. Permissões ------------------------------------------------------------------------------
+-- Catálogo completo aqui (e não só no seed): num banco novo as migrations rodam ANTES do seed,
+-- e role_permissions tem chave estrangeira para permissions.
 insert into public.permissions (key, description) values
+  ('schedules.manage', 'Criar e editar escalas e o repertório dos eventos'),
+  ('events.manage', 'Criar, editar e cancelar eventos da agenda'),
+  ('announcements.manage', 'Publicar e editar comunicados'),
+  ('songs.delete', 'Excluir músicas do repertório'),
+  ('chords.edit_official', 'Editar e aprovar a cifra oficial'),
+  ('songs.set_official_key', 'Definir o tom oficial da música'),
+  ('members.view_contacts', 'Ver telefone dos integrantes'),
+  ('members.manage', 'Gerenciar integrantes, perfis e funções'),
+  ('permissions.manage', 'Gerenciar permissões por perfil e por usuário'),
+  ('history.restore', 'Restaurar versões antigas de letra, cifra e tom'),
   ('songs.manage', 'Cadastrar música e editar os dados da música'),
   ('history.view_all', 'Ver a atividade recente de todo o repertório')
 on conflict (key) do nothing;
