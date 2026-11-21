@@ -79,6 +79,11 @@ async function step(page, who, label, fn, { expectApiErrors = false } = {}) {
 }
 
 const main = (page) => page.locator('main');
+/** Links de músicas na lista do repertório (sem o botão "Nova música"). */
+const songLinks = (page) =>
+  main(page).locator('a[href^="/repertorio/"]:not([href="/repertorio/nova"])');
+/** Só a lista (não os <option> dos filtros, que têm os mesmos nomes). */
+const list = (page) => main(page).locator('ul');
 /** Repete `fn` até devolver true (a lista pode levar um instante para atualizar). */
 const poll = async (fn, what, timeout = 8000) => {
   const end = Date.now() + timeout;
@@ -119,7 +124,7 @@ const expectText = async (page, text, timeout = 8000) => {
   await step(page, who, 'Repertório lista 12 músicas', async () => {
     await page.goto(`${BASE}/repertorio`);
     await page.waitForLoadState('networkidle');
-    const n = await main(page).locator('a[href^="/repertorio/"]').count();
+    const n = await songLinks(page).count();
     if (n !== 12) throw new Error(`${n} músicas na lista`);
     return `${n} músicas`;
   });
@@ -127,10 +132,7 @@ const expectText = async (page, text, timeout = 8000) => {
   await step(page, who, 'Busca sem acento "cantico"', async () => {
     await page.getByLabel('Buscar música').fill('cantico');
     await expectText(page, 'Cântico da Manhã');
-    await poll(
-      async () => (await main(page).locator('a[href^="/repertorio/"]').count()) === 1,
-      'esperava 1 resultado',
-    );
+    await poll(async () => (await songLinks(page).count()) === 1, 'esperava 1 resultado');
   });
 
   await step(page, who, 'Busca sem resultado', async () => {
@@ -504,25 +506,26 @@ let newSongPath = '';
   await step(page, who, 'Atividade recente: vê as alterações da integrante', async () => {
     await page.goto(`${BASE}/atividade`);
     await page.waitForLoadState('networkidle');
-    await expectText(page, NEW_SONG);
-    await expectText(page, 'Editou a cifra');
+    // Só a lista: os <option> dos filtros têm os mesmos nomes e não ficam "visíveis".
+    await list(page).getByText(NEW_SONG).first().waitFor();
+    await list(page).getByText('Editou a cifra').first().waitFor();
     await page.getByLabel('Pessoa').selectOption({ label: 'Isa' });
     await page.waitForLoadState('networkidle');
     await poll(
       async () =>
-        !(await main(page)
+        !(await list(page)
           .getByText(/^Ana ·/)
           .count()),
       'filtro por pessoa ainda mostra a Ana',
     );
-    await expectText(page, /^Isa ·/);
+    await list(page)
+      .getByText(/^Isa ·/)
+      .first()
+      .waitFor();
   });
 
   await step(page, who, 'Atividade recente → histórico → restaurar', async () => {
-    await main(page)
-      .getByRole('link', { name: new RegExp(NEW_SONG.replace(/[()]/g, '\\$&')) })
-      .first()
-      .click();
+    await list(page).getByRole('link').filter({ hasText: NEW_SONG }).first().click();
     await page.waitForURL(/\/historico$/);
     await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: 'Restaurar' }).first().click();

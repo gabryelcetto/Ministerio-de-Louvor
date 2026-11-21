@@ -199,6 +199,27 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   entraram em X dias; (b) uma ação "Gerar nova senha provisória" para `members.manage`, que pode
   reaproveitar a Edge Function.
 
+### 33. Publicar a base ADVOP na nuvem
+
+- **O quê:** migration `20261122090000_advop_roles_songs.sql` (perfis, permissões, músicas,
+  atividade), nova versão da Edge Function `invite-member` (sem "liderança") e o app.
+- **O que fazer:** comandos no PR "base ADVOP". Depois da migration, conferir em Integrantes que
+  ninguém ficou como "Liderança" e que as funções vocais aparecem como "Cantor(a)".
+- **Atenção:** quem era líder perde montar escala, comunicados, contatos e restaurar (agora só
+  admin). Se alguém precisar continuar, dê a exceção individual (`user_permissions`, `grant`).
+
+### 34. Funções novas do ministério nascem "instrumental"
+
+- **O quê:** `ministry_functions.section` tem padrão `instrumental`; uma função vocal criada
+  depois (ex.: "Ministro(a)") precisa ter `section = 'vocal'` ajustado no SQL Editor (ainda não há
+  tela de funções).
+
+### 35. Detecção de tom é uma sugestão
+
+- **O quê:** o tom sugerido na "Nova música" vem do campo harmônico e do primeiro/último acorde.
+  Músicas modais ou com muitas modulações podem sugerir o tom relativo (ex.: Em no lugar de G).
+  A pessoa confirma ou troca antes de salvar.
+
 ## Resolvidas recentemente
 
 - **Cadastro de integrantes** — Edge Function `invite-member`, tela, primeiro acesso e

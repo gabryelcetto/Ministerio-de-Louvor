@@ -130,7 +130,8 @@ export function AppShell() {
 
       <div className="flex min-h-dvh flex-col">
         <header className="flex items-center justify-between border-b bg-card px-4 py-2 md:hidden">
-          <span className="truncate font-semibold">{brandTitle}</span>
+          {/* Menor no celular para caber inteiro ao lado do sino e do sair. */}
+          <span className="truncate text-sm font-semibold sm:text-base">{brandTitle}</span>
           <div className="flex shrink-0 items-center gap-1">
             <Button asChild variant="ghost" size="icon" className="relative size-11">
               <Link to="/notificacoes" aria-label={`Notificações: ${unreadLabel(unread)}`}>

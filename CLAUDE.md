@@ -38,6 +38,10 @@ npm run format:check
 - Textos da interface e documentação em **português**.
 - Toda autorização mora no Postgres (RLS + `has_permission`). `usePermission()` é só para a
   interface.
+- Perfis de acesso: só `admin` e `member` (o valor `leader` do enum não é usado; uma CHECK
+  impede). Grupos cantor(a)/instrumentista vêm de `ministry_functions.section` e **não** são
+  permissão. Padrões por perfil: migration `20261122090000_advop_roles_songs.sql` e tabela no
+  README. Nome da igreja/app: `src/config/brand.ts`.
 - Em `profiles`, sempre liste as colunas no `select` (a coluna `phone` não é legível pela API).
 - `src/types/database.types.ts` é **gerado** (`npx supabase gen types typescript --local`; não
   edite à mão). O artefato `e2e-output` do workflow E2E traz o arquivo gerado de cada PR.

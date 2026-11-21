@@ -740,3 +740,80 @@ as migrations a partir da de GRANT.
    `shouldClearCache` (com teste) só limpa ao sair ou quando entra **outra** pessoa.
 2. **Aviso "não será mostrada de novo" em colunas.** Texto e `<strong>` soltos dentro de um
    contêiner flex viravam três colunas; agora ficam num único `<span>`.
+
+---
+
+## Base ADVOP: perfis, nova música com cifra colada e atividade recente (21/11/2026)
+
+### Arquivos criados/alterados
+
+- `supabase/migrations/20261122090000_advop_roles_songs.sql`:
+  - quem era `leader` vira `member`, e uma CHECK impede voltar (o valor continua no enum:
+    remover valor de enum exige recriar o tipo);
+  - `ministry_functions.section` (`vocal`/`instrumental`): só selos e filtros;
+  - permissões `songs.manage` e `history.view_all`; o padrão do integrante passa a ser cifra,
+    tom oficial e cadastro de música; o resto é só do admin (o catálogo completo de permissões
+    também fica na migration, porque num banco novo ela roda antes do seed);
+  - fim do fluxo de cifra "pendente" (trigger removido; pendentes viram oficiais);
+  - policies novas de `songs` + trigger `guard_song_changes` (dados → `songs.manage`;
+    `archived_at` → `songs.delete`; ninguém troca `created_by`);
+  - `log_song_archive` (arquivar/desarquivar vai para `audit_logs`);
+  - RPC `create_song` (música + letra + cifra numa transação; entra no histórico);
+  - RPC `get_recent_activity` (só `history.view_all`);
+  - `setup_new_member` sem `leader`.
+- `src/lib/chords/paste.ts` (+ testes): cifra colada → ChordPro. Detecta o formato, entende
+  `[Refrão]`, `[Intro] G D`, "Parte 1 de 2" e espaço não separável de páginas web; sugere o tom
+  (`guessKey`) e gera a letra (`lyricsFromChordPro`).
+- `src/features/repertorio/song-data.ts` (+ teste): validação e chamadas de cadastrar, editar
+  dados e arquivar.
+- `src/features/repertorio/components/new-song-page.tsx`: tela "Nova música".
+- `song-data-fields.tsx`: campos de dados, usados em cadastrar e editar.
+- `song-data-editor.tsx`: "Editar dados" e "Arquivar".
+- `song-page.tsx`, `songs-page.tsx`, `song-editors.tsx`: botões novos e o conversor novo no
+  editor de cifra.
+- `src/features/atividade/`: API (+ teste) e tela "Atividade recente".
+- `src/features/integrantes/sections.ts` (+ teste): selos Cantor(a)/Instrumentista e filtro.
+- `members-page.tsx`, `api.ts`, `escalas/manage.ts`, `schedule-builder-page.tsx`: selos e
+  filtro Cantores/Instrumentistas.
+- `src/config/brand.ts`: identidade ADVOP, usada em `vite.config.ts` (manifest e título via
+  `%BRAND_TITLE%` no `index.html`), login, topo, Início e mensagem de convite.
+- `src/app/app-shell.tsx`: itens do menu por permissão (`permission`), incluindo "Atividade
+  recente".
+- `supabase/seed.sql` e `supabase/demo-users.sql`: mesmo estado final da migration.
+- Cadastro de integrante sem "Liderança": `_shared/invite.ts`, `invite.ts`, tela e Edge Function.
+- Testes:
+  - `supabase/tests/advop.test.sql` (30, novo);
+  - `rls.test.sql` reescrito para o modelo novo (o "sem permissão" agora usa exceções `deny`);
+  - `members.test.sql` sem líder;
+  - E2E com nova música, atividade, arquivar, filtro de escala e ex-líder;
+  - verificações de API do modelo ADVOP.
+
+### Decisões
+
+- **Grupo não é permissão:** "cantor/instrumentista" sai das funções da pessoa e só muda selos e
+  filtros. Assim uma pessoa que canta e toca não precisa de dois perfis, e permissão continua num
+  lugar só (`has_permission`).
+- **Uma policy de UPDATE larga + trigger por coluna** em `songs`: RLS decide por linha, não por
+  coluna. Quem pode mexer em alguma parte passa na policy, e o trigger confere cada parte (dados,
+  tom oficial, arquivamento). Quem não pode mexer em nada nem enxerga a linha no UPDATE (0 linhas).
+- **`create_song` como RPC "invoker":** as regras de RLS e os triggers de histórico valem, e
+  música, letra e cifra entram juntas ou nada entra.
+- **Atividade recente:** o histórico de cada música continua aberto a todos (`song_versions`); o
+  que é restrito é a visão geral, que junta com `audit_logs` (só admin lê). A RPC confere
+  `history.view_all` e devolve o nome de quem alterou.
+- **Cifra colada, não importada:** nada busca conteúdo em sites; a pessoa cola o que tem direito
+  de usar. Os testes usam só textos fictícios.
+- **Identidade num arquivo:** `brand.ts` é lido também pelo `vite.config.ts`, por isso não
+  importa nada do app.
+
+### Erros encontrados pelo CI (e corrigidos)
+
+1. Migration falhava num banco novo (FK de `role_permissions`): o catálogo de permissões só
+   existia no seed. A migration ainda não tinha sido aplicada em lugar nenhum, então foi corrigida
+   no próprio arquivo.
+2. Testes antigos de API ("integrante não edita cifra/tom") passaram a editar de verdade e sujaram
+   a música 1 do seed, derrubando outros testes. Foram trocados por verificações na música criada
+   pela própria API.
+3. Testes de tela contavam o link "Nova música" como música, e achavam nomes dentro de
+   `<option>` de filtro. Ajustados os seletores.
+4. Título "Ministério de Louvor · ADVOP" cortado no topo do celular: fonte menor no celular.

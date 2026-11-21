@@ -159,10 +159,12 @@ select ok(public.get_dashboard() ? 'next_service', 'integrante executa get_dashb
 select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-0000-4000-8000-000000000002","role":"authenticated"}', true);
 
-select throws_ok(
-  $$update public.songs set official_key = 'B' where id = 'bbbbbbbb-0000-4000-8000-000000000001'$$,
-  '42501', null,
-  'exceção deny: não altera o tom oficial'
+-- Sem nenhuma das permissões de música, o RLS esconde a linha no UPDATE: nada muda, sem erro.
+update public.songs set official_key = 'B' where id = 'bbbbbbbb-0000-4000-8000-000000000001';
+select is(
+  (select official_key from public.songs where id = 'bbbbbbbb-0000-4000-8000-000000000001'),
+  'A',
+  'exceção deny: não altera o tom oficial (RLS ignora o UPDATE)'
 );
 select is(
   (select count(*)::int from public.song_versions

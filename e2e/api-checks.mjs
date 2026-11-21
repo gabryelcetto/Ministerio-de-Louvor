@@ -21,46 +21,8 @@ async function login(email) {
 
 // ---------------------------------------------------------------- integrante
 const member = await login('integrante@demo.local');
-const { data: before } = await member
-  .from('song_chords')
-  .select('content')
-  .eq('song_id', SONG)
-  .single();
-
-{
-  const { error } = await member
-    .from('song_chords')
-    .upsert(
-      { song_id: SONG, content: '[A]hack', review_status: 'official' },
-      { onConflict: 'song_id' },
-    )
-    .select('song_id');
-  check(
-    error?.code === '42501',
-    'integrante: upsert de cifra oficial é recusado',
-    error?.code ?? 'sem erro',
-  );
-}
-{
-  const { data, error } = await member
-    .from('song_chords')
-    .update({ content: '[A]hack' })
-    .eq('song_id', SONG)
-    .select('song_id');
-  check(
-    !error && data.length === 0,
-    'integrante: update de cifra afeta 0 linhas (RLS)',
-    error?.message ?? `${data?.length} linhas`,
-  );
-}
-{
-  const { data: after } = await member
-    .from('song_chords')
-    .select('content')
-    .eq('song_id', SONG)
-    .single();
-  check(after?.content === before?.content, 'integrante: cifra continua igual no banco');
-}
+// Modelo ADVOP: o integrante EDITA cifra e tom oficial (permissões padrão). As verificações
+// disso ficam na música criada pela própria API (mais abaixo), sem mexer no seed.
 {
   const { data: v } = await member
     .from('song_versions')
@@ -72,18 +34,6 @@ const { data: before } = await member
   check(
     error?.code === '42501',
     'integrante: restore_song_version é recusado',
-    error?.message ?? 'sem erro',
-  );
-}
-{
-  const { error } = await member
-    .from('songs')
-    .update({ official_key: 'A' })
-    .eq('id', SONG)
-    .select('id');
-  check(
-    error?.code === '42501',
-    'integrante: mudar tom oficial é recusado',
     error?.message ?? 'sem erro',
   );
 }
@@ -195,6 +145,16 @@ const { data: before } = await member
       .eq('song_id', id)
       .select('song_id');
     check(!e2 && upd.length === 1, 'integrante: edita a cifra da música nova', e2?.message ?? '');
+    const { data: key, error: e3 } = await member
+      .from('songs')
+      .update({ official_key: 'A' })
+      .eq('id', id)
+      .select('official_key');
+    check(
+      !e3 && key?.[0]?.official_key === 'A',
+      'integrante: muda o tom oficial da música nova',
+      e3?.message ?? '',
+    );
     globalThis.apiSongId = id;
   }
 }
