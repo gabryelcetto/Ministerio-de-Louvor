@@ -237,6 +237,20 @@ nothing`), mas é pensado para ambiente de teste, não para dados reais.
 Os usuários de demonstração continuam sendo criados no painel + `supabase/demo-users.sql` (passos
 4 e 5 da seção anterior); o workflow não mexe no Auth.
 
+## Backup diário do banco
+
+O banco da nuvem tem backup diário **criptografado** (madrugada, 03:17 de Brasília), guardado por
+**30 dias** como artefato do GitHub Actions. Ele também serve de keep-alive contra a pausa do
+plano grátis.
+
+- Roda no repositório **privado** [`gabryelcetto/ministerio-louvor-ops`](https://github.com/gabryelcetto/ministerio-louvor-ops)
+  (este repositório é público).
+- Cópia versionada, scripts e passo a passo (chaves `age`, secrets, restauração):
+  [`ops/backup/`](ops/backup/README.md).
+- O workflow **Backup (autoteste)** prova a cada mudança que o backup restaura: faz o backup de um
+  Supabase local, restaura num segundo Supabase local vazio e compara as tabelas.
+- **Os arquivos do Storage (áudios) não entram no dump.**
+
 ## Publicar (Cloudflare Workers)
 
 ```bash

@@ -4,6 +4,43 @@ Registro do que foi feito em cada fase, onde fica cada arquivo e por que as deci
 
 ---
 
+## Operações: backup diário do banco (21/11/2026)
+
+> Entrada no topo porque veio de um PR independente (ops/backup), que pode ser mergeado antes ou
+> depois dos PRs de funcionalidade.
+
+### O que foi feito
+
+- **Repositório privado `gabryelcetto/ministerio-louvor-ops`** (criado com o `gh`): tem o
+  workflow agendado `Backup do banco`, os scripts `backup.sh`/`restore.sh` e o README. Fica
+  separado porque este repositório é público.
+- `ops/backup/backup.sh` — `supabase db dump` de roles, schema e dados → `tar.gz` →
+  criptografado com `age` usando a chave **pública** (secret). Falha se algum dump vier vazio.
+- `ops/backup/restore.sh` — descriptografa com a chave **privada** e restaura com `psql`, na
+  ordem e com as opções do guia oficial do Supabase.
+- `ops/backup/backup.yml` — cópia versionada do workflow do repositório privado (aqui não roda).
+- `ops/backup/README.md` — gerar as chaves, secrets, testar, restaurar num Supabase local.
+- `.github/workflows/backup-selftest.yml` — **autoteste**: sobe o Supabase local com o seed,
+  faz o backup com uma chave descartável, sobe um **segundo** Supabase local vazio (portas
+  55xxx), restaura e compara a contagem de 10 tabelas e as policies.
+
+### Decisões
+
+- **Criptografia assimétrica (age):** o GitHub só tem a chave pública, que serve para trancar,
+  não para abrir. Se o repositório (ou um artefato) vazar, o backup continua ilegível. A chave
+  privada fica só com o dono.
+- **Repositório privado:** artefatos de repositório público podem ser baixados por qualquer um;
+  mesmo criptografado, um backup não deve ficar exposto.
+- **Session pooler (IPv4) na conexão:** a conexão direta do plano grátis é só IPv6, e os runners
+  do GitHub não alcançam IPv6.
+- **CLI 3 do Supabase:** `db dump` usa `--remote=<url>` (a antiga `--db-url` não existe
+  mais; conferido no `--help` da 3.2.0, a mesma versão fixada nos workflows).
+- **Testar a restauração, não só o backup:** o autoteste roda em todo PR que mexe em
+  `ops/backup/` e toda segunda-feira (pega mudança de comportamento da CLI).
+- **Storage fora do dump:** `pg_dump` só leva o banco; os áudios precisam de cópia à parte.
+
+---
+
 ## Fase A — Fundação (19/11/2026)
 
 ### Arquivos criados
