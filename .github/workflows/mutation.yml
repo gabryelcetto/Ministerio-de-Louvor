@@ -12,6 +12,7 @@ on:
       - 'src/lib/**'
       - 'src/features/escalas/schedule-utils*'
       - 'src/features/escalas/share-text*'
+      - 'src/features/escalas/setlist.*'
       - 'src/features/integrantes/sections*'
       - 'src/features/repertorio/editor-checks*'
       - 'src/features/repertorio/history-format*'

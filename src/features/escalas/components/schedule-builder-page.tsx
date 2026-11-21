@@ -121,9 +121,13 @@ function Builder({ data }: { data: SchedulingData }) {
   const guard = useUnsavedGuard(dirty);
 
   // Navega só depois que o formulário deixou de estar "sujo" (o guarda não bloqueia).
+  // Passo 3: repertório (menos na repetição semanal, que nasce sem repertório).
   useEffect(() => {
-    if (savedId) void navigate(`/escalas/${savedId}`);
-  }, [savedId, navigate]);
+    if (!savedId) return;
+    void navigate(
+      mode === 'novo' && repeat ? `/escalas/${savedId}` : `/escalas/${savedId}/repertorio?montar=1`,
+    );
+  }, [savedId, navigate, mode, repeat]);
 
   const save = useMutation({
     mutationFn: async () => {

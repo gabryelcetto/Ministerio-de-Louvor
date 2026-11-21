@@ -102,7 +102,8 @@ describe('montar escala', () => {
       p_repeat_weeks: 1,
     });
     expect(fake.writes('events', 'insert')).toEqual([]);
-    await waitFor(() => expect(router.state.location.pathname).toBe('/escalas/ev-novo'));
+    // Passo 3: repertório.
+    await waitFor(() => expect(router.state.location.pathname).toBe('/escalas/ev-novo/repertorio'));
   });
 
   it('evento novo sem equipe, repetido toda semana (mostra as datas virando o mês)', async () => {

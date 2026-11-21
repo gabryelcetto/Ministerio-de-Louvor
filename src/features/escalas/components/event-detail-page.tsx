@@ -4,6 +4,7 @@ import {
   CalendarPlus,
   Clock,
   Copy,
+  ListMusic,
   MapPin,
   Navigation,
   Pencil,
@@ -117,6 +118,11 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
             label: 'Editar escala',
             icon: Pencil,
             onSelect: () => void navigate(`/escalas/montar?evento=${event.id}`),
+          },
+          {
+            label: 'Editar repertório',
+            icon: ListMusic,
+            onSelect: () => void navigate(`/escalas/${event.id}/repertorio`),
           },
         ]
       : []),

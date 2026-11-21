@@ -122,6 +122,7 @@ describe('escala / detalhe do evento', () => {
       'Editar evento',
       'Duplicar evento',
       'Editar escala',
+      'Editar repertório',
       'Cancelar evento',
     ]);
     await user.click(screen.getByRole('menuitem', { name: 'Cancelar evento' }));

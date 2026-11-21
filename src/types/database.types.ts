@@ -634,6 +634,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"set_event_songs":
+{ Args: { "p_event_id": string,"p_items": Json }; Returns: number
+                           },
 "setup_new_member":
 { Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_user_id": string }; Returns: undefined
                            }

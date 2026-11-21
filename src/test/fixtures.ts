@@ -261,6 +261,7 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
         },
       ],
       events,
+      event_songs: events.flatMap((e) => e.event_songs.map((es) => ({ ...es, event_id: e.id }))),
       event_assignments: [
         ...serviceAssignments.map((a) => ({
           ...a,
