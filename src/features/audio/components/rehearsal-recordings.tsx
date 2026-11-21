@@ -18,7 +18,14 @@ function isIos(): boolean {
  * o dock fixo embaixo com o botão redondo de gravar. O que foi gravado fica salvo no aparelho
  * até ser enviado; depois de enviado, fica 90 dias no servidor.
  */
-export function RehearsalRecordings({ eventId }: { eventId: string }) {
+export function RehearsalRecordings({
+  eventId,
+  downloadPrefix,
+}: {
+  eventId: string;
+  /** "Ensaio 26-11": começo do nome dos arquivos baixados. */
+  downloadPrefix?: string;
+}) {
   const recordings = useEventRecordings(eventId);
   const naming = useAudioNaming('rehearsal', eventId);
 
@@ -39,6 +46,7 @@ export function RehearsalRecordings({ eventId }: { eventId: string }) {
           targetId={eventId}
           onRename={(item) => naming.open(item.id, item.label, false)}
           emptyText="Nenhuma gravação deste ensaio ainda."
+          downloadPrefix={downloadPrefix}
         />
       )}
 

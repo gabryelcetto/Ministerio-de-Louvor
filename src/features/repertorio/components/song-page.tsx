@@ -443,6 +443,7 @@ function SongView({ song }: { song: SongDetail }) {
 
         <ReferenceAudios
           songId={song.id}
+          songTitle={song.title}
           followSemitones={shortestSemitones(song.original_key ?? baseKey, shownKey)}
           shownKey={shownKey}
         />

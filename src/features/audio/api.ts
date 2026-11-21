@@ -303,3 +303,12 @@ export function readAudioDuration(blob: Blob): Promise<number | null> {
     audio.src = url;
   });
 }
+
+/** Link temporário (1 hora) que baixa o arquivo com um nome legível. */
+export async function downloadUrl(storagePath: string, fileName: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(AUDIO_BUCKET)
+    .createSignedUrl(storagePath, SIGNED_URL_SECONDS, { download: fileName });
+  if (error) throw error;
+  return data.signedUrl;
+}

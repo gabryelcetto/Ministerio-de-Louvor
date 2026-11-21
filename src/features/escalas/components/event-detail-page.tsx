@@ -25,7 +25,7 @@ import { useScrollToHash } from '@/hooks/use-scroll-to-hash';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { downloadBlob, shareText } from '@/lib/browser-share';
-import { dateBlock, formatDayLabel, formatTimeRange, isoToZonedLocal } from '@/lib/dates';
+import { dateBlock, formatDayLabel, dayKey, formatTimeRange, isoToZonedLocal } from '@/lib/dates';
 import { icsFileName } from '@/lib/ics';
 import { mapsSearchUrl } from '@/lib/share';
 import { cn } from '@/lib/utils';
@@ -215,7 +215,12 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
         <Team groups={teamBySection} />
         <Songs songs={songs} eventId={event.id} />
 
-        {event.type === 'ensaio' && <RehearsalRecordings eventId={event.id} />}
+        {event.type === 'ensaio' && (
+          <RehearsalRecordings
+            eventId={event.id}
+            downloadPrefix={`Ensaio ${dayKey(event.starts_at).slice(8, 10)}-${dayKey(event.starts_at).slice(5, 7)}`}
+          />
+        )}
       </section>
 
       <ConfirmDialog

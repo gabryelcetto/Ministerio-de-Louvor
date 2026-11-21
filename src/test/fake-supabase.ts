@@ -252,6 +252,13 @@ export function createFakeSupabase() {
               error: null,
             };
           },
+          async createSignedUrl(path: string, _seconds: number, opts?: { download?: string }) {
+            const download = opts?.download ? `?download=${encodeURIComponent(opts.download)}` : '';
+            return {
+              data: { signedUrl: `https://arquivos.test/${bucket}/${path}${download}` },
+              error: null,
+            };
+          },
           async remove(paths: string[]) {
             return { data: paths.map((name) => ({ name })), error: null };
           },

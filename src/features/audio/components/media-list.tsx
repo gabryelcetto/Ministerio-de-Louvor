@@ -7,6 +7,7 @@ import { useSession, usePermission } from '@/features/auth';
 import { formatBytes, formatDuration } from '@/lib/audio/limits';
 import { formatShortDate, formatTime } from '@/lib/dates';
 import { mediaTitle, useDeleteAudio, type MediaItem, type MediaKind } from '../api';
+import { AudioFileActions } from './audio-file-actions';
 import { AudioPlayer } from './audio-player';
 
 /**
@@ -23,6 +24,7 @@ export function MediaList({
   onSelect,
   selectedId,
   emptyText,
+  downloadPrefix,
 }: {
   items: MediaItem[];
   kind: MediaKind;
@@ -37,6 +39,8 @@ export function MediaList({
   onSelect?: (item: MediaItem) => void;
   selectedId?: string | null;
   emptyText: string;
+  /** Prefixo do nome ao baixar ("Ensaio 26-11" ou o título da música). */
+  downloadPrefix?: string;
 }) {
   const { session } = useSession();
   const canDeleteAny = usePermission('media.manage');
@@ -91,6 +95,15 @@ export function MediaList({
                   </span>
                 )}
               </div>
+              {downloadPrefix && (
+                <AudioFileActions
+                  item={item}
+                  kind={kind}
+                  position={items.length - index}
+                  prefix={downloadPrefix}
+                  title={label}
+                />
+              )}
               {onSelect ? (
                 <Button
                   type="button"

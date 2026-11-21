@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baseMimeType, chooseRecordingFormat, extensionFor } from './format';
+import { audioDownloadName, baseMimeType, chooseRecordingFormat, extensionFor } from './format';
 import {
   audioFileProblem,
   formatBytes,
@@ -124,5 +124,49 @@ describe('semitons entre tons (áudio acompanha a cifra)', () => {
     expect(formatSemitoneShift(-3)).toBe('−3');
     expect(formatSemitoneShift(2)).toBe('+2');
     expect(formatSpeed(0.75)).toBe('75%');
+  });
+});
+
+describe('nome do arquivo para baixar', () => {
+  it('ensaio sem nome vira "Parte N"; com nome, usa o nome; extensão pelo tipo', () => {
+    expect(
+      audioDownloadName({
+        prefix: 'Ensaio 26-11',
+        label: null,
+        position: 1,
+        mimeType: 'audio/webm;codecs=opus',
+        fallback: 'Parte',
+      }),
+    ).toBe('Ensaio 26-11 - Parte 1.webm');
+    expect(
+      audioDownloadName({
+        prefix: 'Ensaio 26-11',
+        label: '  Arranjo ',
+        position: 2,
+        mimeType: 'audio/mp4',
+        fallback: 'Parte',
+      }),
+    ).toBe('Ensaio 26-11 - Arranjo.m4a');
+  });
+
+  it('referência com título da música e caracteres proibidos trocados', () => {
+    expect(
+      audioDownloadName({
+        prefix: 'Santo! Santo: Santo?',
+        label: 'Voz/guia',
+        position: 1,
+        mimeType: 'audio/mpeg',
+        fallback: 'Áudio',
+      }),
+    ).toBe('Santo! Santo- Santo- - Voz-guia.mp3');
+    expect(
+      audioDownloadName({
+        prefix: 'X',
+        label: null,
+        position: 3,
+        mimeType: 'application/octet-stream',
+        fallback: 'Áudio',
+      }),
+    ).toBe('X - Áudio 3.audio');
   });
 });

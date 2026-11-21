@@ -27,8 +27,11 @@ export function ReferenceAudios({
   songId,
   followSemitones,
   shownKey,
+  songTitle,
 }: {
   songId: string;
+  /** Título da música: começo do nome dos arquivos baixados. */
+  songTitle?: string;
   followSemitones: number | null;
   shownKey: string | null;
 }) {
@@ -160,6 +163,7 @@ export function ReferenceAudios({
           onSelect={songAudio ? (item) => songAudio.select(item.id) : undefined}
           selectedId={songAudio?.selected?.id ?? null}
           emptyText="Nenhum áudio de referência ainda."
+          downloadPrefix={songTitle}
         />
       )}
       {songAudio?.selected && <AudioSettingsPanel state={songAudio} />}
