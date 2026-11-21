@@ -182,3 +182,42 @@ export function weeklyOccurrences(local: string, weeks: number): string[] {
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Meses (agenda): "2026-11" no fuso da igreja.
+// ---------------------------------------------------------------------------------------------
+const MONTH_RE = /^(\d{4})-(\d{2})$/;
+const monthNameFormat = new Intl.DateTimeFormat('pt-BR', { month: 'long', timeZone: 'UTC' });
+
+/** Mês de agora (ou da data) no fuso de São Paulo: "2026-11". */
+export function monthKey(value: string | Date = new Date()): string {
+  return dayKey(value).slice(0, 7);
+}
+
+/** "2026-11" é um mês válido? */
+export function isMonthKey(value: string | null | undefined): value is string {
+  const m = MONTH_RE.exec(value ?? '');
+  return !!m && Number(m[2]) >= 1 && Number(m[2]) <= 12;
+}
+
+/** Soma (ou subtrai) meses: addMonths("2026-12", 1) = "2027-01". */
+export function addMonths(month: string, delta: number): string {
+  const [, y, m] = MONTH_RE.exec(month) ?? [];
+  const index = Number(y) * 12 + (Number(m) - 1) + delta;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+}
+
+/** Início e fim (exclusivo) do mês, em instantes ISO, no horário de São Paulo. */
+export function monthRange(month: string): { from: string; to: string } {
+  return {
+    from: zonedLocalToIso(`${month}-01T00:00`)!,
+    to: zonedLocalToIso(`${addMonths(month, 1)}-01T00:00`)!,
+  };
+}
+
+/** "novembro de 2026". */
+export function formatMonthLabel(month: string): string {
+  const [, y, m] = MONTH_RE.exec(month) ?? [];
+  const name = monthNameFormat.format(new Date(Date.UTC(Number(y), Number(m) - 1, 15)));
+  return `${name} de ${y}`;
+}

@@ -14,9 +14,12 @@ import { EVENT_TYPE_STYLES } from '../event-type';
 export function EventCard({
   event,
   dateLabel,
+  past = false,
   children,
 }: {
   event: EventSummary;
+  /** Já aconteceu: fundo apagado e barra neutra (sem baixar o contraste do texto). */
+  past?: boolean;
   /** Ex.: "dom., 23/11". Omitido quando a lista já está agrupada por dia. */
   dateLabel?: string;
   children?: ReactNode;
@@ -26,8 +29,8 @@ export function EventCard({
     <Link
       to={`/escalas/${event.id}`}
       className={cn(
-        'group flex items-center gap-3 rounded-xl border border-l-4 bg-card p-4 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        EVENT_TYPE_STYLES[event.type].bar,
+        'group flex items-center gap-3 rounded-xl border border-l-4 p-4 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        past ? 'border-l-line bg-muted' : ['bg-card', EVENT_TYPE_STYLES[event.type].bar],
         cancelled && 'opacity-70',
       )}
     >

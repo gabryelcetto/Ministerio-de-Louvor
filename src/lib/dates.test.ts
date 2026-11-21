@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addMonths,
   dateBlock,
   dayKey,
   formatDayLabel,
+  formatMonthLabel,
   formatShortDate,
   formatTime,
   formatTimeRange,
   greeting,
   groupByDay,
+  isMonthKey,
   isoToZonedLocal,
+  monthKey,
+  monthRange,
   weeklyOccurrences,
   zonedLocalToIso,
 } from './dates';
@@ -94,5 +99,27 @@ describe('repetir toda semana', () => {
     expect(weeklyOccurrences('', 3)).toEqual([]);
     expect(weeklyOccurrences('2026-12-24T19:30', 0)).toEqual([]);
     expect(weeklyOccurrences('2026-12-24T19:30', 1)).toEqual(['2026-12-24T22:30:00.000Z']);
+  });
+});
+
+describe('meses da agenda', () => {
+  it('mês no fuso de São Paulo, validação e soma virando o ano', () => {
+    expect(monthKey('2026-12-01T02:00:00Z')).toBe('2026-11');
+    expect(isMonthKey('2026-11')).toBe(true);
+    expect(isMonthKey('2026-13')).toBe(false);
+    expect(isMonthKey('2026-00')).toBe(false);
+    expect(isMonthKey(null)).toBe(false);
+    expect(addMonths('2026-12', 1)).toBe('2027-01');
+    expect(addMonths('2026-01', -1)).toBe('2025-12');
+    expect(addMonths('2026-11', -13)).toBe('2025-10');
+  });
+
+  it('intervalo do mês e nome', () => {
+    expect(monthRange('2026-11')).toEqual({
+      from: '2026-11-01T03:00:00.000Z',
+      to: '2026-12-01T03:00:00.000Z',
+    });
+    expect(formatMonthLabel('2026-11')).toBe('novembro de 2026');
+    expect(formatMonthLabel('2027-01')).toBe('janeiro de 2027');
   });
 });
