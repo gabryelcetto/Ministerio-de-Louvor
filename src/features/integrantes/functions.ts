@@ -10,6 +10,8 @@ export interface MinistryFunction {
   name: string;
   sortOrder: number;
   section: Section;
+  /** false = desativada (some das escolhas, continua no histórico). */
+  active: boolean;
 }
 
 export const FUNCTION_NAME_MAX = 40;
@@ -38,7 +40,7 @@ function toSection(value: string): Section {
 export async function fetchMinistryFunctions(): Promise<MinistryFunction[]> {
   const { data, error } = await supabase
     .from('ministry_functions')
-    .select('id, name, sort_order, section')
+    .select('id, name, sort_order, section, active')
     .order('sort_order')
     .order('name');
   if (error) throw error;
@@ -47,6 +49,7 @@ export async function fetchMinistryFunctions(): Promise<MinistryFunction[]> {
     name: f.name,
     sortOrder: f.sort_order,
     section: toSection(f.section),
+    active: f.active,
   }));
 }
 
@@ -97,4 +100,59 @@ export function useAddFunction() {
 export function useSetFunctionSection() {
   const invalidate = useInvalidateFunctions();
   return useMutation({ mutationFn: setFunctionSection, onSuccess: invalidate });
+}
+
+export async function renameFunction(input: { id: number; name: string }): Promise<void> {
+  const name = input.name.trim();
+  if (!name) throw new Error('Informe o nome da função.');
+  const { data, error } = await supabase
+    .from('ministry_functions')
+    .update({ name })
+    .eq('id', input.id)
+    .select('id');
+  if (error) throw error;
+  requireAffected(data);
+}
+
+export async function setFunctionActive(input: { id: number; active: boolean }): Promise<void> {
+  const { data, error } = await supabase
+    .from('ministry_functions')
+    .update({ active: input.active })
+    .eq('id', input.id)
+    .select('id');
+  if (error) throw error;
+  requireAffected(data);
+}
+
+export async function moveFunction(input: { id: number; delta: -1 | 1 }): Promise<void> {
+  const { error } = await supabase.rpc('move_ministry_function', {
+    p_id: input.id,
+    p_delta: input.delta,
+  });
+  if (error) throw error;
+}
+
+export async function deleteFunction(id: number): Promise<void> {
+  const { error } = await supabase.rpc('delete_ministry_function', { p_id: id });
+  if (error) throw error;
+}
+
+export function useRenameFunction() {
+  const invalidate = useInvalidateFunctions();
+  return useMutation({ mutationFn: renameFunction, onSuccess: invalidate });
+}
+
+export function useSetFunctionActive() {
+  const invalidate = useInvalidateFunctions();
+  return useMutation({ mutationFn: setFunctionActive, onSuccess: invalidate });
+}
+
+export function useMoveFunction() {
+  const invalidate = useInvalidateFunctions();
+  return useMutation({ mutationFn: moveFunction, onSuccess: invalidate });
+}
+
+export function useDeleteFunction() {
+  const invalidate = useInvalidateFunctions();
+  return useMutation({ mutationFn: deleteFunction, onSuccess: invalidate });
 }

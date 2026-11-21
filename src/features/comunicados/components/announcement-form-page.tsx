@@ -297,16 +297,18 @@ function GroupsPicker({
         ) : functions.isError ? (
           <p className="text-sm text-destructive">Não foi possível carregar as funções.</p>
         ) : (
-          functions.data.map((f) => (
-            <CheckChip
-              key={f.id}
-              label={f.name}
-              checked={filter.function_ids.includes(f.id)}
-              onChange={() =>
-                onChange({ ...filter, function_ids: toggleId(filter.function_ids, f.id) })
-              }
-            />
-          ))
+          functions.data
+            .filter((f) => f.active)
+            .map((f) => (
+              <CheckChip
+                key={f.id}
+                label={f.name}
+                checked={filter.function_ids.includes(f.id)}
+                onChange={() =>
+                  onChange({ ...filter, function_ids: toggleId(filter.function_ids, f.id) })
+                }
+              />
+            ))
         )}
       </fieldset>
     </div>

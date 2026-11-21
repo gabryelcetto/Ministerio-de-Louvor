@@ -255,14 +255,14 @@ isOneToOne: false
                   ]
                 },"ministry_functions": {
                   Row: {
-                    "id": number,"name": string,"section": string,"sort_order": number
+                    "active": boolean,"id": number,"name": string,"section": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "id"?: never,"name": string,"section": string,"sort_order"?: number
+                    "active"?: boolean,"id"?: never,"name": string,"section": string,"sort_order"?: number
                   }
                   Update: {
-                    "id"?: never,"name"?: string,"section"?: string,"sort_order"?: number
+                    "active"?: boolean,"id"?: never,"name"?: string,"section"?: string,"sort_order"?: number
                   }
                   Relationships: [
                     
@@ -554,6 +554,9 @@ isOneToOne: false
 "delete_announcement":
 { Args: { "p_id": string }; Returns: undefined
                            },
+"delete_ministry_function":
+{ Args: { "p_id": number }; Returns: undefined
+                           },
 "duplicate_event":
 { Args: { "p_event_id": string,"p_starts_at": string }; Returns: string
                            },
@@ -600,6 +603,9 @@ isOneToOne: false
                            },
 "mark_password_reset":
 { Args: { "p_user_id": string }; Returns: undefined
+                           },
+"move_ministry_function":
+{ Args: { "p_delta": number,"p_id": number }; Returns: undefined
                            },
 "my_permissions":
 { Args: Record<PropertyKey, never>; Returns: string[]

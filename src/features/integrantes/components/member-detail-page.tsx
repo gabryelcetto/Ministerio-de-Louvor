@@ -310,28 +310,31 @@ function EditMember({
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-semibold">Funções</legend>
         <div className="flex flex-wrap gap-2">
-          {(functions.data ?? []).map((f) => {
-            const checked = ids.includes(f.id);
-            return (
-              <label
-                key={f.id}
-                className={cn(
-                  'flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm',
-                  checked && 'border-brand bg-brand-soft font-semibold text-brand-text',
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() =>
-                    setSelected(checked ? ids.filter((x) => x !== f.id) : [...ids, f.id])
-                  }
-                  className="size-4 accent-[var(--primary)]"
-                />
-                {f.name}
-              </label>
-            );
-          })}
+          {(functions.data ?? [])
+            // Desativadas só aparecem se a pessoa já tem (para poder tirar).
+            .filter((f) => f.active || ids.includes(f.id))
+            .map((f) => {
+              const checked = ids.includes(f.id);
+              return (
+                <label
+                  key={f.id}
+                  className={cn(
+                    'flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm',
+                    checked && 'border-brand bg-brand-soft font-semibold text-brand-text',
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() =>
+                      setSelected(checked ? ids.filter((x) => x !== f.id) : [...ids, f.id])
+                    }
+                    className="size-4 accent-[var(--primary)]"
+                  />
+                  {f.name}
+                </label>
+              );
+            })}
         </div>
       </fieldset>
       <FormError error={save.error} fallback="Não foi possível salvar." />

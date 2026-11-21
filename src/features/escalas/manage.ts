@@ -147,7 +147,12 @@ export async function fetchSchedulingData(now: Date = new Date()): Promise<Sched
       .from('profiles')
       .select('id, full_name, display_name, member_functions(function_id)')
       .eq('status', 'active'),
-    supabase.from('ministry_functions').select('id, name, sort_order, section').order('sort_order'),
+    // Função desativada some de "Montar escala" (continua no histórico).
+    supabase
+      .from('ministry_functions')
+      .select('id, name, sort_order, section')
+      .eq('active', true)
+      .order('sort_order'),
   ]);
   if (events.error) throw events.error;
   if (members.error) throw members.error;

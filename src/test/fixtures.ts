@@ -78,9 +78,9 @@ const profile = (
 });
 
 const functions = [
-  { id: 1, name: 'Vocal', sort_order: 1, section: 'vocal' },
-  { id: 2, name: 'Violão', sort_order: 2, section: 'instrumental' },
-  { id: 3, name: 'Teclado', sort_order: 3, section: 'instrumental' },
+  { id: 1, name: 'Vocal', sort_order: 1, section: 'vocal', active: true },
+  { id: 2, name: 'Violão', sort_order: 2, section: 'instrumental', active: true },
+  { id: 3, name: 'Teclado', sort_order: 3, section: 'instrumental', active: true },
 ];
 
 const CHORDS = `[Intro] G D Em C
@@ -325,6 +325,8 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
       create_event_with_team: ['ev-novo'],
       get_song_stats: [],
       update_member: null,
+      move_ministry_function: null,
+      delete_ministry_function: null,
       get_song_plays: { total: 0, recent: [] },
       duplicate_event: 'ev-dup',
       mark_announcement_read: null,
