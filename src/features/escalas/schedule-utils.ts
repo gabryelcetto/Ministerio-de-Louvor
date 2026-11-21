@@ -221,3 +221,27 @@ export function songInEventHref(songId: string, key: string | null, eventId?: st
   const query = params.toString();
   return `/repertorio/${songId}${query ? `?${query}` : ''}`;
 }
+
+/**
+ * Modo culto: posição da música no repertório do evento e as vizinhas (para ‹ Anterior e
+ * Próxima ›). `null` quando a música não está no repertório.
+ */
+export function setlistPosition<T extends { songId: string }>(
+  songs: readonly T[],
+  songId: string,
+): { index: number; total: number; prev: T | null; next: T | null } | null {
+  const index = songs.findIndex((s) => s.songId === songId);
+  if (index < 0) return null;
+  return {
+    index,
+    total: songs.length,
+    prev: songs[index - 1] ?? null,
+    next: songs[index + 1] ?? null,
+  };
+}
+
+/** Deslize na horizontal (troca de música) sem confundir com a rolagem da cifra. */
+export function swipeDirection(dx: number, dy: number, threshold = 70): -1 | 1 | 0 {
+  if (Math.abs(dx) < threshold || Math.abs(dy) > Math.abs(dx) / 2) return 0;
+  return dx < 0 ? 1 : -1;
+}

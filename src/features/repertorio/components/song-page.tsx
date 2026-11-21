@@ -1,6 +1,8 @@
 import {
   Archive,
   ArchiveRestore,
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
   History,
   KeyRound,
@@ -18,7 +20,13 @@ import { OverflowMenu, type OverflowMenuItem } from '@/components/layout/overflo
 import { ScreenHeader } from '@/components/layout/screen-header';
 import { ReferenceAudios, SongAudioBar, SongAudioProvider, useSongAudio } from '@/features/audio';
 import { usePermission } from '@/features/auth';
-import { useEventDetail } from '@/features/escalas';
+import {
+  setlistPosition,
+  songInEventHref,
+  swipeDirection,
+  useEventDetail,
+} from '@/features/escalas';
+import { Button } from '@/components/ui/button';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { shortestSemitones } from '@/lib/audio/semitones';
 import {
@@ -74,7 +82,8 @@ export function SongPage() {
       </>
     );
   }
-  return <SongView song={query.data} />;
+  // key: trocar de música (modo culto) recomeça a tela e para o player da anterior.
+  return <SongView key={query.data.id} song={query.data} />;
 }
 
 type Editing = 'letra' | 'cifra' | 'tom' | 'dados' | null;
@@ -162,16 +171,27 @@ function SongView({ song }: { song: SongDetail }) {
     setEditing(null);
   };
 
-  const subtitle = [
-    song.official_key
-      ? `${LABELS.officialKey} ${song.official_key}`
-      : song.original_key
-        ? `Tom original ${song.original_key}`
-        : null,
-    event.data && tomParam ? `${event.data.event.title} em ${tomParam}` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // Modo culto: "2 de 5 · Culto de domingo", com ‹ Anterior e Próxima › no tom do dia.
+  const sequence = event.data && eventId ? setlistPosition(event.data.songs, song.id) : null;
+  const neighborHref = (item: { songId: string; key: string | null } | null) =>
+    item && eventId ? songInEventHref(item.songId, item.key, eventId) : null;
+  const goTo = (href: string | null) => {
+    if (href) void navigate(href, { replace: true });
+  };
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  const subtitle = sequence
+    ? `${sequence.index + 1} de ${sequence.total} · ${event.data!.event.title}${tomParam ? ` em ${tomParam}` : ''}`
+    : [
+        song.official_key
+          ? `${LABELS.officialKey} ${song.official_key}`
+          : song.original_key
+            ? `Tom original ${song.original_key}`
+            : null,
+        event.data && tomParam ? `${event.data.event.title} em ${tomParam}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
 
   const menu: OverflowMenuItem[] = [
     ...(canEditChords
@@ -247,7 +267,53 @@ function SongView({ song }: { song: SongDetail }) {
         onClose={() => setArchiving(false)}
       />
 
-      <section className="mx-auto flex max-w-3xl flex-col gap-4">
+      {sequence && (
+        <nav
+          aria-label="Sequência do repertório"
+          className="mx-auto mb-3 flex max-w-3xl items-center justify-between gap-2"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!sequence.prev}
+            onClick={() => goTo(neighborHref(sequence.prev))}
+          >
+            <ChevronLeft aria-hidden="true" />
+            Anterior
+          </Button>
+          <span className="text-caption text-muted-foreground">
+            {sequence.index + 1} de {sequence.total}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!sequence.next}
+            onClick={() => goTo(neighborHref(sequence.next))}
+          >
+            Próxima
+            <ChevronRight aria-hidden="true" />
+          </Button>
+        </nav>
+      )}
+
+      <section
+        className="mx-auto flex max-w-3xl flex-col gap-4"
+        // Deslizar para os lados troca de música (só gesto horizontal claro; rolar continua normal).
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          touchStart.current =
+            sequence && editing === null && t ? { x: t.clientX, y: t.clientY } : null;
+        }}
+        onTouchEnd={(e) => {
+          const start = touchStart.current;
+          const t = e.changedTouches[0];
+          touchStart.current = null;
+          if (!start || !t || !sequence) return;
+          const dir = swipeDirection(t.clientX - start.x, t.clientY - start.y);
+          if (dir === 1) goTo(neighborHref(sequence.next));
+          if (dir === -1) goTo(neighborHref(sequence.prev));
+        }}
+      >
         {song.archived_at && (
           <p role="status" className="rounded-lg border border-accent bg-accent p-3 text-sm">
             Esta música foi <strong>excluída</strong> e não aparece na lista do repertório.
