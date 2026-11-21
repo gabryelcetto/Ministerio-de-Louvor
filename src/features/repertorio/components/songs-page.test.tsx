@@ -32,7 +32,7 @@ describe('Repertório', () => {
     expect(screen.getByText('2 músicas')).toBeTruthy();
   });
 
-  it('busca e categorias ("Todas" primeiro) ficam no endereço; abre a música', async () => {
+  it('busca e categorias ("Todas" primeiro) ficam no endereço', async () => {
     const { user, router } = renderApp('/repertorio', { as: 'member' });
     await songList();
     await user.type(screen.getByLabelText('Buscar música'), 'grande');
@@ -48,9 +48,14 @@ describe('Repertório', () => {
     ).toBe('true');
     await user.click(within(chips).getByRole('button', { name: 'Todas' }));
     await waitFor(() => expect(router.state.location.search).not.toContain('categoria'));
-    const list = await songList();
-    await user.click(within(list).getAllByRole('link')[0]!);
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/repertorio/${SONG_ID}`));
+    // O link da linha leva à música (a lista se refaz a cada busca: confere o endereço).
+    await waitFor(async () =>
+      expect(
+        within(await songList())
+          .getAllByRole('link')[0]!
+          .getAttribute('href'),
+      ).toBe(`/repertorio/${SONG_ID}`),
+    );
   });
 
   it('botão flutuante "Nova música" só para quem cadastra músicas', async () => {

@@ -17,6 +17,7 @@ import { Link } from 'react-router';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { FormError } from '@/components/common/form-error';
 import { signOut, useMyPermissions, useMyProfile } from '@/features/auth';
+import { initials } from '@/features/escalas';
 import { SECTION_BADGE, sectionsOf, useMyFunctions } from '@/features/integrantes';
 import { MESSAGES } from '@/lib/messages';
 import type { PermissionKey } from '@/types/app.types';
@@ -85,13 +86,6 @@ const GROUPS: { title: string; items: MoreItem[] }[] = [
     ],
   },
 ];
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (
-    (parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '')
-  ).toUpperCase();
-}
 
 /**
  * Tela "Mais" (5º item da barra): quem está logado, atalhos (Integrantes, Comunicados,

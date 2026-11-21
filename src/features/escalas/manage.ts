@@ -236,3 +236,28 @@ export function useRemoveAssignment() {
     onSuccess: () => invalidateSchedules(client),
   });
 }
+
+/**
+ * Cancelar ou reativar um evento (events.manage; o RLS de events já permite o UPDATE). O
+ * trigger do banco avisa a equipe escalada.
+ */
+export async function setEventStatus(input: {
+  eventId: string;
+  status: 'scheduled' | 'cancelled';
+}): Promise<void> {
+  const { data, error } = await supabase
+    .from('events')
+    .update({ status: input.status })
+    .eq('id', input.eventId)
+    .select('id');
+  if (error) throw error;
+  requireAffected(data);
+}
+
+export function useSetEventStatus() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: setEventStatus,
+    onSuccess: () => invalidateSchedules(client),
+  });
+}

@@ -3,6 +3,8 @@ import {
   displayName,
   groupAssignmentsByEvent,
   groupTeamByFunction,
+  groupTeamBySection,
+  initials,
   keySource,
   resolveEventKey,
   splitByTime,
@@ -97,5 +99,89 @@ describe('tom do dia', () => {
     expect(keySource(null, song)).toBe('official');
     expect(keySource(null, { official_key: null, original_key: 'A' })).toBe('original');
     expect(keySource(null, null)).toBeNull();
+  });
+});
+
+describe('equipe em Cantores e Instrumentistas', () => {
+  const fn = (name: string, sort_order: number, section?: string) => ({
+    name,
+    sort_order,
+    section,
+  });
+  const person = (id: string, full_name: string, display_name: string | null = null) => ({
+    id,
+    full_name,
+    display_name,
+  });
+
+  it('agrupa pelo grupo da função, uma ficha por pessoa, na ordem do ministério', () => {
+    const groups = groupTeamBySection([
+      {
+        id: 'a1',
+        notes: null,
+        profile: person('u2', 'Lucas Teclado'),
+        function: fn('Teclado', 3, 'instrumental'),
+      },
+      {
+        id: 'a2',
+        notes: 'Abre o culto',
+        profile: person('u1', 'Isa Integrante', 'Isa'),
+        function: fn('Vocal', 1, 'vocal'),
+      },
+      {
+        id: 'a3',
+        notes: null,
+        profile: person('u1', 'Isa Integrante', 'Isa'),
+        function: fn('Violão', 2, 'instrumental'),
+      },
+      {
+        id: 'a4',
+        notes: null,
+        profile: person('u3', 'Bruno Bateria'),
+        function: fn('Bateria', 2, 'instrumental'),
+      },
+      {
+        id: 'a5',
+        notes: ' ',
+        profile: person('u1', 'Isa Integrante', 'Isa'),
+        function: fn('Backing vocal', 4, 'vocal'),
+      },
+      { id: 'a6', notes: null, profile: null, function: null },
+      { id: 'a7', notes: null, profile: person('u4', 'Ana'), function: fn('Dança', 9) },
+    ]);
+    expect(groups.map((g) => [g.section, g.label])).toEqual([
+      ['vocal', 'Cantores'],
+      ['instrumental', 'Instrumentistas'],
+      ['outros', 'Outras funções'],
+    ]);
+    expect(groups[0]!.members).toEqual([
+      {
+        userId: 'u1',
+        name: 'Isa',
+        initials: 'I',
+        functions: ['Vocal', 'Backing vocal'],
+        notes: ['Abre o culto'],
+      },
+    ]);
+    expect(groups[1]!.members.map((m) => [m.name, m.functions.join(' · '), m.initials])).toEqual([
+      ['Bruno Bateria', 'Bateria', 'BB'],
+      ['Isa', 'Violão', 'I'],
+      ['Lucas Teclado', 'Teclado', 'LT'],
+    ]);
+    expect(groups[2]!.members.map((m) => [m.name, m.functions])).toEqual([
+      ['Ana', ['Dança']],
+      ['Integrante', ['Sem função']],
+    ]);
+  });
+
+  it('sem ninguém, nenhum grupo', () => {
+    expect(groupTeamBySection([])).toEqual([]);
+  });
+
+  it('iniciais', () => {
+    expect(initials('Isa Integrante')).toBe('II');
+    expect(initials('  maria  da   silva ')).toBe('MS');
+    expect(initials('Lucas')).toBe('L');
+    expect(initials('')).toBe('');
   });
 });

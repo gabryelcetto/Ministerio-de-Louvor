@@ -10,6 +10,8 @@ export interface FunctionRef {
   id?: number;
   name: string;
   sort_order: number;
+  /** Grupo da função (cantores/instrumentistas), quando a consulta traz. */
+  section?: string;
 }
 
 /** Uma linha de event_assignments do usuário logado, com evento e função. */
@@ -101,6 +103,90 @@ export function groupTeamByFunction(rows: readonly TeamAssignmentRow[]): TeamGro
     .map(({ fn, members }) => ({
       function: fn.name,
       members: members.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+    }));
+}
+
+/** Iniciais para o avatar: "Isa Integrante" → "II"; "Lucas" → "L". */
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? '';
+  const last = parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '';
+  return (first + last).toUpperCase();
+}
+
+export type TeamSection = 'vocal' | 'instrumental' | 'outros';
+
+export const TEAM_SECTION_LABEL: Record<TeamSection, string> = {
+  vocal: 'Cantores',
+  instrumental: 'Instrumentistas',
+  outros: 'Outras funções',
+};
+
+export interface TeamChip {
+  userId: string;
+  name: string;
+  initials: string;
+  /** Funções da pessoa neste grupo, na ordem do ministério ("Vocal · Violão"). */
+  functions: string[];
+  notes: string[];
+}
+
+export interface TeamSectionGroup {
+  section: TeamSection;
+  label: string;
+  members: TeamChip[];
+}
+
+/**
+ * Equipe do evento em "Cantores" e "Instrumentistas" (pelo grupo da função), uma ficha por
+ * pessoa em cada grupo, na ordem da primeira função dela e depois do nome.
+ */
+export function groupTeamBySection(rows: readonly TeamAssignmentRow[]): TeamSectionGroup[] {
+  const sections = new Map<TeamSection, Map<string, TeamChip & { order: FunctionRef }>>();
+  const sorted = [...rows].sort((a, b) =>
+    byFunctionOrder(
+      a.function ?? { name: '', sort_order: Number.MAX_SAFE_INTEGER },
+      b.function ?? { name: '', sort_order: Number.MAX_SAFE_INTEGER },
+    ),
+  );
+  for (const row of sorted) {
+    const section: TeamSection =
+      row.function?.section === 'vocal'
+        ? 'vocal'
+        : row.function?.section === 'instrumental'
+          ? 'instrumental'
+          : 'outros';
+    const people = sections.get(section) ?? new Map();
+    const userId = row.profile?.id ?? row.id;
+    const name = row.profile ? displayName(row.profile) : 'Integrante';
+    const chip = people.get(userId) ?? {
+      userId,
+      name,
+      initials: initials(name),
+      functions: [],
+      notes: [],
+      order: row.function ?? { name: '', sort_order: Number.MAX_SAFE_INTEGER },
+    };
+    const fn = row.function?.name ?? 'Sem função';
+    if (!chip.functions.includes(fn)) chip.functions.push(fn);
+    if (row.notes?.trim()) chip.notes.push(row.notes.trim());
+    people.set(userId, chip);
+    sections.set(section, people);
+  }
+  return (['vocal', 'instrumental', 'outros'] as const)
+    .filter((section) => sections.has(section))
+    .map((section) => ({
+      section,
+      label: TEAM_SECTION_LABEL[section],
+      members: [...sections.get(section)!.values()]
+        .sort((a, b) => byFunctionOrder(a.order, b.order) || a.name.localeCompare(b.name, 'pt-BR'))
+        .map((chip) => ({
+          userId: chip.userId,
+          name: chip.name,
+          initials: chip.initials,
+          functions: chip.functions,
+          notes: chip.notes,
+        })),
     }));
 }
 
