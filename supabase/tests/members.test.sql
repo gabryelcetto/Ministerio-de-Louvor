@@ -6,7 +6,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(24);
+select plan(25);
 
 -- ---------------------------------------------------------------------------
 -- Preparação (como postgres, sem usuário logado)
@@ -63,9 +63,9 @@ select set_config('request.jwt.claims',
   '{"sub":"dddddddd-0000-4000-8000-000000000003","role":"authenticated"}', true);
 
 select throws_ok(
-  $$select public.setup_new_member('eeeeeeee-0000-4000-8000-000000000001', 'Fulano', null, 'leader', '{}')$$,
-  '42501', 'Só quem gerencia permissões pode cadastrar líderes ou administradores.',
-  'members.manage sem permissions.manage não cria líder'
+  $$select public.setup_new_member('eeeeeeee-0000-4000-8000-000000000001', 'Fulano', null, 'admin', '{}')$$,
+  '42501', 'Só quem gerencia permissões pode cadastrar administradores.',
+  'members.manage sem permissions.manage não cria admin'
 );
 select throws_ok(
   $$select public.setup_new_member('eeeeeeee-0000-4000-8000-000000000001', 'F', null, 'member', '{}')$$,
@@ -92,9 +92,14 @@ select throws_ok(
 select set_config('request.jwt.claims',
   '{"sub":"dddddddd-0000-4000-8000-000000000001","role":"authenticated"}', true);
 
-select lives_ok(
+select throws_ok(
   $$select public.setup_new_member('eeeeeeee-0000-4000-8000-000000000002', 'Beltrana', null, 'leader', '{}')$$,
-  'admin (permissions.manage) cadastra líder'
+  '22023', 'Perfil inválido: use integrante ou administrador.',
+  'perfil "leader" não é mais aceito (nem pelo admin)'
+);
+select lives_ok(
+  $$select public.setup_new_member('eeeeeeee-0000-4000-8000-000000000002', 'Beltrana', null, 'admin', '{}')$$,
+  'admin (permissions.manage) cadastra administrador'
 );
 
 -- Conferência do que foi gravado (como postgres)
@@ -114,8 +119,8 @@ select is(
 );
 select is(
   (select access_role::text from public.profiles where id = 'eeeeeeee-0000-4000-8000-000000000002'),
-  'leader',
-  'líder gravado com o perfil pedido'
+  'admin',
+  'administrador gravado com o perfil pedido'
 );
 select is(
   (select actor_id from public.audit_logs

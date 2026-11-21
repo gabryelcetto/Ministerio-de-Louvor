@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bell,
   CalendarDays,
   ClipboardList,
@@ -15,10 +16,11 @@ import {
 import { useRef } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { brandTitle } from '@/config/brand';
 import { signOut } from '@/features/auth/api';
-import { useMyProfile } from '@/features/auth/hooks/use-me';
+import { useMyPermissions, useMyProfile } from '@/features/auth/hooks/use-me';
+import type { PermissionKey } from '@/types/app.types';
 import { unreadLabel, useUnreadCount } from '@/features/notificacoes/api';
-import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { isPathActive, splitMobileNav, type NavPlacement } from './nav';
 
@@ -28,7 +30,8 @@ interface NavItem {
   icon: LucideIcon;
   /** No celular: na barra inferior ('bar') ou no menu "Mais" ('more'). */
   mobile: NavPlacement;
-  adminOnly?: boolean;
+  /** Só aparece com esta permissão (a proteção real é o banco). */
+  permission?: PermissionKey;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -40,15 +43,22 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/notificacoes', label: 'Notificações', icon: Bell, mobile: 'more' },
   { to: '/comunicados', label: 'Comunicados', icon: Megaphone, mobile: 'more' },
   { to: '/integrantes', label: 'Integrantes', icon: Users, mobile: 'more' },
+  {
+    to: '/atividade',
+    label: 'Atividade recente',
+    icon: Activity,
+    mobile: 'more',
+    permission: 'history.view_all',
+  },
   // Configurações pessoais (perfil, tema, instalar, sair): para todos.
   { to: '/configuracoes', label: 'Configurações', icon: Settings, mobile: 'more' },
 ];
 
 function useVisibleItems() {
-  const canManageMembers = usePermission('members.manage');
-  const canManagePermissions = usePermission('permissions.manage');
-  const isAdmin = canManageMembers || canManagePermissions;
-  return NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
+  const { data: permissions } = useMyPermissions();
+  return NAV_ITEMS.filter(
+    (item) => !item.permission || (permissions ?? []).includes(item.permission),
+  );
 }
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -94,7 +104,7 @@ export function AppShell() {
           <span className="flex size-8 items-center justify-center rounded-full bg-primary text-accent">
             <Music aria-hidden="true" className="size-4" />
           </span>
-          <span className="font-semibold">Ministério de Louvor</span>
+          <span className="font-semibold leading-tight">{brandTitle}</span>
         </div>
         <nav aria-label="Navegação principal" className="flex flex-1 flex-col gap-1">
           {items.map(({ to, label, icon: Icon }) => (
@@ -120,8 +130,8 @@ export function AppShell() {
 
       <div className="flex min-h-dvh flex-col">
         <header className="flex items-center justify-between border-b bg-card px-4 py-2 md:hidden">
-          <span className="font-semibold">Ministério de Louvor</span>
-          <div className="flex items-center gap-1">
+          <span className="truncate font-semibold">{brandTitle}</span>
+          <div className="flex shrink-0 items-center gap-1">
             <Button asChild variant="ghost" size="icon" className="relative size-11">
               <Link to="/notificacoes" aria-label={`Notificações: ${unreadLabel(unread)}`}>
                 <Bell aria-hidden="true" className="size-5" />

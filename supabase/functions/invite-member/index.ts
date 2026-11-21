@@ -4,7 +4,7 @@
  * Ordem de segurança:
  * 1. Valida o JWT de quem chamou (auth.getUser) — sem login, 401.
  * 2. Confere `has_permission('members.manage')` chamando o banco COMO ESSE USUÁRIO — sem
- *    permissão, 403. Perfil líder/admin exige também `permissions.manage`.
+ *    permissão, 403. Perfil admin exige também `permissions.manage`.
  * 3. Só então usa a service role (variável padrão SUPABASE_SERVICE_ROLE_KEY, que só existe no
  *    servidor) para `auth.admin.createUser` com e-mail confirmado e senha provisória forte.
  * 4. Grava nome, funções e perfil pela RPC `setup_new_member`, de novo COMO O USUÁRIO: o banco
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       return fail(403, 'Você não tem permissão para cadastrar integrantes.');
     }
     if (input.accessRole !== 'member' && !(await hasPermission(asUser, 'permissions.manage'))) {
-      return fail(403, 'Só quem gerencia permissões pode cadastrar líderes ou administradores.');
+      return fail(403, 'Só quem gerencia permissões pode cadastrar administradores.');
     }
 
     // A partir daqui, e só para o Auth admin: service role (nunca sai do servidor).

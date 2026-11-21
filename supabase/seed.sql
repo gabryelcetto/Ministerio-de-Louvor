@@ -16,34 +16,34 @@ insert into public.permissions (key, description) values
   ('members.view_contacts', 'Ver telefone dos integrantes'),
   ('members.manage', 'Gerenciar integrantes, perfis e funções'),
   ('permissions.manage', 'Gerenciar permissões por perfil e por usuário'),
-  ('history.restore', 'Restaurar versões antigas de letra, cifra e tom')
+  ('history.restore', 'Restaurar versões antigas de letra, cifra e tom'),
+  ('songs.manage', 'Cadastrar música e editar os dados da música'),
+  ('history.view_all', 'Ver a atividade recente de todo o repertório')
 on conflict (key) do nothing;
 
--- admin recebe todas; líder, as operacionais; integrante, nenhuma extra.
+-- admin recebe todas; integrante: cifra, tom oficial e cadastro de música
+-- (mesmo padrão da migration 20261122090000_advop_roles_songs.sql; perfil "leader" não é usado).
 insert into public.role_permissions (role, permission_key)
 select 'admin', key from public.permissions
 on conflict do nothing;
 
 insert into public.role_permissions (role, permission_key) values
-  ('leader', 'schedules.manage'),
-  ('leader', 'events.manage'),
-  ('leader', 'announcements.manage'),
-  ('leader', 'chords.edit_official'),
-  ('leader', 'songs.set_official_key'),
-  ('leader', 'members.view_contacts'),
-  ('leader', 'history.restore')
+  ('member', 'chords.edit_official'),
+  ('member', 'songs.set_official_key'),
+  ('member', 'songs.manage')
 on conflict do nothing;
 
 -- Funções do ministério --------------------------------------------------------------
-insert into public.ministry_functions (name, sort_order) values
-  ('Vocal principal', 1),
-  ('Backing vocal', 2),
-  ('Violão', 3),
-  ('Guitarra', 4),
-  ('Teclado', 5),
-  ('Baixo', 6),
-  ('Bateria', 7),
-  ('Outros', 8)
+-- section: vocal (cantores) ou instrumental — só selos e filtros, não permissões.
+insert into public.ministry_functions (name, sort_order, section) values
+  ('Vocal principal', 1, 'vocal'),
+  ('Backing vocal', 2, 'vocal'),
+  ('Violão', 3, 'instrumental'),
+  ('Guitarra', 4, 'instrumental'),
+  ('Teclado', 5, 'instrumental'),
+  ('Baixo', 6, 'instrumental'),
+  ('Bateria', 7, 'instrumental'),
+  ('Outros', 8, 'instrumental')
 on conflict (name) do nothing;
 
 -- Músicas ----------------------------------------------------------------------------
@@ -148,7 +148,7 @@ Mais [C]perto quero es[F]tar, meu [C]Deus, de [G]ti,
 Inda que [C]seja a [F]dor que me [C]una a [G]ti;[C]
 [C]Sempre hei de supli[G]car:
 [C]Mais perto quero es[G]tar,
-Mais [C]perto quero es[F]tar, meu [C]Deus, [G]de [C]ti!$c$, 'pending'),
+Mais [C]perto quero es[F]tar, meu [C]Deus, [G]de [C]ti!$c$, 'official'),
   ('00000000-0000-4000-8000-000000000006', $c${title: Sou Feliz com Jesus}
 {key: C}
 Se [C]paz a mais [Am]doce me [F]deres go[C]zar,

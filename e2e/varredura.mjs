@@ -34,6 +34,8 @@ const routes = [
   ['musica-pendente', `/repertorio/${ids.songPending}`],
   ['historico', `/repertorio/${ids.song}/historico`],
   ['montar', '/escalas/montar'],
+  ['nova-musica', '/repertorio/nova'],
+  ['atividade', '/atividade'],
   ['notificacoes', '/notificacoes'],
   ['comunicados', '/comunicados'],
   ['integrantes', '/integrantes'],

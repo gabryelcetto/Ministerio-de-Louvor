@@ -3,10 +3,16 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { brand, brandTitle } from './src/config/brand';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    // Título da aba vem de src/config/brand.ts (index.html usa %BRAND_TITLE%).
+    {
+      name: 'brand-title',
+      transformIndexHtml: (html) => html.replaceAll('%BRAND_TITLE%', brandTitle),
+    },
     react(),
     tailwindcss(),
     VitePWA({
@@ -18,9 +24,9 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Ministério de Louvor',
-        short_name: 'Louvor',
-        description: 'Escalas, repertório, cifras e agenda do ministério de louvor.',
+        name: brand.shortName,
+        short_name: brand.shortName,
+        description: brand.description,
         lang: 'pt-BR',
         start_url: '/',
         scope: '/',

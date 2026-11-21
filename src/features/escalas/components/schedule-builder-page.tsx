@@ -11,6 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { EVENT_TYPE_STYLES } from '@/features/agenda/event-type';
+import {
+  matchesSection,
+  SECTION_FILTER_LABEL,
+  type SectionFilter,
+} from '@/features/integrantes/sections';
 import { formatShortDate, formatTime } from '@/lib/dates';
 import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
@@ -102,6 +107,7 @@ function Builder({ data }: { data: SchedulingData }) {
   );
   const [draft, setDraft] = useState<EventDraft>(EMPTY_EVENT);
   const [rows, setRows] = useState<AssignmentDraft[]>(() => [emptyRow()]);
+  const [sectionFilter, setSectionFilter] = useState<SectionFilter>('todos');
   const [showErrors, setShowErrors] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -224,6 +230,26 @@ function Builder({ data }: { data: SchedulingData }) {
 
         {existing.length > 0 && <CurrentTeam data={data} assignments={existing} />}
 
+        <div role="radiogroup" aria-label="Mostrar" className="flex flex-wrap gap-2">
+          {(Object.keys(SECTION_FILTER_LABEL) as SectionFilter[]).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={sectionFilter === value}
+              onClick={() => setSectionFilter(value)}
+              className={cn(
+                'min-h-10 rounded-full border px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                sectionFilter === value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'hover:bg-muted',
+              )}
+            >
+              {SECTION_FILTER_LABEL[value]}
+            </button>
+          ))}
+        </div>
+
         <ul className="flex flex-col gap-3">
           {rows.map((row, index) => (
             <li key={row.key}>
@@ -231,6 +257,7 @@ function Builder({ data }: { data: SchedulingData }) {
                 index={index}
                 row={row}
                 data={data}
+                filter={sectionFilter}
                 problem={showErrors ? problems[row.key] : undefined}
                 onChange={(patch) => updateRow(row.key, patch)}
                 onRemove={
@@ -431,6 +458,7 @@ function AssignmentRow({
   index,
   row,
   data,
+  filter,
   problem,
   onChange,
   onRemove,
@@ -438,13 +466,21 @@ function AssignmentRow({
   index: number;
   row: AssignmentDraft;
   data: SchedulingData;
+  filter: SectionFilter;
   problem?: string;
   onChange: (patch: Partial<AssignmentDraft>) => void;
   onRemove?: () => void;
 }) {
   const base = useId();
   const member = data.members.find((m) => m.id === row.userId);
-  const { own, others } = functionOptions(data.functions, member);
+  // Filtro Cantores/Instrumentistas: só reduz as opções (quem já foi escolhido continua).
+  const people = data.members.filter(
+    (m) => m.id === row.userId || matchesSection(m.functionIds, data.functions, filter),
+  );
+  const shownFunctions = data.functions.filter(
+    (f) => filter === 'todos' || f.section === filter || f.id === row.functionId,
+  );
+  const { own, others } = functionOptions(shownFunctions, member);
   const errorId = `${base}-erro`;
 
   return (
@@ -471,7 +507,7 @@ function AssignmentRow({
           className={selectClass}
         >
           <option value="">Escolha…</option>
-          {data.members.map((m) => (
+          {people.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
             </option>

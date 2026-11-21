@@ -169,14 +169,14 @@ isOneToOne: false
                   ]
                 },"ministry_functions": {
                   Row: {
-                    "id": number,"name": string,"sort_order": number
+                    "id": number,"name": string,"section": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "id"?: never,"name": string,"sort_order"?: number
+                    "id"?: never,"name": string,"section"?: string,"sort_order"?: number
                   }
                   Update: {
-                    "id"?: never,"name"?: string,"sort_order"?: number
+                    "id"?: never,"name"?: string,"section"?: string,"sort_order"?: number
                   }
                   Relationships: [
                     
@@ -408,11 +408,19 @@ isOneToOne: false
             "complete_password_change":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
+"create_song":
+{ Args: { "p_artist": string,"p_category": string,"p_chords": string,"p_lyrics": string,"p_media_url": string,"p_notes": string,"p_official_key": string,"p_original_key": string,"p_title": string }; Returns: string
+                           },
 "current_change_type":
 { Args: { "op": string }; Returns: string
                            },
 "get_dashboard":
 { Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_recent_activity":
+{ Args: { "p_actor"?: string,"p_limit"?: number,"p_song"?: string }; Returns: {
+              "action": string,"actor_id": string,"actor_name": string,"change_type": string,"field": string,"kind": string,"occurred_at": string,"song_id": string,"song_title": string,"version_id": string
+            }[]
                            },
 "get_member_contacts":
 { Args: Record<PropertyKey, never>; Returns: {

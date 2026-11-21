@@ -52,7 +52,8 @@ export interface SchedulingMember {
 export interface SchedulingData {
   events: SchedulingEvent[];
   members: SchedulingMember[];
-  functions: { id: number; name: string }[];
+  /** section: vocal/instrumental (filtro da montagem; não é permissão). */
+  functions: { id: number; name: string; section: string }[];
 }
 
 export type DraftErrors = Partial<Record<'title' | 'startsAt' | 'endsAt', string>>;
@@ -146,7 +147,7 @@ export async function fetchSchedulingData(now: Date = new Date()): Promise<Sched
       .from('profiles')
       .select('id, full_name, display_name, member_functions(function_id)')
       .eq('status', 'active'),
-    supabase.from('ministry_functions').select('id, name, sort_order').order('sort_order'),
+    supabase.from('ministry_functions').select('id, name, sort_order, section').order('sort_order'),
   ]);
   if (events.error) throw events.error;
   if (members.error) throw members.error;
@@ -173,7 +174,7 @@ export async function fetchSchedulingData(now: Date = new Date()): Promise<Sched
         functionIds: m.member_functions.map((mf) => mf.function_id),
       }))
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
-    functions: functions.data.map(({ id, name }) => ({ id, name })),
+    functions: functions.data.map(({ id, name, section }) => ({ id, name, section })),
   };
 }
 

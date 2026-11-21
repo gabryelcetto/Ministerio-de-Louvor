@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useSession } from '@/features/auth/session-context';
 import { usePermission } from '@/lib/permissions';
 import { buildMembers, matchesName, ROLE_LABEL, telHref, useMembers, type Member } from '../api';
+import { SECTION_BADGE } from '../sections';
 
 /** Integrantes: nome e funções; telefone só para quem tem members.view_contacts. */
 export function MembersPage() {
@@ -128,6 +129,14 @@ function MemberList({ members, showPhone }: { members: Member[]; showPhone: bool
                     {role}
                   </span>
                 )}
+                {m.sections.map((s) => (
+                  <span
+                    key={s}
+                    className="rounded-md border border-accent px-2 py-0.5 text-xs font-medium"
+                  >
+                    {SECTION_BADGE[s]}
+                  </span>
+                ))}
                 {m.functions.length === 0 ? (
                   <span className="text-xs text-muted-foreground">Sem função definida</span>
                 ) : (

@@ -11,6 +11,8 @@ import { InstallPage } from '@/features/instalar/components/install-page';
 import { InviteMemberPage } from '@/features/integrantes/components/invite-member-page';
 import { MembersPage } from '@/features/integrantes/components/members-page';
 import { NotificationsPage } from '@/features/notificacoes/components/notifications-page';
+import { ActivityPage } from '@/features/atividade/components/activity-page';
+import { NewSongPage } from '@/features/repertorio/components/new-song-page';
 import { SongHistoryPage } from '@/features/repertorio/components/song-history-page';
 import { SongPage } from '@/features/repertorio/components/song-page';
 import { SongsPage } from '@/features/repertorio/components/songs-page';
@@ -32,12 +34,14 @@ export const router = createBrowserRouter([
           // As notificações do banco apontam para /escalas/<id do evento>.
           { path: 'escalas/:eventId', element: <EventDetailPage /> },
           { path: 'repertorio', element: <SongsPage /> },
+          { path: 'repertorio/nova', element: <NewSongPage /> },
           { path: 'repertorio/:songId', element: <SongPage /> },
           { path: 'repertorio/:songId/historico', element: <SongHistoryPage /> },
           { path: 'agenda', element: <AgendaPage /> },
           { path: 'notificacoes', element: <NotificationsPage /> },
           { path: 'comunicados', element: <AnnouncementsPage /> },
           { path: 'integrantes', element: <MembersPage /> },
+          { path: 'atividade', element: <ActivityPage /> },
           { path: 'integrantes/cadastrar', element: <InviteMemberPage /> },
           { path: 'configuracoes', element: <SettingsPage /> },
           { path: 'instalar', element: <InstallPage /> },
