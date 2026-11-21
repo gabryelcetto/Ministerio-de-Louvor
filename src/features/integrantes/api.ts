@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { displayName } from '@/features/escalas/schedule-utils';
-import { usePermission } from '@/lib/permissions';
-import { supabase } from '@/lib/supabase';
+import { displayName } from '@/features/escalas';
+import { usePermission } from '@/features/auth';
+import { supabase } from '@/services/supabase';
 import type { AccessRole, ProfileStatus } from '@/types/app.types';
 import { sectionsOf, type Section } from './sections';
 

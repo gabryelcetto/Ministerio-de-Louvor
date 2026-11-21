@@ -1,5 +1,3 @@
-import { useSyncExternalStore } from 'react';
-
 /**
  * Instalação do PWA.
  * - Android/Chrome (e Edge no computador): o navegador dispara `beforeinstallprompt`; guardamos o
@@ -79,13 +77,16 @@ export async function promptInstall(): Promise<boolean> {
   return outcome === 'accepted';
 }
 
-function subscribe(listener: () => void) {
+/** Avisa quando o estado da instalação muda (para o hook useInstallState). */
+export function subscribeInstallState(listener: () => void): () => void {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
-export function useInstallState(): InstallState {
-  return useSyncExternalStore(subscribe, () => state);
+export function getInstallState(): InstallState {
+  return state;
 }
 
 /** O aviso no Início faz sentido? Só se ainda não instalou e há um caminho para instalar. */

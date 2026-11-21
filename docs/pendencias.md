@@ -266,6 +266,52 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   consegue enviar um arquivo de até 45 MB, passando um pouco de 90%. O limite de 1 GB do plano
   continua longe.
 
+### 44. Duplo clique em "Salvar letra" grava duas vezes (Chromium) — QA, médio
+
+- **O quê:** no Chromium, um duplo clique rápido em "Salvar letra" manda duas gravações antes
+  de o botão virar "Salvando…" (WebKit e Firefox mandam uma). O resultado final é o mesmo
+  texto, mas o histórico ganha uma versão repetida.
+- **O que fazer:** ignorar o segundo envio enquanto o primeiro está em andamento (checar
+  `save.isPending` no `onSubmit` ou guardar uma trava num ref). Vale para todos os editores.
+- Relatório: `docs/qa/relatorio-qa-2026-11-21.md`.
+
+### 45. Sem internet ao salvar, a mensagem de conexão demora — QA, médio
+
+- **O quê:** com o aparelho offline, "Salvar letra" fica em "Salvando…" e não mostrou "Sem
+  conexão com o servidor…" em 15 s (o texto digitado continua no campo, nada se perde). A biblioteca não repete
+  gravações (só GET/HEAD), então a espera vem de outro ponto (provavelmente a sessão do Auth).
+- **O que fazer:** pôr um tempo limite nas gravações (ex.: `AbortSignal.timeout(15000)` no
+  cliente) para a pessoa ver o erro e poder tentar de novo; investigar com o navegador aberto.
+
+### 46. Envio de áudio sem internet fica parado em "Enviando… 0%" — QA, médio
+
+- **O quê:** sem internet, o envio de uma gravação ficou mais de 20 s em "Enviando… 0%", com
+  "Enviar" e "Descartar" desativados. A gravação continua salva no aparelho.
+- **O que fazer:** tempo limite também na consulta `check_audio_upload` e no envio (o XHR já
+  aceita `signal`), mais um botão "Cancelar envio".
+
+### 47. Mensagens específicas do envio de áudio não chegam à tela — Vitest, médio
+
+- **O quê:** `uploadErrorMessage()` monta mensagens claras ("Sem conexão…", "O arquivo passou
+  do limite de 45 MB", "Você não tem permissão…"), mas o `UploadError` não é
+  `UserFacingError`; o `friendlyError` mostra o texto genérico "Não foi possível enviar o
+  áudio".
+- **O que fazer:** `UploadError extends UserFacingError` (os dois ficam em `src/lib`) e ajustar
+  o teste em `reference-audios.test.tsx`.
+
+### 48. Mutantes sobreviventes nos módulos com score mais baixo — baixo
+
+- **O quê:** score geral de 78,95% (alto 85, baixo 70, quebra 65). Os menores:
+  `src/lib/audio/format.ts` (61%), `src/lib/errors.ts` (66%), `src/lib/chords/paste.ts` (67%),
+  `src/lib/chords/convert.ts` (68%), `src/lib/password.ts` (69%).
+- **O que fazer:** abrir o artefato **mutacao** (relatório HTML) e escrever testes que matem os
+  sobreviventes relevantes até passar de 85%.
+
+### 49. Testes de tela: `isDirty` do react-hook-form no happy-dom
+
+- **O quê:** no happy-dom, o `isDirty` não muda ao digitar; o teste de "Editar dados" envia o
+  formulário direto (`fireEvent.submit`). No navegador o botão funciona (coberto pelo E2E).
+
 ## Resolvidas recentemente
 
 - **34. Funções novas do ministério nasciam "instrumental"** — tela **Integrantes → Funções do
@@ -300,6 +346,12 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **12. Grafia do baixo na transposição** — fase F: cada nota (tônica e baixo) é escrita pelo
   grau no tom de destino; `A/G` de E para G sai `C/Bb`.
 - **18. Configurações provisória** — tela de Configurações com perfil, tema, instalar e sair.
+
+## Situação em 21/11/2026 (tarde)
+
+- **PR "teste estrutural, mutação e QA":** cobertura com limites (projeto 95% de linhas),
+  arquitetura (dependency-cruiser), mutação (Stryker, score inicial 78,95%) e QA em 3
+  navegadores × 4 tamanhos; 4 correções altas; médios nas pendências 44 a 47.
 
 ## Situação em 21/11/2026 (dia)
 

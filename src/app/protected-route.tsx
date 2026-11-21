@@ -1,8 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router';
-import { useMyProfile } from '@/features/auth/hooks/use-me';
-import { useSession } from '@/features/auth/session-context';
+import { useMyProfile, useSession, signOut } from '@/features/auth';
 import { Button } from '@/components/ui/button';
-import { signOut } from '@/features/auth/api';
 import { FirstAccessPage } from '@/features/auth/components/first-access-page';
 
 function FullScreenMessage({ children }: { children: React.ReactNode }) {

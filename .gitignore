@@ -28,3 +28,9 @@ e2e-output
 
 # script de CI copiado para simular a nuvem (supabase/ci/simular-nuvem.sql) — nunca commitar
 supabase/migrations/00000000000000_simular_nuvem.sql
+
+# qualidade: cobertura, mutação (Stryker) e QA
+coverage
+reports
+.stryker-tmp
+qa-output

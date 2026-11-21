@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/features/auth/session-context';
-import { supabase } from '@/lib/supabase';
+import { useSession } from '@/features/auth';
+import { supabase } from '@/services/supabase';
 import type { Dashboard, Json } from '@/types/app.types';
 
 const EMPTY: Dashboard = {

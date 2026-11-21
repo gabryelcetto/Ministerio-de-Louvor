@@ -13,7 +13,7 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'rea
 import { Link, useParams, useSearchParams } from 'react-router';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
-import { usePermission } from '@/lib/permissions';
+import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import { useSong, type SongDetail } from '../api';
 import {
@@ -28,7 +28,7 @@ import {
 } from '../song-key';
 import { chordProToLyrics } from '../editor-checks';
 import { ChordSheet } from './chord-sheet';
-import { ReferenceAudios } from '@/features/audio/components/reference-audios';
+import { ReferenceAudios } from '@/features/audio';
 import { shortestSemitones } from '@/lib/audio/semitones';
 import { ArchiveSongButton, SongDataEditor } from './song-data-editor';
 import { ChordsEditor, LyricsEditor, OfficialKeyEditor } from './song-editors';
@@ -456,16 +456,18 @@ function SizeButton({
   children: ReactNode;
 }) {
   return (
+    // Nome acessível = texto para leitor de tela (sem aria-label): "A−" visível não diverge do
+    // nome "Diminuir letra" (WCAG 2.5.3, regra label-content-name-mismatch do axe).
     <Button
       type="button"
       variant="ghost"
       className="size-11 p-0 text-base font-bold"
-      aria-label={label}
       title={label}
       onClick={onClick}
       disabled={disabled}
     >
       <span aria-hidden="true">{children}</span>
+      <span className="sr-only">{label}</span>
     </Button>
   );
 }

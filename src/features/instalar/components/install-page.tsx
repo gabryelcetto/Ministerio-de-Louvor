@@ -2,7 +2,7 @@ import { ArrowLeft, EllipsisVertical, Share, SquarePlus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { useInstallState } from '@/lib/install';
+import { useInstallState } from '@/hooks/use-install-state';
 import { InstallButton } from './install-button';
 
 /** Como instalar o app: botão no Android/Chrome; passo a passo no iPhone (Safari). */

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSession } from '@/features/auth/session-context';
-import { supabase } from '@/lib/supabase';
+import { useSession } from '@/features/auth';
+import { supabase } from '@/services/supabase';
 
 /** Quantas notificações a tela mostra (as mais recentes). */
 export const NOTIFICATIONS_LIMIT = 100;

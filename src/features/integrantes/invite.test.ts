@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 // O módulo importa o cliente Supabase (que exige variáveis de ambiente); aqui não há rede.
-vi.mock('@/lib/supabase', () => ({ supabase: {} }));
+vi.mock('@/services/supabase', () => ({ supabase: {} }));
 
 const { buildInviteMessage, inviteFormSchema, parseInviteInput, whatsappLink } =
   await import('./invite');

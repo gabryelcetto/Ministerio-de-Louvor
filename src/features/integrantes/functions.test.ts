@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/supabase', () => ({ supabase: {} }));
+vi.mock('@/services/supabase', () => ({ supabase: {} }));
 
 const { functionFormSchema, nextSortOrder } = await import('./functions');
 const { friendlyError } = await import('@/lib/errors');

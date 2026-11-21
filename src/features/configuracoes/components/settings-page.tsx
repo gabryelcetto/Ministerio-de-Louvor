@@ -5,15 +5,13 @@ import { FormError } from '@/components/common/form-error';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { signOut } from '@/features/auth/api';
-import { StorageUsageCard } from '@/features/audio/components/storage-usage-card';
-import { PasswordForm } from '@/features/auth/components/password-form';
-import { useMyProfile } from '@/features/auth/hooks/use-me';
-import { useSession } from '@/features/auth/session-context';
-import { InstallButton } from '@/features/instalar/components/install-button';
-import { ROLE_LABEL } from '@/features/integrantes/api';
-import { supabase } from '@/lib/supabase';
-import { useThemePref, type ThemePref } from '@/lib/theme';
+import { signOut, PasswordForm, useMyProfile, useSession } from '@/features/auth';
+import { StorageUsageCard } from '@/features/audio';
+import { InstallButton } from '@/features/instalar';
+import { ROLE_LABEL } from '@/features/integrantes';
+import { supabase } from '@/services/supabase';
+import { useThemePref } from '@/hooks/use-theme-pref';
+import type { ThemePref } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
 async function fetchMyFunctions(userId: string): Promise<string[]> {

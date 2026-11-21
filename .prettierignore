@@ -5,3 +5,8 @@ package-lock.json
 src/types/database.types.ts
 supabase/.temp
 CLAUDE*.md
+coverage
+reports
+.stryker-tmp
+qa-output
+e2e-output

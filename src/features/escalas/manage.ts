@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { requireAffected } from '@/lib/errors';
 import { zonedLocalToIso } from '@/lib/dates';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import type { EventType } from '@/types/app.types';
 import { displayName } from './schedule-utils';
 

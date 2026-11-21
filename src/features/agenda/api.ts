@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from '@/features/auth/session-context';
+import { useSession } from '@/features/auth';
 import { dayKey } from '@/lib/dates';
-import { supabase } from '@/lib/supabase';
-import type { EventSummary } from '@/features/escalas/schedule-utils';
+import { supabase } from '@/services/supabase';
+import type { EventSummary } from '@/features/escalas';
 
 /** Quantos dias à frente a agenda mostra. */
 export const AGENDA_DAYS = 90;

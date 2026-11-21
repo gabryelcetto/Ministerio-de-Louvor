@@ -1,0 +1,82 @@
+name: Mutação
+
+# Teste de mutação (StrykerJS) no núcleo puro (src/lib) e nos módulos puros das features.
+# - PR que mexe nesses arquivos (ou nos testes deles): modo incremental, reaproveitando o
+#   resultado da última execução completa (cache) e testando só o que mudou.
+# - Toda segunda-feira de madrugada (03:00 em Brasília): execução completa, que renova o cache.
+# Reprova abaixo do limite "break" do stryker.config.mjs. Relatório HTML como artefato.
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/**'
+      - 'src/features/escalas/schedule-utils*'
+      - 'src/features/integrantes/sections*'
+      - 'src/features/repertorio/editor-checks*'
+      - 'src/features/repertorio/history-format*'
+      - 'src/features/repertorio/song-key*'
+      - 'src/features/auth/session-cache*'
+      - 'supabase/functions/_shared/**'
+      - 'stryker.config.mjs'
+      - 'vitest.config.ts'
+      - '.github/workflows/mutation.yml'
+  schedule:
+    - cron: '0 6 * * 1' # segunda-feira, 06:00 UTC = 03:00 em Brasília
+  workflow_dispatch:
+
+concurrency:
+  group: mutacao-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Mutação
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - run: npm ci
+
+      # Resultado incremental da última execução (a completa de segunda renova).
+      - name: Resultado anterior (incremental)
+        uses: actions/cache/restore@v4
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.run_id }}
+          restore-keys: stryker-incremental-
+
+      - name: Stryker (incremental no PR, completo no agendamento)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            npx stryker run --incremental
+          else
+            npx stryker run --incremental --force
+          fi
+
+      - name: Score no resumo
+        if: ${{ !cancelled() }}
+        run: node scripts/mutation-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Relatório de mutação (HTML)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutacao
+          path: reports/mutation
+          if-no-files-found: ignore
+
+      - name: Guardar resultado para o incremental
+        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+        uses: actions/cache/save@v4
+        with:
+          path: reports/stryker-incremental.json
+          key: stryker-incremental-${{ github.run_id }}

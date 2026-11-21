@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { displayName } from '@/features/escalas/schedule-utils';
+import { displayName } from '@/features/escalas';
 import { requireAffected } from '@/lib/errors';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import type { ChangeType, VersionField } from '@/types/app.types';
 
 /**

@@ -172,20 +172,20 @@ export function AudioPlayer({
           variant="outline"
           className="h-12 min-w-12"
           onClick={() => seekBy(-10)}
-          aria-label="Voltar 10 segundos"
         >
           <RotateCcw aria-hidden="true" />
-          10s
+          <span aria-hidden="true">10s</span>
+          <span className="sr-only">Voltar 10 segundos</span>
         </Button>
         <Button
           type="button"
           variant="outline"
           className="h-12 min-w-12"
           onClick={() => seekBy(10)}
-          aria-label="Avançar 10 segundos"
         >
           <RotateCw aria-hidden="true" />
-          10s
+          <span aria-hidden="true">10s</span>
+          <span className="sr-only">Avançar 10 segundos</span>
         </Button>
       </div>
 

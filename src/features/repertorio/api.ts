@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import type { ReviewStatus, SongRow } from '@/types/app.types';
 import { uniqueCategories } from './song-key';
 

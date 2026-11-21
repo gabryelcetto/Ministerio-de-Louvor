@@ -3,7 +3,7 @@ import { useId } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
 import { Label } from '@/components/ui/label';
-import { useMyPermissions } from '@/features/auth/hooks/use-me';
+import { useMyPermissions } from '@/features/auth';
 import { formatShortDate, formatTime } from '@/lib/dates';
 import { ACTIVITY_LIMIT, describeActivity, useActivity, useActivityFilters } from '../api';
 
