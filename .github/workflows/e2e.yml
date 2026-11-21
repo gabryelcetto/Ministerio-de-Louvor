@@ -117,9 +117,26 @@ jobs:
         id: pw
         if: ${{ !cancelled() && steps.app.outcome == 'success' }}
         run: |
-          npm i --no-save playwright@1.65.1
+          # @playwright/test (mesma versão) só para as capturas do design (tests/e2e).
+          npm i --no-save playwright@1.65.1 @playwright/test@1.65.1
           # WebKit (motor do Safari/iPhone) e Firefox para o QA nos três navegadores.
           npx playwright install --with-deps chromium webkit firefox
+
+      # Antes dos roteiros que criam dados: as capturas mostram só o seed.
+      - name: Capturas do design (390×844, claro e escuro)
+        if: ${{ !cancelled() && steps.pw.outcome == 'success' }}
+        run: npx playwright test --config tests/e2e/playwright.config.ts
+        env:
+          BASE: http://127.0.0.1:5173
+
+      - name: Capturas do design (artefato)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-design
+          path: capturas-design
+          if-no-files-found: ignore
+          retention-days: 30
 
       - name: Varredura das telas (3 perfis × celular/desktop)
         if: ${{ !cancelled() && steps.pw.outcome == 'success' }}

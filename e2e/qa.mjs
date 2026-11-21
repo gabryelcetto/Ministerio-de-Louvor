@@ -50,6 +50,7 @@ function screensFor(role) {
     ['Comunicados', '/comunicados'],
     ['Integrantes', '/integrantes'],
     ['Configurações', '/configuracoes'],
+    ['Mais', '/mais'],
     ['Instalar', '/instalar'],
     ['Página inexistente', '/nao-existe'],
   ];
@@ -149,7 +150,16 @@ function watch(page) {
   };
 }
 
-async function login(page, email, password = PASSWORD) {
+async function login(page, email, password = PASSWORD, { theme = 'system' } = {}) {
+  // Tema já escolhido (Automático): o modal de primeiro acesso é verificado à parte.
+  if (theme)
+    await page.context().addInitScript((t) => {
+      try {
+        if (!localStorage.getItem('louvor.theme')) localStorage.setItem('louvor.theme', t);
+      } catch {
+        // armazenamento indisponível
+      }
+    }, theme);
   await page.goto(`${BASE}/login`);
   await page.getByLabel('E-mail').fill(email);
   await page.getByLabel('Senha').fill(password);
@@ -357,6 +367,39 @@ async function sweep(browserName) {
       }
       await context.close();
     }
+    // Modal "Como você prefere ver o app?" (primeiro acesso), nos dois temas.
+    if (browserName === 'chromium' && (size === '390x844' || size === '1440x900')) {
+      for (const tema of ['claro', 'escuro']) {
+        const context = await browser.newContext(contextOptions(browserName, size));
+        const page = await context.newPage();
+        await page.emulateMedia({ colorScheme: tema === 'escuro' ? 'dark' : 'light' });
+        const monitor = watch(page);
+        const base = {
+          browser: browserName,
+          size,
+          perfil: 'integrante',
+          tema,
+          tela: 'Modal de tema (1º acesso)',
+          passos: 'Entrar pela primeira vez neste aparelho',
+        };
+        try {
+          await login(page, ROLES.integrante, PASSWORD, { theme: null });
+          await page
+            .getByRole('dialog', { name: 'Como você prefere ver o app?' })
+            .waitFor({ timeout: 10000 });
+          await checkScreen(page, monitor, base);
+        } catch (e) {
+          await record(page, {
+            ...base,
+            tipo: 'modal de tema não apareceu',
+            esperado: 'pergunta o tema no primeiro acesso',
+            obtido: e.message.split('\n')[0],
+            gravidade: 'alto',
+          });
+        }
+        await context.close();
+      }
+    }
   }
   await browser.close();
 }
@@ -414,7 +457,9 @@ const lyricsField = (page) => page.getByRole('textbox', { name: 'Letra' });
 async function openLyricsEditor(page) {
   await page.goto(`${BASE}/repertorio/${SONG}`);
   await settle(page);
-  await page.getByRole('button', { name: 'Editar letra' }).click();
+  // Editar letra fica no menu ⋯ do cabeçalho.
+  await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Editar letra', exact: true }).click();
   await lyricsField(page).waitFor();
 }
 
@@ -711,7 +756,7 @@ writeFileSync(
 const summary = [
   '## QA automatizado',
   '',
-  `Telas verificadas: **${screensChecked}** (${BROWSERS.join(', ')}; ${SIZES.join(', ')}; admin e integrante; tema escuro no Chromium) em ${Math.round((Date.now() - started) / 60000)} min.`,
+  `Telas verificadas: **${screensChecked}** (${BROWSERS.join(', ')}; ${SIZES.join(', ')}; admin e integrante; temas claro e escuro no Chromium) em ${Math.round((Date.now() - started) / 60000)} min.`,
   '',
   `| Gravidade | Problemas |`,
   `| --- | --- |`,

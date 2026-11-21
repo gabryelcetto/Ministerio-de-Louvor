@@ -40,6 +40,7 @@ const routes = [
   ['comunicados', '/comunicados'],
   ['integrantes', '/integrantes'],
   ['configuracoes', '/configuracoes'],
+  ['mais', '/mais'],
 ];
 
 const report = [];
@@ -55,6 +56,14 @@ for (const [role, email] of Object.entries(users)) {
       locale: 'pt-BR',
       timezoneId: 'America/Sao_Paulo',
       serviceWorkers: 'block',
+    });
+    // Tema já escolhido (Automático): o modal de primeiro acesso é verificado no fluxos.mjs.
+    await context.addInitScript(() => {
+      try {
+        if (!localStorage.getItem('louvor.theme')) localStorage.setItem('louvor.theme', 'system');
+      } catch {
+        // armazenamento indisponível
+      }
     });
     const page = await context.newPage();
     const issues = [];
