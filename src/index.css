@@ -15,7 +15,9 @@
  *          chord/surface 7:1
  * Os componentes usam só estes tokens, nunca cores fixas.
  */
-:root {
+/* .light/.dark também valem num trecho da tela (ex.: miniaturas do seletor de tema). */
+:root,
+.light {
   --ds-bg: #f6f5f2;
   --ds-surface: #ffffff;
   --ds-ink: #17171a;

@@ -1,18 +1,14 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { LogOut, Monitor, Moon, Sun, type LucideIcon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { FormError } from '@/components/common/form-error';
 import { ErrorState, LoadingState } from '@/components/common/states';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { signOut, PasswordForm, useMyProfile, useSession } from '@/features/auth';
+import { ThemeOptions } from '@/components/theme/theme-options';
+import { PasswordForm, useMyProfile, useSession } from '@/features/auth';
 import { StorageUsageCard } from '@/features/audio';
 import { InstallButton } from '@/features/instalar';
 import { ROLE_LABEL } from '@/features/integrantes';
 import { supabase } from '@/services/supabase';
-import { useThemePref } from '@/hooks/use-theme-pref';
-import type { ThemePref } from '@/lib/theme';
-import { cn } from '@/lib/utils';
+import { useTheme } from '@/hooks/use-theme';
 
 async function fetchMyFunctions(userId: string): Promise<string[]> {
   const { data, error } = await supabase
@@ -27,13 +23,16 @@ async function fetchMyFunctions(userId: string): Promise<string[]> {
     .map((f) => f.name);
 }
 
-/** Configurações pessoais: perfil, tema, senha, instalação do app e sair. */
+/**
+ * Configurações pessoais: aparência (tema), minha conta (perfil e senha), instalação do app e
+ * espaço dos áudios (admin). Sair fica só em Mais, no fim da lista.
+ */
 export function SettingsPage() {
   return (
     <section className="mx-auto flex max-w-2xl flex-col gap-5">
-      <h1 className="text-2xl font-semibold">Configurações</h1>
-      <ProfileCard />
+      <h1 className="text-screen-title">Configurações</h1>
       <ThemeCard />
+      <ProfileCard />
       <Section title="Trocar senha">
         <PasswordForm askCurrent submitLabel="Trocar senha" />
       </Section>
@@ -44,14 +43,13 @@ export function SettingsPage() {
         <InstallButton variant="outline" className="self-start" />
       </Section>
       <StorageUsageCard />
-      <SignOutCard />
     </section>
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
   return (
-    <Card>
+    <Card id={id} className="scroll-mt-20">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
@@ -71,7 +69,7 @@ function ProfileCard() {
   });
 
   return (
-    <Section title="Meu perfil">
+    <Section title="Minha conta" id="minha-conta">
       {profile.isPending ? (
         <LoadingState label="Carregando perfil…" />
       ) : profile.isError ? (
@@ -134,62 +132,14 @@ function ProfileCard() {
   );
 }
 
-const THEMES: { value: ThemePref; label: string; icon: LucideIcon }[] = [
-  { value: 'light', label: 'Claro', icon: Sun },
-  { value: 'dark', label: 'Escuro', icon: Moon },
-  { value: 'system', label: 'Sistema', icon: Monitor },
-];
-
 function ThemeCard() {
-  const [pref, setPref] = useThemePref();
+  const { pref, setPref } = useTheme();
   return (
-    <Section title="Aparência">
-      <div role="radiogroup" aria-label="Tema" className="grid grid-cols-3 gap-2">
-        {THEMES.map(({ value, label, icon: Icon }) => (
-          <label
-            key={value}
-            className={cn(
-              'flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border text-sm font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring',
-              pref === value
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'hover:bg-muted',
-            )}
-          >
-            <input
-              type="radio"
-              name="tema"
-              value={value}
-              checked={pref === value}
-              onChange={() => setPref(value)}
-              className="sr-only"
-            />
-            <Icon aria-hidden="true" className="size-5" />
-            {label}
-          </label>
-        ))}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        "Sistema" segue o tema do aparelho. A escolha vale para este navegador.
+    <Section title="Aparência" id="aparencia">
+      <ThemeOptions value={pref} onChange={setPref} name="tema" />
+      <p className="text-caption text-muted-foreground">
+        "Automático" segue o tema do celular. A escolha vale para este aparelho.
       </p>
-    </Section>
-  );
-}
-
-function SignOutCard() {
-  const logout = useMutation({ mutationFn: signOut });
-  return (
-    <Section title="Conta">
-      <Button
-        type="button"
-        variant="outline"
-        className="self-start"
-        disabled={logout.isPending}
-        onClick={() => logout.mutate()}
-      >
-        <LogOut aria-hidden="true" />
-        {logout.isPending ? 'Saindo…' : 'Sair'}
-      </Button>
-      <FormError error={logout.error} fallback="Não foi possível sair. Tente de novo." />
     </Section>
   );
 }

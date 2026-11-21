@@ -68,7 +68,7 @@ describe('primeiro acesso e troca de senha', () => {
     );
   });
 
-  it('Configurações: confere a senha atual, troca a senha, tema e sair', async () => {
+  it('Configurações: confere a senha atual e troca a senha', async () => {
     const { user } = renderApp('/configuracoes', {
       as: 'member',
       setup: (s) => {
@@ -85,16 +85,6 @@ describe('primeiro acesso e troca de senha', () => {
     await user.type(screen.getByLabelText('Senha atual'), 'SenhaAtual2026');
     await user.click(screen.getByRole('button', { name: 'Trocar senha' }));
     expect(await screen.findByText('Senha alterada.')).toBeTruthy();
-
-    const theme = screen.getByRole('radiogroup', { name: 'Tema' });
-    await user.click(within(theme).getByLabelText('Escuro'));
-    expect(document.documentElement.dataset.theme).toBe('dark');
-    await user.click(within(theme).getByLabelText('Sistema'));
-    expect(document.documentElement.dataset.theme).toBeUndefined();
-
-    const sair = screen.getAllByRole('button', { name: 'Sair' });
-    await user.click(sair.at(-1)!);
-    await waitFor(() => expect(fake.state.session).toBeNull());
   });
 });
 

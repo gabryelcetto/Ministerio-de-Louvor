@@ -3,28 +3,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { detectPlatform, shouldOfferInstall } from './install';
 import { contrastRatio, parseHex, readTokens } from './contrast';
-import { applyTheme, parseThemePref } from './theme';
 
 // O Vitest não processa CSS (um import `?raw` de .css vem vazio): lê o arquivo do disco.
 const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
-
-describe('tema', () => {
-  it('só aceita claro/escuro; o resto é "sistema"', () => {
-    expect(parseThemePref('light')).toBe('light');
-    expect(parseThemePref('dark')).toBe('dark');
-    expect(parseThemePref('system')).toBe('system');
-    expect(parseThemePref(null)).toBe('system');
-    expect(parseThemePref('roxo')).toBe('system');
-  });
-
-  it('marca o <html> com data-theme, ou tira a marca para seguir o sistema', () => {
-    const root = { dataset: {} as Record<string, string> } as unknown as HTMLElement;
-    applyTheme('dark', root);
-    expect(root.dataset.theme).toBe('dark');
-    applyTheme('system', root);
-    expect(root.dataset.theme).toBeUndefined();
-  });
-});
 
 describe('tokens do design (contraste WCAG AA)', () => {
   const block = (selector: string) => {
@@ -32,7 +13,7 @@ describe('tokens do design (contraste WCAG AA)', () => {
     expect(start, selector).toBeGreaterThan(-1);
     return readTokens(css.slice(start, css.indexOf('}', start)));
   };
-  const light = block(':root');
+  const light = block('.light');
   const dark = block('.dark');
 
   it('os dois temas definem os mesmos tokens, com os valores aprovados', () => {

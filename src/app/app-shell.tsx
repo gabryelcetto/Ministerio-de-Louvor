@@ -22,6 +22,7 @@ import type { PermissionKey } from '@/types/app.types';
 import { unreadLabel, useUnreadCount } from '@/features/notificacoes';
 import { cn } from '@/lib/utils';
 import { isPathActive, splitMobileNav, type NavPlacement } from './nav';
+import { ThemeChoiceDialog } from './theme-choice-dialog';
 
 interface NavItem {
   to: string;
@@ -156,6 +157,7 @@ export function AppShell() {
 
         <MobileNav bar={bar} more={more} unread={unread} />
       </div>
+      <ThemeChoiceDialog />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { signIn } from '../api';
 import { useSession } from '../session-context';
+import { useSystemThemeWhileMounted } from '@/hooks/use-theme';
 import { friendlyError } from '@/lib/errors';
 
 const schema = z.object({
@@ -20,6 +21,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function LoginPage() {
+  // Antes de entrar ainda não se sabe de quem é o aparelho: o login segue o tema do sistema.
+  useSystemThemeWhileMounted();
   const { session, loading } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
