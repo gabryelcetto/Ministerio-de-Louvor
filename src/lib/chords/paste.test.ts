@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   convertPastedChords,
   detectPastedFormat,
+  firstChordKey,
   guessKey,
   lyricsFromChordPro,
   withDeclaredKey,
@@ -134,5 +135,25 @@ describe('texto copiado de página web', () => {
     const nbsp = String.fromCharCode(0xa0);
     const r = convertPastedChords(`G${nbsp.repeat(5)}D\nCanto um verso`);
     expect(r.chordpro).toBe('[G]Canto [D]um verso');
+  });
+});
+
+describe('tom sugerido pelo primeiro acorde (Nova música)', () => {
+  it.each([
+    ['[G]Quão grande [D]és Tu', 'G'],
+    ['[Intro] [Em7] [C]\n[Refrão]', 'Em'],
+    ['[D/F#]Santo', 'D'],
+    ['[F#m7(b5)]x', 'F#m'],
+    ['[A#]x', 'Bb'],
+    ['[Gb]x', 'F#'],
+    ['[C#]x', 'Db'],
+    ['[Bbmaj7]x', 'Bb'],
+    ['[Am]x [G]y', 'Am'],
+    ['[Cmin]x', 'Cm'],
+    ['[Dbm]x', 'C#m'],
+    ['[Refrão] só letra', null],
+    ['', null],
+  ])('%s → %s', (chordpro, key) => {
+    expect(firstChordKey(chordpro)).toBe(key);
   });
 });

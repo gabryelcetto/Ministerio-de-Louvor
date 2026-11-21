@@ -10,7 +10,7 @@
 import { isChord, parseChord } from './chord';
 import { getDeclaredKey, parseChordPro } from './chordpro';
 import { isChordLine, mergeChordLine } from './convert';
-import { keyName, noteToPitch } from './notes';
+import { allKeys, keyName, noteToPitch } from './notes';
 
 export type PastedFormat = 'chordpro' | 'chords-over-lyrics' | 'lyrics-only' | 'empty';
 
@@ -211,4 +211,21 @@ export function withDeclaredKey(chordpro: string, key: string): string {
     return chordpro.replace(/\{\s*key\s*:[^}]*\}/i, `{key: ${key}}`);
   }
   return `{key: ${key}}\n${chordpro}`;
+}
+
+/**
+ * Tom sugerido pelo PRIMEIRO acorde da cifra (Nova música): "[Em7]..." → "Em"; "[D/F#]" → "D".
+ * Marcações que não são acorde ("[Intro]", "[Refrão]") são puladas. Devolve a grafia usada na
+ * lista de tons (ex.: "A#" vira "Bb"). `null` quando não há acorde.
+ */
+export function firstChordKey(chordpro: string): string | null {
+  for (const match of chordpro.matchAll(/\[([^\]\n]+)\]/g)) {
+    const chord = parseChord(match[1] ?? '');
+    if (!chord) continue;
+    const minor = /^(m(?!aj)|min|-)/.test(chord.suffix);
+    const pitch = noteToPitch(chord.root);
+    const key = allKeys(minor).find((k) => noteToPitch(minor ? k.slice(0, -1) : k) === pitch);
+    return key ?? `${chord.root}${minor ? 'm' : ''}`;
+  }
+  return null;
 }

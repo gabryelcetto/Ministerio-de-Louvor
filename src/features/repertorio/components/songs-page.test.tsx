@@ -37,16 +37,18 @@ describe('Repertório', () => {
     await songList();
     await user.type(screen.getByLabelText('Buscar música'), 'grande');
     await waitFor(() => expect(router.state.location.search).toContain('busca=grande'));
-    const chips = await screen.findByRole('group', { name: 'Filtrar por categoria' });
-    const buttons = within(chips).getAllByRole('button');
+    // O grupo de categorias pode ser refeito quando a lista recarrega: consulta de novo a cada passo.
+    const chips = () => screen.findByRole('group', { name: 'Filtrar por categoria' });
+    const chip = async (name: string) => within(await chips()).findByRole('button', { name });
+    const buttons = within(await chips()).getAllByRole('button');
     expect(buttons[0]!.textContent).toBe('Todas');
     expect(buttons[0]!.getAttribute('aria-pressed')).toBe('true');
-    await user.click(within(chips).getByRole('button', { name: 'Adoração' }));
+    await user.click(await chip('Adoração'));
     await waitFor(() => expect(router.state.location.search).toContain('categoria=Ado'));
-    expect(
-      within(chips).getByRole('button', { name: 'Adoração' }).getAttribute('aria-pressed'),
-    ).toBe('true');
-    await user.click(within(chips).getByRole('button', { name: 'Todas' }));
+    await waitFor(async () =>
+      expect((await chip('Adoração')).getAttribute('aria-pressed')).toBe('true'),
+    );
+    await user.click(await chip('Todas'));
     await waitFor(() => expect(router.state.location.search).not.toContain('categoria'));
     // O link da linha leva à música (a lista se refaz a cada busca: confere o endereço).
     await waitFor(async () =>
