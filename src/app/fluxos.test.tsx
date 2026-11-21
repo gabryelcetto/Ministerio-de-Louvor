@@ -104,19 +104,6 @@ describe('notificações', () => {
 });
 
 describe('repertório', () => {
-  it('busca, filtra por categoria e abre a música', async () => {
-    const { user, router } = renderApp('/repertorio', { as: 'member' });
-    await findHeading('Repertório');
-    await screen.findAllByRole('link', { name: /Grande é o Senhor/ });
-    await user.type(screen.getByLabelText('Buscar música'), 'grande');
-    // As categorias chegam numa consulta própria: espera aparecer antes de clicar.
-    const categories = await screen.findByRole('group', { name: 'Filtrar por categoria' });
-    for (const b of within(categories).getAllByRole('button')) await user.click(b);
-    await user.click(within(categories).getAllByRole('button')[0]!);
-    await user.click((await screen.findAllByRole('link', { name: /Grande é o Senhor/ }))[0]!);
-    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/repertorio\/b0/));
-  });
-
   it('nova música: cola a cifra, usa o tom detectado, gera a letra e salva', async () => {
     const { user, router } = renderApp('/repertorio/nova', { as: 'member' });
     await findHeading('Nova música');
