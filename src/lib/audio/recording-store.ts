@@ -1,15 +1,28 @@
 /**
  * Pedaços da gravação guardados no IndexedDB DURANTE a gravação.
  * Se o app fechar, o celular desligar a tela ou a internet cair, nada se perde: ao voltar à
- * tela do ensaio, a gravação aparece como "não enviada" para enviar ou descartar.
+ * tela do ensaio (ou da música), a gravação aparece como "não enviada" para enviar ou descartar.
  * IndexedDB puro (sem biblioteca); tudo no aparelho, nada vai para o servidor até o envio.
  */
 const DB_NAME = 'louvor-gravacoes';
 const DB_VERSION = 1;
 
+/** Onde a gravação vai parar: gravação de ensaio (evento) ou áudio de referência (música). */
+export type RecordingKind = 'rehearsal' | 'reference';
+
+export interface RecordingTarget {
+  kind: RecordingKind;
+  targetId: string;
+}
+
 export interface RecordingSession {
   id: string;
-  eventId: string;
+  /** Ausente nas gravações salvas antes da gravação na música (eram todas de ensaio). */
+  kind?: RecordingKind;
+  /** Evento ou música. Gravações antigas guardavam só `eventId`. */
+  targetId?: string;
+  /** Campo antigo (só ensaio): lido por sessionTarget(); gravações novas usam `targetId`. */
+  eventId?: string;
   mimeType: string;
   extension: string;
   startedAt: string;
@@ -84,14 +97,33 @@ export async function appendChunk(
   await done(tx);
 }
 
-export async function listSessions(eventId: string): Promise<RecordingSession[]> {
+/** Alvo da gravação, entendendo também as sessões antigas (só `eventId` = ensaio). */
+export function sessionTarget(session: RecordingSession): RecordingTarget {
+  return {
+    kind: session.kind ?? 'rehearsal',
+    targetId: session.targetId ?? session.eventId ?? '',
+  };
+}
+
+/** Sessões de um alvo, das mais antigas para as mais novas. */
+export function sessionsFor(
+  sessions: readonly RecordingSession[],
+  target: RecordingTarget,
+): RecordingSession[] {
+  return sessions
+    .filter((s) => {
+      const t = sessionTarget(s);
+      return t.kind === target.kind && t.targetId === target.targetId;
+    })
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+}
+
+export async function listSessions(target: RecordingTarget): Promise<RecordingSession[]> {
   const db = await openDb();
   const all = await promisify<RecordingSession[]>(
     db.transaction('sessions').objectStore('sessions').getAll(),
   );
-  return all
-    .filter((s) => s.eventId === eventId)
-    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  return sessionsFor(all, target);
 }
 
 /** Junta os pedaços na ordem em que foram gravados. */

@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { FormError } from '@/components/common/form-error';
@@ -7,16 +7,20 @@ import { useSession } from '@/features/auth/session-context';
 import { formatBytes, formatDuration } from '@/lib/audio/limits';
 import { formatShortDate, formatTime } from '@/lib/dates';
 import { usePermission } from '@/lib/permissions';
-import { useDeleteAudio, type MediaItem, type MediaKind } from '../api';
+import { mediaTitle, useDeleteAudio, type MediaItem, type MediaKind } from '../api';
 import { AudioPlayer } from './audio-player';
 
-/** Lista de áudios com player, autor e duração. Apagar: só o autor ou o admin (media.manage). */
+/**
+ * Lista de áudios com nome, player, autor e duração. Renomear e apagar: só o autor ou o admin
+ * (media.manage) — a interface só esconde; quem decide é o banco.
+ */
 export function MediaList({
   items,
   kind,
   targetId,
   followSemitones,
   followLabel,
+  onRename,
   emptyText,
 }: {
   items: MediaItem[];
@@ -24,6 +28,7 @@ export function MediaList({
   targetId: string;
   followSemitones?: number | null;
   followLabel?: string;
+  onRename?: (item: MediaItem) => void;
   emptyText: string;
 }) {
   const { session } = useSession();
@@ -37,8 +42,8 @@ export function MediaList({
     <>
       <ul className="flex flex-col gap-3">
         {items.map((item, index) => {
-          const label = `${kind === 'rehearsal' ? 'Gravação' : 'Áudio'} ${items.length - index}`;
-          const canDelete = canDeleteAny || item.createdBy === session?.user.id;
+          const label = mediaTitle(kind, item.label, items.length - index);
+          const canEdit = canDeleteAny || item.createdBy === session?.user.id;
           return (
             <li key={item.id} className="flex flex-col gap-2">
               <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
@@ -52,17 +57,31 @@ export function MediaList({
                     {` · ${formatBytes(item.sizeBytes)}`}
                   </span>
                 </span>
-                {canDelete && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPending(item)}
-                    aria-label={`Apagar ${label}`}
-                  >
-                    <Trash2 aria-hidden="true" />
-                    Apagar
-                  </Button>
+                {canEdit && (
+                  <span className="flex gap-1">
+                    {onRename && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onRename(item)}
+                        aria-label={`Renomear ${label}`}
+                      >
+                        <Pencil aria-hidden="true" />
+                        Renomear
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPending(item)}
+                      aria-label={`Apagar ${label}`}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      Apagar
+                    </Button>
+                  </span>
                 )}
               </div>
               {item.url ? (

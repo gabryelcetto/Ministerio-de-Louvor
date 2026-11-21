@@ -14,6 +14,7 @@ select plan(
   + (select count(*)::int * 2 from pg_sequences where schemaname = 'public')
   + 10 -- colunas de profiles
   + 3 -- colunas de notifications
+  + 2 -- colunas de media_files
   + 5 -- RLS, schema e privilégios padrão
 );
 
@@ -26,6 +27,7 @@ select table_privs_are(
   case t.tablename
     when 'profiles' then array[]::text[] -- só privilégios de coluna (ver abaixo)
     when 'notifications' then array['SELECT']
+    when 'media_files' then array['DELETE', 'INSERT', 'SELECT'] -- UPDATE só em label (abaixo)
     else array['DELETE', 'INSERT', 'SELECT', 'UPDATE']
   end::name[],
   format('authenticated: privilégios de tabela em %s', t.tablename)
@@ -91,6 +93,17 @@ from (
     ('read_at', array['SELECT', 'UPDATE']),
     ('title', array['SELECT']),
     ('user_id', array['SELECT'])
+) as c(col, privs);
+
+-- media_files: só o nome (label) é editável (autor ou admin, pela RLS).
+select column_privs_are(
+  'public', 'media_files', c.col::name, 'authenticated', c.privs::name[],
+  format('media_files.%s: %s', c.col, array_to_string(c.privs, ', '))
+)
+from (
+  values
+    ('label', array['INSERT', 'SELECT', 'UPDATE']),
+    ('storage_path', array['INSERT', 'SELECT'])
 ) as c(col, privs);
 
 -- ---------------------------------------------------------------------------

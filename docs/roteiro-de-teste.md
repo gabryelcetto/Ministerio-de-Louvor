@@ -313,6 +313,21 @@ sintético gerado no teste), `e2e/api-checks.mjs` (Storage e limpeza) e
 | 6   | − / + do **tom do áudio**            | Ajuste manual; "Acompanhar" desmarca                              |
 | 7   | Navegador sem AudioWorklet           | Aviso; velocidade continua funcionando (sem mudar o tom)          |
 
+## Gravar na tela da música e nome do áudio
+
+| #   | Passo                                              | Esperado                                                                              |
+| --- | -------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1   | Música → **Gravar** (ao lado de **Enviar áudio**)  | Cronômetro, tamanho de X de 45 MB, "tela acesa"; **Pausar** / **Retomar** / **Parar** |
+| 2   | **Parar** → **Enviar**                             | Barra de progresso; depois, "Dê um nome a este áudio"                                 |
+| 3   | Tocar em **Voz guia** (sugestão) → **Salvar nome** | Aparece na lista como "Voz guia"                                                      |
+| 4   | **Agora não**                                      | Aparece como "Áudio N"                                                                |
+| 5   | Tocar a gravação; subir meio tom na cifra; 75%     | Tom acompanha a cifra; velocidade muda sem mudar o tom                                |
+| 6   | **Renomear** (autor ou admin)                      | Troca o nome; outra pessoa não vê o botão                                             |
+| 7   | Música com 3 áudios                                | "Esta música já tem 3 áudios de referência…"; **Gravar** e **Enviar áudio** travados  |
+| 8   | Console: 4º envio pela API                         | Recusado pelo bucket e pelo banco (mensagem em português)                             |
+| 9   | Espaço acima de 90% de 1 GB (admin, Configurações) | Aviso "novos áudios estão bloqueados"; envio recusado com mensagem                    |
+| 10  | Fechar o app gravando na música e reabrir a música | A gravação aparece como "não enviada"                                                 |
+
 ## Espaço e limpeza
 
 | #   | Passo                                            | Esperado                                              |

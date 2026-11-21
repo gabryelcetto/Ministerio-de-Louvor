@@ -860,6 +860,14 @@ if (resetTemporary) {
 const ENSAIO_GERAL = '10000000-0000-4000-8000-000000000001';
 const playerOf = (page) => page.getByTestId('audio-player').first();
 const attr = (loc, name) => loc.getAttribute(name);
+/** Diálogo "Dê um nome a este áudio" (abre depois de cada envio). */
+const nameDialog = (page) => page.getByRole('dialog', { name: 'Dê um nome a este áudio' });
+const skipNaming = async (page) => {
+  const dialog = nameDialog(page);
+  await dialog.waitFor({ timeout: 20000 });
+  await dialog.getByRole('button', { name: 'Agora não' }).click();
+  await dialog.waitFor({ state: 'hidden' });
+};
 
 {
   const { context, page } = await session('integrante@demo.local', MOBILE);
@@ -881,8 +889,14 @@ const attr = (loc, name) => loc.getAttribute(name);
       mimeType: 'audio/wav',
       buffer: makeWav({ seconds: 6 }),
     });
+    // Pede o nome logo depois de enviar: usa a sugestão "Voz guia".
+    const dialog = nameDialog(page);
+    await dialog.waitFor({ timeout: 20000 });
+    await dialog.getByRole('button', { name: 'Voz guia' }).click();
+    await dialog.getByRole('button', { name: 'Salvar nome' }).click();
+    await dialog.waitFor({ state: 'hidden' });
     await playerOf(page).waitFor({ timeout: 20000 });
-    await expectText(page, /Áudio 1/);
+    await expectText(page, 'Voz guia');
   });
 
   await step(page, who, 'Player: toca com SoundTouch (tom e velocidade no aparelho)', async () => {
@@ -935,6 +949,84 @@ const attr = (loc, name) => loc.getAttribute(name);
     return `pitch ${before} → ${before - 1}`;
   });
 
+  await step(page, who, 'Gravar na música: grava com o microfone e dá nome', async () => {
+    await page.goto(`${BASE}/repertorio/${SONG}`);
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: 'Gravar', exact: true }).click();
+    await poll(
+      async () => /0:0[3-9]/.test(await page.getByTestId('cronometro').innerText()),
+      'cronômetro parado',
+      15000,
+    );
+    await page.getByRole('button', { name: 'Pausar' }).click();
+    await page.getByRole('button', { name: 'Retomar' }).click();
+    await page.waitForTimeout(1500);
+    await page.getByRole('button', { name: 'Parar' }).click();
+    const pendente = page.getByRole('list', { name: 'Gravações não enviadas' });
+    await pendente.getByRole('button', { name: 'Enviar' }).click();
+    const dialog = nameDialog(page);
+    await dialog.waitFor({ timeout: 30000 });
+    await dialog.getByLabel('Nome do áudio').fill('Arranjo E2E');
+    await dialog.getByRole('button', { name: 'Salvar nome' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    await poll(async () => (await pendente.count()) === 0, 'gravação ficou pendente', 15000);
+    await expectText(page, 'Arranjo E2E');
+  });
+
+  await step(page, who, 'Gravar na música: ouve e o tom acompanha a cifra', async () => {
+    // Mais novo primeiro: o primeiro player é a gravação que acabou de ser enviada.
+    const item = main(page).locator('li').filter({ hasText: 'Arranjo E2E' });
+    const player = item.getByTestId('audio-player');
+    await player.getByRole('button', { name: /^Tocar/ }).click();
+    await poll(
+      async () => (await attr(player, 'data-engine')) !== 'parado',
+      'motor de áudio não iniciou',
+    );
+    await poll(
+      () => player.evaluate((el) => (el.querySelector('audio')?.currentTime ?? 0) > 0.3),
+      'a gravação não tocou',
+    );
+    const before = Number(await attr(player, 'data-pitch'));
+    await page.getByRole('button', { name: 'Subir meio tom', exact: true }).click();
+    await poll(
+      async () => Number(await attr(player, 'data-pitch')) === before + 1,
+      'tom da gravação não acompanhou a cifra',
+    );
+    await player.getByRole('button', { name: /^Pausar/ }).click();
+    return `motor ${await attr(player, 'data-engine')}, tom ${before} → ${before + 1}`;
+  });
+
+  await step(page, who, 'Gravar na música: autora renomeia o áudio', async () => {
+    await main(page).getByRole('button', { name: 'Renomear Arranjo E2E' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Renomear áudio' });
+    await dialog.waitFor();
+    await dialog.getByLabel('Nome do áudio').fill('Arranjo final');
+    await dialog.getByRole('button', { name: 'Salvar nome' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    await expectText(page, 'Arranjo final');
+  });
+
+  await step(page, who, 'Áudio de referência: terceiro áudio (arquivo) sem nome', async () => {
+    await page.getByLabel('Arquivo de áudio de referência').setInputFiles({
+      name: 'terceiro-ficticio.wav',
+      mimeType: 'audio/wav',
+      buffer: makeWav({ seconds: 2 }),
+    });
+    await skipNaming(page);
+    // Sem nome: aparece pela posição (o mais novo é o 3º).
+    await expectText(page, /Áudio 3/);
+  });
+
+  await step(page, who, 'Áudio de referência: o quarto é recusado (limite de 3)', async () => {
+    await expectText(page, 'Esta música já tem 3 áudios de referência');
+    if (!(await page.getByRole('button', { name: 'Gravar', exact: true }).isDisabled()))
+      throw new Error('Gravar continua liberado com 3 áudios');
+    if (!(await page.getByRole('button', { name: 'Enviar áudio' }).isDisabled()))
+      throw new Error('Enviar áudio continua liberado com 3 áudios');
+    const players = await main(page).getByTestId('audio-player').count();
+    if (players !== 3) throw new Error(`${players} áudios na lista`);
+  });
+
   await step(page, who, 'Gravar ensaio: grava, pausa, retoma, para e envia', async () => {
     await page.goto(`${BASE}/escalas/${ENSAIO_GERAL}`);
     await page.waitForLoadState('networkidle');
@@ -955,6 +1047,7 @@ const attr = (loc, name) => loc.getAttribute(name);
     const pendente = page.getByRole('list', { name: 'Gravações não enviadas' });
     await pendente.getByRole('button', { name: 'Enviar' }).click();
     await poll(async () => (await pendente.count()) === 0, 'gravação não foi enviada', 30000);
+    await skipNaming(page);
     await page
       .getByText(/Gravação 1/)
       .first()
@@ -979,6 +1072,7 @@ const attr = (loc, name) => loc.getAttribute(name);
       'gravação recuperada não foi enviada',
       30000,
     );
+    await skipNaming(page);
     await page
       .getByText(/Gravação 2/)
       .first()
