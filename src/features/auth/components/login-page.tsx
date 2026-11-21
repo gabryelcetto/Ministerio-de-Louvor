@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import { brandTitle } from '@/config/brand';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,7 +51,7 @@ export function LoginPage() {
           <div className="flex size-12 items-center justify-center rounded-full bg-primary text-accent">
             <Music aria-hidden="true" className="size-6" />
           </div>
-          <h1 className="text-xl font-semibold">Ministério de Louvor</h1>
+          <h1 className="text-xl font-semibold">{brandTitle}</h1>
           <CardDescription>Entre com o e-mail e a senha recebidos da liderança.</CardDescription>
         </CardHeader>
         <CardContent>

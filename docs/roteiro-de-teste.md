@@ -204,3 +204,46 @@ Automatizado em `e2e/fluxos.mjs` (seção CADASTRO) e `e2e/api-checks.mjs` (Edge
 | 1   | Senha atual errada            | "A senha atual está incorreta."                |
 | 2   | Nova senha igual à atual      | "A nova senha precisa ser diferente da atual." |
 | 3   | Tudo certo → **Trocar senha** | "Senha alterada."; entrar de novo com a nova   |
+
+---
+
+# Base ADVOP: perfis, nova música e atividade recente
+
+Automatizado em `e2e/fluxos.mjs` (seções NOVA MÚSICA, LUCAS e ADMIN desktop),
+`e2e/api-checks.mjs` e `supabase/tests/advop.test.sql`.
+
+## Perfis e identidade
+
+| #   | Passo                                       | Esperado                                                           |
+| --- | ------------------------------------------- | ------------------------------------------------------------------ |
+| 1   | Título da aba e tela de login               | "Ministério de Louvor · ADVOP"                                     |
+| 2   | Início no celular                           | "ADVOP" acima da saudação                                          |
+| 3   | Instalar o app                              | Ícone com o nome "Louvor ADVOP"                                    |
+| 4   | Integrantes                                 | Selos "Cantor(a)" e/ou "Instrumentista"; ninguém com "Liderança"   |
+| 5   | Cadastrar integrante (admin)                | Perfis: Integrante e Administração                                 |
+| 6   | Lucas (`lider@demo.local`) em Montar escala | "Você não tem permissão para montar escalas." (agora é integrante) |
+| 7   | Montar escala (admin) → Cantores            | Só quem tem função vocal; Instrumentistas: só instrumental         |
+
+## Nova música (`/repertorio/nova`, integrante)
+
+| #   | Passo                                                               | Esperado                                                                      |
+| --- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 1   | Repertório → **Nova música**                                        | Formulário (integrante e admin)                                               |
+| 2   | Colar cifra com acordes em cima da letra, `[Refrão]`, `[Intro] G D` | "Formato detectado: acordes em cima da letra"; pré-visualização com as partes |
+| 3   | Acorde que não existe (ex.: `Xyz` na linha de acordes)              | Não vira acorde (fica como texto); `[Xyz]` em ChordPro gera aviso             |
+| 4   | "Tom detectado na cifra" → **usar**                                 | Preenche o tom original                                                       |
+| 5   | Salvar sem letra                                                    | Abre a música; a aba Letra tem a letra gerada da cifra                        |
+| 6   | Transpor, Editar cifra, Definir tom oficial, **Editar dados**       | Tudo salva para o integrante; **sem** botão Arquivar                          |
+| 7   | Colar só letra (sem acordes)                                        | "sem acordes — será salvo como letra"                                         |
+
+## Atividade recente (Mais → Atividade recente, só admin)
+
+| #   | Passo                                 | Integrante                                                          | Admin                                               |
+| --- | ------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------- |
+| 1   | Menu Mais                             | **Sem** "Atividade recente"                                         | Com "Atividade recente"                             |
+| 2   | Abrir `/atividade`                    | "Você não tem permissão para ver a atividade de todo o repertório." | Lista: música, o que mudou, quem e quando           |
+| 3   | Filtro Pessoa / Música                | —                                                                   | Lista filtra                                        |
+| 4   | Tocar num item                        | —                                                                   | Abre o histórico da música (onde restaura)          |
+| 5   | Console: `rpc('get_recent_activity')` | 42501                                                               | Lista                                               |
+| 6   | Histórico de uma música               | Visível (sem Restaurar)                                             | Visível com Restaurar                               |
+| 7   | **Arquivar** (admin)                  | —                                                                   | Some do repertório; aparece "Arquivou" na atividade |

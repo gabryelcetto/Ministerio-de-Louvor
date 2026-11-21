@@ -6,7 +6,7 @@ import { useUnsavedGuard } from '@/components/common/use-unsaved-guard';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { allKeys, chordsOverLyricsToChordPro } from '@/lib/chords';
+import { allKeys, convertPastedChords } from '@/lib/chords';
 import { cn } from '@/lib/utils';
 import { useSaveChords, useSaveLyrics, useSetOfficialKey } from '../editing';
 import { chordSheetWarnings } from '../editor-checks';
@@ -151,7 +151,7 @@ export function ChordsEditor({ songId, initial, onDone }: EditorProps) {
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setValue(chordsOverLyricsToChordPro(value))}
+              onClick={() => setValue(convertPastedChords(value).chordpro || value)}
               title="Converte o formato de sites (acordes numa linha, letra na de baixo)"
             >
               <Wand2 aria-hidden="true" />

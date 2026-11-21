@@ -9,6 +9,7 @@ import { useMyProfile } from '@/features/auth/hooks/use-me';
 import { InstallTip } from '@/features/instalar/components/install-tip';
 import { unreadLabel } from '@/features/notificacoes/api';
 import { SongRow } from '@/features/escalas/components/song-row';
+import { brand } from '@/config/brand';
 import { formatDayLabel, formatShortDate, formatTimeRange, greeting } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import type { Dashboard, EventRow } from '@/types/app.types';
@@ -23,10 +24,16 @@ export function DashboardPage() {
   return (
     <section className="mx-auto flex max-w-5xl flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">
-          {greeting()}
-          {name ? `, ${name}` : ''}!
-        </h1>
+        <div className="flex flex-col">
+          {/* No celular, o nome da igreja fica acima da saudação (no computador já está na lateral). */}
+          <p className="text-sm font-semibold tracking-wide text-muted-foreground uppercase md:hidden">
+            {brand.churchName}
+          </p>
+          <h1 className="text-2xl font-semibold">
+            {greeting()}
+            {name ? `, ${name}` : ''}!
+          </h1>
+        </div>
         {query.data && <UnreadBadge count={query.data.unread_notifications} />}
       </header>
 

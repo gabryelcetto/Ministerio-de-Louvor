@@ -31,7 +31,9 @@ export type PermissionKey =
   | 'members.view_contacts'
   | 'members.manage'
   | 'permissions.manage'
-  | 'history.restore';
+  | 'history.restore'
+  | 'history.view_all'
+  | 'songs.manage';
 
 // ---------------------------------------------------------------------------------------------
 // Estreitamento das colunas com CHECK

@@ -79,6 +79,11 @@ async function step(page, who, label, fn, { expectApiErrors = false } = {}) {
 }
 
 const main = (page) => page.locator('main');
+/** Links de músicas na lista do repertório (sem o botão "Nova música"). */
+const songLinks = (page) =>
+  main(page).locator('a[href^="/repertorio/"]:not([href="/repertorio/nova"])');
+/** Só a lista (não os <option> dos filtros, que têm os mesmos nomes). */
+const list = (page) => main(page).locator('ul');
 /** Repete `fn` até devolver true (a lista pode levar um instante para atualizar). */
 const poll = async (fn, what, timeout = 8000) => {
   const end = Date.now() + timeout;
@@ -101,6 +106,9 @@ const expectText = async (page, text, timeout = 8000) => {
 
   await step(page, who, 'Início com saudação e próximo culto', async () => {
     await expectText(page, /Isa/);
+    await expectText(page, 'ADVOP'); // nome da igreja acima da saudação (celular)
+    const title = await page.title();
+    if (title !== 'Ministério de Louvor · ADVOP') throw new Error(`título da aba: ${title}`);
     await expectText(page, 'Culto de celebração');
     await expectText(page, 'Ensaio geral');
     await expectText(page, /Bateria/);
@@ -116,7 +124,7 @@ const expectText = async (page, text, timeout = 8000) => {
   await step(page, who, 'Repertório lista 12 músicas', async () => {
     await page.goto(`${BASE}/repertorio`);
     await page.waitForLoadState('networkidle');
-    const n = await main(page).locator('a[href^="/repertorio/"]').count();
+    const n = await songLinks(page).count();
     if (n !== 12) throw new Error(`${n} músicas na lista`);
     return `${n} músicas`;
   });
@@ -124,10 +132,7 @@ const expectText = async (page, text, timeout = 8000) => {
   await step(page, who, 'Busca sem acento "cantico"', async () => {
     await page.getByLabel('Buscar música').fill('cantico');
     await expectText(page, 'Cântico da Manhã');
-    await poll(
-      async () => (await main(page).locator('a[href^="/repertorio/"]').count()) === 1,
-      'esperava 1 resultado',
-    );
+    await poll(async () => (await songLinks(page).count()) === 1, 'esperava 1 resultado');
   });
 
   await step(page, who, 'Busca sem resultado', async () => {
@@ -154,12 +159,11 @@ const expectText = async (page, text, timeout = 8000) => {
     await page.waitForURL((u) => !u.search.includes('tom=E'));
   });
 
-  await step(page, who, 'Integrante não vê Editar cifra nem Definir tom oficial', async () => {
-    if (await page.getByRole('button', { name: /Editar cifra/ }).count())
-      throw new Error('botão Editar cifra visível');
-    if (await page.getByRole('button', { name: /Definir tom oficial/ }).count())
-      throw new Error('botão Definir tom oficial visível');
-    await page.getByRole('button', { name: 'Editar letra' }).waitFor();
+  await step(page, who, 'Integrante vê editar cifra, tom e dados; não vê Arquivar', async () => {
+    for (const name of ['Editar letra', 'Editar cifra', 'Definir tom oficial', 'Editar dados'])
+      await page.getByRole('button', { name }).waitFor();
+    if (await page.getByRole('button', { name: 'Arquivar' }).count())
+      throw new Error('botão Arquivar visível');
   });
 
   await step(page, who, 'Editar letra e salvar', async () => {
@@ -247,6 +251,8 @@ const expectText = async (page, text, timeout = 8000) => {
     const menu = page.getByRole('navigation', { name: 'Mais opções' });
     for (const item of ['Notificações', 'Comunicados', 'Integrantes', 'Configurações'])
       await menu.getByRole('link', { name: item }).waitFor();
+    if (await menu.getByRole('link', { name: 'Atividade recente' }).count())
+      throw new Error('Atividade recente visível para integrante');
     await page.keyboard.press('Escape');
     await poll(
       () => button.evaluate((el) => el === document.activeElement),
@@ -308,23 +314,48 @@ const expectText = async (page, text, timeout = 8000) => {
     await expectText(page, /Ana/);
   });
 
-  await step(page, who, 'Menu Mais com Configurações', async () => {
+  await step(page, who, 'Menu Mais com Configurações e Atividade recente', async () => {
     await page.goto(`${BASE}/`);
     await page.getByRole('button', { name: /^Mais/ }).click();
-    await page
-      .getByRole('navigation', { name: 'Mais opções' })
-      .getByRole('link', { name: 'Configurações' })
-      .waitFor();
+    const menu = page.getByRole('navigation', { name: 'Mais opções' });
+    await menu.getByRole('link', { name: 'Configurações' }).waitFor();
+    await menu.getByRole('link', { name: 'Atividade recente' }).waitFor();
     await page.keyboard.press('Escape');
   });
 
   await context.close();
 }
 
-// =============================================================================== LÍDER
+// =============================================================================== LUCAS (ex-líder)
 {
-  const { context, page } = await session('lider@demo.local', DESKTOP);
-  const who = 'lider';
+  const { context, page } = await session('lider@demo.local', MOBILE);
+  await step(page, 'lucas', 'Ex-líder agora é integrante: não monta escala', async () => {
+    await page.goto(`${BASE}/escalas/montar`);
+    await expectText(page, 'Você não tem permissão para montar escalas.');
+  });
+  await context.close();
+}
+
+// =============================================================================== ADMIN (desktop)
+{
+  const { context, page } = await session('admin@demo.local', DESKTOP);
+  const who = 'admin';
+
+  await step(page, who, 'Montar escala: filtro Cantores/Instrumentistas', async () => {
+    await page.goto(`${BASE}/escalas/montar`);
+    await page.waitForLoadState('networkidle');
+    const options = () =>
+      page.getByLabel('Pessoa', { exact: true }).first().locator('option').allInnerTexts();
+    await page.getByRole('radio', { name: 'Cantores' }).click();
+    const cantores = await options();
+    if (cantores.includes('Isa') || !cantores.includes('Lucas'))
+      throw new Error(`Cantores: ${cantores.join(', ')}`);
+    await page.getByRole('radio', { name: 'Instrumentistas' }).click();
+    const instr = await options();
+    if (!instr.includes('Isa')) throw new Error(`Instrumentistas: ${instr.join(', ')}`);
+    await page.getByRole('radio', { name: 'Todos' }).click();
+    return `cantores: ${cantores.filter((o) => o !== 'Escolha…').join(', ')}`;
+  });
 
   await step(page, who, 'Montar escala: validação de campos', async () => {
     await page.goto(`${BASE}/escalas/montar`);
@@ -359,7 +390,157 @@ const expectText = async (page, text, timeout = 8000) => {
   await step(page, who, 'Desktop: Início', async () => {
     await page.goto(`${BASE}/`);
     await page.waitForLoadState('networkidle');
-    await expectText(page, /Lucas/);
+    await expectText(page, /Ana/);
+  });
+
+  await context.close();
+}
+
+// =============================================================================== NOVA MÚSICA
+// Cifra FICTÍCIA no formato dos sites (acordes em cima da letra, partes entre colchetes).
+const NEW_SONG = 'Canção de Teste E2E (exemplo)';
+const PASTED = [
+  '[Intro] G  D  Em  C',
+  '',
+  '[Primeira Parte]',
+  'G'.padEnd(10) + 'D/F#',
+  'Luz que vem de manhã',
+  'Em7'.padEnd(10) + 'C7M',
+  'Paz no coração',
+  '',
+  '[Refrão]',
+  'C'.padEnd(9) + 'D7(9)',
+  'Canto de alegria',
+  'G',
+].join('\n');
+let newSongPath = '';
+
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE);
+  const who = 'integrante';
+
+  await step(
+    page,
+    who,
+    'Nova música: cola a cifra, vê formato, pré-visualização e tom',
+    async () => {
+      await page.goto(`${BASE}/repertorio`);
+      await page.getByRole('link', { name: 'Nova música' }).click();
+      await page.waitForURL(/\/repertorio\/nova$/);
+      await page.getByLabel('Título').fill(NEW_SONG);
+      await page.getByLabel('Cifra (opcional)').fill(PASTED);
+      await expectText(page, /acordes em cima da letra/);
+      const preview = page.getByRole('region', { name: 'Pré-visualização' });
+      await preview.getByText('Refrão').waitFor();
+      await preview.getByText('D7(9)').waitFor();
+      await expectText(page, /Tom detectado na cifra/);
+      await page.getByRole('button', { name: 'usar' }).click();
+      const key = await page.getByLabel('Tom original (opcional)').inputValue();
+      if (key !== 'G') throw new Error(`tom original sugerido: ${key}`);
+    },
+  );
+
+  await step(page, who, 'Nova música: salva (letra gerada da cifra) e abre', async () => {
+    await page.getByRole('button', { name: 'Salvar música' }).click();
+    await page.waitForURL(/\/repertorio\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    newSongPath = new URL(page.url()).pathname;
+    await page.getByRole('heading', { name: NEW_SONG }).waitFor();
+    await page.getByRole('tab', { name: 'Letra' }).click();
+    await expectText(page, 'Luz que vem de manhã');
+    await page.getByRole('tab', { name: 'Cifra' }).click();
+    return newSongPath;
+  });
+
+  await step(page, who, 'Nova música: transpõe', async () => {
+    const tom = page.getByRole('combobox', { name: 'Tom', exact: true });
+    const antes = await tom.inputValue();
+    await page.getByRole('button', { name: 'Subir meio tom' }).click();
+    await poll(async () => (await tom.inputValue()) !== antes, 'tom não mudou');
+    return `${antes} → ${await tom.inputValue()}`;
+  });
+
+  await step(page, who, 'Nova música: integrante edita a cifra', async () => {
+    await page.goto(`${BASE}${newSongPath}`);
+    await page.getByRole('button', { name: 'Editar cifra' }).click();
+    const box = page.getByLabel('Cifra (ChordPro)');
+    await box.fill(`${await box.inputValue()}\n[C]Linha nova da [G]Isa`);
+    await page.getByRole('button', { name: 'Salvar cifra' }).click();
+    await expectText(page, 'Cifra salva.');
+  });
+
+  await step(page, who, 'Nova música: integrante define o tom oficial', async () => {
+    await page.getByRole('button', { name: 'Definir tom oficial' }).click();
+    await page.getByLabel('Tom oficial', { exact: true }).selectOption('A');
+    await page.getByRole('button', { name: 'Salvar tom oficial' }).click();
+    await expectText(page, 'Tom oficial salvo.');
+  });
+
+  await step(page, who, 'Nova música: integrante edita os dados', async () => {
+    await page.getByRole('button', { name: 'Editar dados' }).click();
+    await page.getByLabel('Artista / autor (opcional)').fill('Autor fictício');
+    await page.getByRole('button', { name: 'Salvar dados' }).click();
+    await expectText(page, 'Dados da música salvos.');
+    await expectText(page, 'Autor fictício');
+    if (await page.getByRole('button', { name: 'Arquivar' }).count())
+      throw new Error('botão Arquivar visível');
+  });
+
+  await step(
+    page,
+    who,
+    'Atividade recente bloqueada para integrante',
+    async () => {
+      await page.goto(`${BASE}/atividade`);
+      await expectText(page, 'Você não tem permissão para ver a atividade de todo o repertório.');
+    },
+    { expectApiErrors: true },
+  );
+
+  await context.close();
+}
+
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  const who = 'admin';
+
+  await step(page, who, 'Atividade recente: vê as alterações da integrante', async () => {
+    await page.goto(`${BASE}/atividade`);
+    await page.waitForLoadState('networkidle');
+    // Só a lista: os <option> dos filtros têm os mesmos nomes e não ficam "visíveis".
+    await list(page).getByText(NEW_SONG).first().waitFor();
+    await list(page).getByText('Editou a cifra').first().waitFor();
+    await page.getByLabel('Pessoa').selectOption({ label: 'Isa' });
+    await page.waitForLoadState('networkidle');
+    await poll(
+      async () =>
+        !(await list(page)
+          .getByText(/^Ana ·/)
+          .count()),
+      'filtro por pessoa ainda mostra a Ana',
+    );
+    await list(page)
+      .getByText(/^Isa ·/)
+      .first()
+      .waitFor();
+  });
+
+  await step(page, who, 'Atividade recente → histórico → restaurar', async () => {
+    await list(page).getByRole('link').filter({ hasText: NEW_SONG }).first().click();
+    await page.waitForURL(/\/historico$/);
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: 'Restaurar' }).first().click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Restaurar' }).click();
+    await expectText(page, /Versão restaurada/);
+  });
+
+  await step(page, who, 'Arquivar música (só admin)', async () => {
+    await page.goto(`${BASE}${newSongPath}`);
+    await page.getByRole('button', { name: 'Arquivar' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click();
+    await expectText(page, /arquivada/);
+    await page.goto(`${BASE}/repertorio`);
+    await page.getByLabel('Buscar música').fill('Teste E2E');
+    await expectText(page, 'Nenhuma música encontrada');
   });
 
   await context.close();

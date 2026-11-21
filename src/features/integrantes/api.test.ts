@@ -4,7 +4,9 @@ vi.mock('@/lib/supabase', () => ({ supabase: {} }));
 
 const { buildMembers, matchesName, telHref } = await import('./api');
 
-const fn = (name: string, sort_order: number) => ({ function: { name, sort_order } });
+const fn = (name: string, sort_order: number, section = 'instrumental') => ({
+  function: { name, sort_order, section },
+});
 
 describe('buildMembers', () => {
   const rows = [
@@ -14,7 +16,7 @@ describe('buildMembers', () => {
       display_name: null,
       access_role: 'member' as const,
       status: 'active' as const,
-      member_functions: [fn('Bateria', 7), fn('Backing vocal', 2), { function: null }],
+      member_functions: [fn('Bateria', 7), fn('Backing vocal', 2, 'vocal'), { function: null }],
     },
     {
       id: 'u1',
@@ -32,6 +34,12 @@ describe('buildMembers', () => {
       ['Ana', [], false, null],
       ['Zélia Souza', ['Backing vocal', 'Bateria'], true, null],
     ]);
+  });
+
+  it('selos de grupo: cantora e instrumentista ao mesmo tempo', () => {
+    const members = buildMembers(rows, null);
+    expect(members.find((m) => m.id === 'u2')?.sections).toEqual(['vocal', 'instrumental']);
+    expect(members.find((m) => m.id === 'u1')?.sections).toEqual([]);
   });
 
   it('só preenche telefone quando os contatos vieram do banco', () => {

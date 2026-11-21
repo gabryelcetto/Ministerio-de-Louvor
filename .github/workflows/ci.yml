@@ -61,7 +61,16 @@ jobs:
         run: cp supabase/ci/simular-nuvem.sql supabase/migrations/00000000000000_simular_nuvem.sql
 
       # Sobe só o Postgres local (Docker do runner), aplica as migrations e o seed.
-      - run: supabase db start
+      # O registro de imagens às vezes limita downloads: tenta de novo com espera.
+      - name: supabase db start
+        run: |
+          for attempt in 1 2 3 4; do
+            supabase db start && exit 0
+            echo "::warning::supabase db start falhou (tentativa $attempt); nova tentativa em $((attempt * 60))s"
+            supabase stop --no-backup || true
+            sleep $((attempt * 60))
+          done
+          exit 1
 
       # Roda supabase/tests/*.test.sql (RLS, triggers, permissões).
       - run: supabase test db

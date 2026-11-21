@@ -3,7 +3,8 @@
  * TypeScript puro: usado pela função (Deno) e pelo app (src/features/integrantes/invite.ts).
  */
 
-export type InviteRole = 'member' | 'leader' | 'admin';
+/** Perfis usados no ministério (o valor "leader" do banco não é mais usado). */
+export type InviteRole = 'member' | 'admin';
 
 export interface InviteInput {
   fullName: string;
@@ -29,7 +30,7 @@ export interface InviteError {
 export const NAME_MIN = 2;
 export const NAME_MAX = 120;
 export const DISPLAY_NAME_MAX = 40;
-const ROLES: readonly InviteRole[] = ['member', 'leader', 'admin'];
+const ROLES: readonly InviteRole[] = ['member', 'admin'];
 // Simples de propósito: quem confirma de verdade é o Auth; aqui só barra erro de digitação.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

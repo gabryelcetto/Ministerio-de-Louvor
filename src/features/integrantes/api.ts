@@ -3,6 +3,7 @@ import { displayName } from '@/features/escalas/schedule-utils';
 import { usePermission } from '@/lib/permissions';
 import { supabase } from '@/lib/supabase';
 import type { AccessRole, ProfileStatus } from '@/types/app.types';
+import { sectionsOf, type Section } from './sections';
 
 export interface MemberRow {
   id: string;
@@ -10,7 +11,7 @@ export interface MemberRow {
   display_name: string | null;
   access_role: AccessRole;
   status: ProfileStatus;
-  member_functions: { function: { name: string; sort_order: number } | null }[];
+  member_functions: { function: { name: string; sort_order: number; section: string } | null }[];
 }
 
 export interface Member {
@@ -20,6 +21,8 @@ export interface Member {
   role: AccessRole;
   active: boolean;
   functions: string[];
+  /** Cantor(a) e/ou Instrumentista (só selo; não dá permissão). */
+  sections: Section[];
   phone: string | null;
 }
 
@@ -28,7 +31,7 @@ export async function fetchMembers(): Promise<MemberRow[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select(
-      'id, full_name, display_name, access_role, status, member_functions(function:ministry_functions(name, sort_order))',
+      'id, full_name, display_name, access_role, status, member_functions(function:ministry_functions(name, sort_order, section))',
     );
   if (error) throw error;
   return data;
@@ -55,9 +58,10 @@ export function buildMembers(
       fullName: row.full_name.trim(),
       role: row.access_role,
       active: row.status === 'active',
+      sections: sectionsOf(row.member_functions.map((mf) => mf.function).filter((f) => f !== null)),
       functions: row.member_functions
         .map((mf) => mf.function)
-        .filter((f): f is { name: string; sort_order: number } => f !== null)
+        .filter((f): f is { name: string; sort_order: number; section: string } => f !== null)
         .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'pt-BR'))
         .map((f) => f.name),
       phone: phones?.get(row.id) ?? null,
@@ -84,7 +88,7 @@ export function telHref(phone: string): string | null {
 
 export const ROLE_LABEL: Record<AccessRole, string | null> = {
   admin: 'Administração',
-  leader: 'Liderança',
+  leader: null, // valor antigo do banco, não usado (ADVOP: só admin e member)
   member: null,
 };
 

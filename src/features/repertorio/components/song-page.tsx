@@ -5,6 +5,7 @@ import {
   KeyRound,
   Minus,
   Pencil,
+  SquarePen,
   Plus,
   RotateCcw,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ import {
 } from '../song-key';
 import { chordProToLyrics } from '../editor-checks';
 import { ChordSheet } from './chord-sheet';
+import { ArchiveSongButton, SongDataEditor } from './song-data-editor';
 import { ChordsEditor, LyricsEditor, OfficialKeyEditor } from './song-editors';
 
 /** Tamanhos de letra para leitura tocando (o acorde acompanha, em `em`). */
@@ -76,12 +78,13 @@ export function SongPage() {
 
 type Tab = 'cifra' | 'letra';
 
-type Editing = 'letra' | 'cifra' | 'tom' | null;
+type Editing = 'letra' | 'cifra' | 'tom' | 'dados' | null;
 
 const SAVED_MESSAGE: Record<Exclude<Editing, null>, string> = {
   letra: 'Letra salva.',
   cifra: 'Cifra salva.',
   tom: 'Tom oficial salvo.',
+  dados: 'Dados da música salvos.',
 };
 
 function SongView({ song }: { song: SongDetail }) {
@@ -92,6 +95,8 @@ function SongView({ song }: { song: SongDetail }) {
   // Só esconde/mostra botões: quem barra de verdade é o banco (RLS e triggers).
   const canEditChords = usePermission('chords.edit_official');
   const canSetKey = usePermission('songs.set_official_key');
+  const canManageSongs = usePermission('songs.manage');
+  const canArchive = usePermission('songs.delete');
   const media = safeMediaUrl(song.media_url);
 
   const tab: Tab =
@@ -154,6 +159,11 @@ function SongView({ song }: { song: SongDetail }) {
   return (
     <>
       <header className="flex flex-col gap-2">
+        {song.archived_at && (
+          <p role="status" className="rounded-lg border border-accent bg-accent/15 p-3 text-sm">
+            Música <strong>arquivada</strong>: não aparece na lista do repertório.
+          </p>
+        )}
         <h1 className="text-2xl font-semibold">{song.title}</h1>
         {song.artist && <p className="text-muted-foreground">{song.artist}</p>}
         <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
@@ -187,6 +197,12 @@ function SongView({ song }: { song: SongDetail }) {
                 {song.chords ? 'Editar cifra' : 'Adicionar cifra'}
               </Button>
             )}
+            {canManageSongs && (
+              <Button variant="outline" size="sm" onClick={() => startEditing('dados')}>
+                <SquarePen aria-hidden="true" />
+                Editar dados
+              </Button>
+            )}
             {canSetKey && (
               <Button variant="outline" size="sm" onClick={() => startEditing('tom')}>
                 <KeyRound aria-hidden="true" />
@@ -199,11 +215,19 @@ function SongView({ song }: { song: SongDetail }) {
                 Histórico
               </Link>
             </Button>
+            {canArchive && (
+              <ArchiveSongButton
+                songId={song.id}
+                title={song.title}
+                archived={Boolean(song.archived_at)}
+              />
+            )}
           </div>
         )}
         <p role="status" aria-live="polite" className="text-sm font-medium text-primary">
           {notice}
         </p>
+        {editing === 'dados' && <SongDataEditor song={song} onDone={finishEditing} />}
         {editing === 'tom' && (
           <OfficialKeyEditor
             songId={song.id}

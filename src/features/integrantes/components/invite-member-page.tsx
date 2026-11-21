@@ -197,7 +197,7 @@ function InviteForm({
             })}
             {!canSetRoles && (
               <p className="text-sm text-muted-foreground">
-                Liderança e Administração só podem ser definidas por quem gerencia permissões.
+                Administração só pode ser definida por quem gerencia permissões.
               </p>
             )}
           </fieldset>

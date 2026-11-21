@@ -133,6 +133,42 @@ node e2e/api-checks.mjs && node e2e/varredura.mjs && node e2e/fluxos.mjs
    Providers → Email** (ou **Authentication → Policies**, conforme a versão do painel), defina
    "Minimum password length" = **10** e "Password requirements" = **Letters and digits**.
 
+## Perfis e permissões (ADVOP)
+
+O ministério tem **cantores**, **instrumentistas** e o **administrador**. Na prática há dois
+perfis de acesso: **Integrante** (`member`) e **Administração** (`admin`). Os grupos
+(cantor(a)/instrumentista) vêm das funções de cada pessoa (`ministry_functions.section`) e servem
+só para selos e para filtrar a montagem de escala — **não** dão permissão.
+
+| Permissão                | O que libera                                       | Integrante | Admin |
+| ------------------------ | -------------------------------------------------- | :--------: | :---: |
+| (todo integrante ativo)  | ver escalas, agenda, repertório; editar letra      |     ✅     |  ✅   |
+| `chords.edit_official`   | editar a cifra (cifra nova já entra como oficial)  |     ✅     |  ✅   |
+| `songs.set_official_key` | definir o tom oficial                              |     ✅     |  ✅   |
+| `songs.manage`           | cadastrar música ("Nova música") e editar os dados |     ✅     |  ✅   |
+| `songs.delete`           | arquivar música                                    |     —      |  ✅   |
+| `history.restore`        | restaurar versões no histórico                     |     —      |  ✅   |
+| `history.view_all`       | ver a **Atividade recente** de todo o repertório   |     —      |  ✅   |
+| `schedules.manage`       | montar escala e o repertório do evento             |     —      |  ✅   |
+| `events.manage`          | criar/editar/cancelar eventos                      |     —      |  ✅   |
+| `announcements.manage`   | publicar comunicados                               |     —      |  ✅   |
+| `members.manage`         | cadastrar integrantes, perfis e funções            |     —      |  ✅   |
+| `members.view_contacts`  | ver o telefone dos integrantes                     |     —      |  ✅   |
+| `permissions.manage`     | mudar permissões; cadastrar administradores        |     —      |  ✅   |
+
+- O **histórico de cada música** é visível para todos; a visão geral (Atividade recente) é só do
+  admin.
+- Exceções por pessoa: `user_permissions` (`grant`/`deny`), que valem mais que o padrão do
+  perfil.
+- Quem decide é o banco (`has_permission`, RLS e triggers); esconder botão é só conforto.
+- O valor `leader` continua no enum do banco, mas ninguém usa (uma CHECK impede).
+
+## Identidade (nome da igreja)
+
+Nome da igreja e do app ficam em [`src/config/brand.ts`](src/config/brand.ts): título da aba,
+login, topo, manifest do PWA ("Louvor ADVOP") e mensagem de convite. Para outra igreja, troque só
+esse arquivo.
+
 ## Cadastrar integrantes (Edge Function `invite-member`)
 
 O cadastro público fica desligado. Quem tem a permissão `members.manage` cadastra pela tela

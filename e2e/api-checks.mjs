@@ -21,46 +21,8 @@ async function login(email) {
 
 // ---------------------------------------------------------------- integrante
 const member = await login('integrante@demo.local');
-const { data: before } = await member
-  .from('song_chords')
-  .select('content')
-  .eq('song_id', SONG)
-  .single();
-
-{
-  const { error } = await member
-    .from('song_chords')
-    .upsert(
-      { song_id: SONG, content: '[A]hack', review_status: 'official' },
-      { onConflict: 'song_id' },
-    )
-    .select('song_id');
-  check(
-    error?.code === '42501',
-    'integrante: upsert de cifra oficial é recusado',
-    error?.code ?? 'sem erro',
-  );
-}
-{
-  const { data, error } = await member
-    .from('song_chords')
-    .update({ content: '[A]hack' })
-    .eq('song_id', SONG)
-    .select('song_id');
-  check(
-    !error && data.length === 0,
-    'integrante: update de cifra afeta 0 linhas (RLS)',
-    error?.message ?? `${data?.length} linhas`,
-  );
-}
-{
-  const { data: after } = await member
-    .from('song_chords')
-    .select('content')
-    .eq('song_id', SONG)
-    .single();
-  check(after?.content === before?.content, 'integrante: cifra continua igual no banco');
-}
+// Modelo ADVOP: o integrante EDITA cifra e tom oficial (permissões padrão). As verificações
+// disso ficam na música criada pela própria API (mais abaixo), sem mexer no seed.
 {
   const { data: v } = await member
     .from('song_versions')
@@ -72,18 +34,6 @@ const { data: before } = await member
   check(
     error?.code === '42501',
     'integrante: restore_song_version é recusado',
-    error?.message ?? 'sem erro',
-  );
-}
-{
-  const { error } = await member
-    .from('songs')
-    .update({ official_key: 'A' })
-    .eq('id', SONG)
-    .select('id');
-  check(
-    error?.code === '42501',
-    'integrante: mudar tom oficial é recusado',
     error?.message ?? 'sem erro',
   );
 }
@@ -120,11 +70,104 @@ const { data: before } = await member
   check(error?.code === '42501', 'integrante: não cria eventos', error?.code ?? 'sem erro');
 }
 
-// ---------------------------------------------------------------- líder
+// ---------------------------------------------------------------- modelo ADVOP (integrante)
+{
+  const { data, error } = await member.rpc('get_recent_activity', {});
+  check(
+    error?.code === '42501',
+    'integrante: get_recent_activity (atividade geral) é recusada',
+    error?.message ?? `${data?.length} linhas`,
+  );
+}
+{
+  const { error } = await member
+    .from('songs')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', SONG)
+    .select('id');
+  check(error?.code === '42501', 'integrante: não arquiva música', error?.message ?? 'sem erro');
+}
+{
+  const { data: ev } = await member.from('events').select('id').limit(1).single();
+  const { data: fn } = await member.from('ministry_functions').select('id').limit(1).single();
+  const { data: me } = await member.auth.getUser();
+  const { error } = await member
+    .from('event_assignments')
+    .insert({ event_id: ev.id, user_id: me.user.id, function_id: fn.id })
+    .select('id');
+  check(error?.code === '42501', 'integrante: não monta escala', error?.code ?? 'sem erro');
+}
+{
+  const { error } = await member.from('audit_logs').select('id');
+  const { data } = await member.from('audit_logs').select('id');
+  check(!error && (data ?? []).length === 0, 'integrante: não lê a auditoria', `${data?.length}`);
+}
+{
+  const { data } = await member.from('song_versions').select('id').eq('song_id', SONG);
+  check(
+    (data ?? []).length > 0,
+    'integrante: histórico de cada música continua visível',
+    `${data?.length}`,
+  );
+}
+{
+  const { data, error } = await member.rpc('my_permissions');
+  const keys = [...(data ?? [])].sort().join(',');
+  check(
+    !error && keys === 'chords.edit_official,songs.manage,songs.set_official_key',
+    'integrante: permissões padrão ADVOP',
+    keys,
+  );
+}
+{
+  // Integrante cadastra música pela API (letra e cifra) e edita a cifra; o admin apaga depois
+  // para não mudar a contagem do repertório usada pelos testes de tela.
+  const { data: id, error } = await member.rpc('create_song', {
+    p_title: 'Música da API (exemplo)',
+    p_artist: '',
+    p_category: '',
+    p_original_key: 'G',
+    p_official_key: 'G',
+    p_media_url: '',
+    p_notes: '',
+    p_lyrics: 'Linha fictícia',
+    p_chords: '{key: G}\n[G]Linha fictícia',
+  });
+  check(
+    !error && typeof id === 'string',
+    'integrante: cadastra música (create_song)',
+    error?.message ?? '',
+  );
+  if (id) {
+    const { data: upd, error: e2 } = await member
+      .from('song_chords')
+      .update({ content: '{key: G}\n[D]Editada' })
+      .eq('song_id', id)
+      .select('song_id');
+    check(!e2 && upd.length === 1, 'integrante: edita a cifra da música nova', e2?.message ?? '');
+    const { data: key, error: e3 } = await member
+      .from('songs')
+      .update({ official_key: 'A' })
+      .eq('id', id)
+      .select('official_key');
+    check(
+      !e3 && key?.[0]?.official_key === 'A',
+      'integrante: muda o tom oficial da música nova',
+      e3?.message ?? '',
+    );
+    globalThis.apiSongId = id;
+  }
+}
+
+// ---------------------------------------------------------------- Lucas (antigo "líder")
 const leader = await login('lider@demo.local');
 {
   const { data, error } = await leader.rpc('get_member_contacts');
-  check(!error && data.length >= 3, 'líder: vê os telefones de todos', `${data?.length} linhas`);
+  check(
+    !error && data.length === 1,
+    'ex-líder (agora integrante): só o próprio telefone',
+    `${data?.length} linhas`,
+  );
 }
 {
   const { error } = await leader
@@ -132,7 +175,15 @@ const leader = await login('lider@demo.local');
     .update({ access_role: 'admin' })
     .eq('id', (await leader.auth.getUser()).data.user.id)
     .select('id');
-  check(error?.code === '42501', 'líder: não se promove a admin', error?.code ?? 'sem erro');
+  check(error?.code === '42501', 'ex-líder: não se promove a admin', error?.code ?? 'sem erro');
+}
+{
+  const { error } = await leader
+    .from('profiles')
+    .update({ access_role: 'leader' })
+    .eq('id', (await leader.auth.getUser()).data.user.id)
+    .select('id');
+  check(Boolean(error), 'ninguém volta a ser "leader"', error?.code ?? 'sem erro');
 }
 
 // ---------------------------------------------------------------- Edge Function invite-member
@@ -182,6 +233,23 @@ async function callInvite(client, body) {
   check(r.status === 403, 'líder sem members.manage: invite-member recusa', `${r.status}`);
 }
 const admin = await login('admin@demo.local');
+{
+  const { data, error } = await admin.rpc('get_recent_activity', { p_limit: 20 });
+  check(
+    !error &&
+      data.some((r) => r.song_title === 'Música da API (exemplo)' && r.actor_name === 'Isa'),
+    'admin: atividade recente mostra a música cadastrada pela integrante',
+    error?.message ?? `${data?.length} linhas`,
+  );
+}
+if (globalThis.apiSongId) {
+  const { data, error } = await admin
+    .from('songs')
+    .delete()
+    .eq('id', globalThis.apiSongId)
+    .select('id');
+  check(!error && data.length === 1, 'admin: apaga música (songs.delete)', error?.message ?? '');
+}
 {
   const r = await callInvite(admin, { ...newMember, email: 'nao-e-email' });
   check(

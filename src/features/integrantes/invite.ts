@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { brand } from '@/config/brand';
 import { UserFacingError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import {
@@ -24,20 +25,23 @@ export const inviteFormSchema = z.object({
     .max(NAME_MAX, `Use até ${NAME_MAX} caracteres.`),
   displayName: z.string().trim().max(DISPLAY_NAME_MAX, `Use até ${DISPLAY_NAME_MAX} caracteres.`),
   email: z.string().trim().min(1, 'Informe o e-mail.').email('E-mail inválido.'),
-  accessRole: z.enum(['member', 'leader', 'admin']),
+  accessRole: z.enum(['member', 'admin']),
   functionIds: z.array(z.number().int().positive()),
 });
 
 export type InviteFormValues = z.infer<typeof inviteFormSchema>;
 
 export const ROLE_OPTIONS: { value: InviteRole; label: string; hint: string }[] = [
-  { value: 'member', label: 'Integrante', hint: 'Vê escalas e repertório, edita letras.' },
   {
-    value: 'leader',
-    label: 'Liderança',
-    hint: 'Monta escalas, edita cifras e tom oficial, publica comunicados.',
+    value: 'member',
+    label: 'Integrante',
+    hint: 'Escalas, repertório, letras, cifras, tom oficial e cadastro de músicas.',
   },
-  { value: 'admin', label: 'Administração', hint: 'Tudo, inclusive integrantes e permissões.' },
+  {
+    value: 'admin',
+    label: 'Administração',
+    hint: 'Tudo, inclusive escalas, comunicados, integrantes, permissões e histórico geral.',
+  },
 ];
 
 /** Erro da Edge Function já em português (o corpo é `{ error: "..." }`). */
@@ -87,7 +91,7 @@ export function buildInviteMessage(input: {
 }): string {
   const firstName = input.fullName.trim().split(/\s+/)[0] ?? '';
   return [
-    `Olá, ${firstName}! Seu acesso ao app do Ministério de Louvor está pronto.`,
+    `Olá, ${firstName}! Seu acesso ao app do ${brand.appName} (${brand.churchName}) está pronto.`,
     '',
     `Endereço: ${input.appUrl}`,
     `E-mail: ${input.email}`,

@@ -39,8 +39,9 @@ begin
     access_role = 'admin', is_owner = true, status = 'active', phone = '(00) 90000-0001'
   where id = v_admin;
 
-  update public.profiles set full_name = 'Lucas Líder', display_name = 'Lucas',
-    access_role = 'leader', status = 'active', phone = '(00) 90000-0002'
+  -- 'lider@demo.local' é só o e-mail antigo: o perfil "liderança" não é mais usado (é integrante).
+  update public.profiles set full_name = 'Lucas Lima', display_name = 'Lucas',
+    access_role = 'member', status = 'active', phone = '(00) 90000-0002'
   where id = v_leader;
 
   update public.profiles set full_name = 'Isa Integrante', display_name = 'Isa',

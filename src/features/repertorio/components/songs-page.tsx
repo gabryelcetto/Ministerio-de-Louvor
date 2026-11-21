@@ -1,8 +1,10 @@
-import { ChevronRight, Search } from 'lucide-react';
+import { ChevronRight, Plus, Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/states';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePermission } from '@/lib/permissions';
 import { cn } from '@/lib/utils';
 import { useSongCategories, useSongSearch, type SongListItem } from '../api';
 
@@ -49,14 +51,25 @@ export function SongsPage() {
 
   const songs = useSongSearch(query, category);
   const categories = useSongCategories();
+  const canAdd = usePermission('songs.manage');
 
   return (
     <section className="mx-auto flex max-w-3xl flex-col gap-5">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Repertório</h1>
-        <p className="text-sm text-muted-foreground">
-          Busque pelo nome ou autor — acentos não importam.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold">Repertório</h1>
+          <p className="text-sm text-muted-foreground">
+            Busque pelo nome ou autor — acentos não importam.
+          </p>
+        </div>
+        {canAdd && (
+          <Button asChild>
+            <Link to="/repertorio/nova">
+              <Plus aria-hidden="true" />
+              Nova música
+            </Link>
+          </Button>
+        )}
       </header>
 
       <div className="relative">
