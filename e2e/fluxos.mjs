@@ -17,6 +17,8 @@ const MOBILE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch
 const DESKTOP = { viewport: { width: 1366, height: 900 } };
 
 const results = [];
+/** Evento "Culto de teste E2E" criado pelo admin (o modo culto da integrante abre ele). */
+let eventE2E = '';
 let shot = 0;
 // Microfone falso (um bipe gerado pelo Chromium) para testar a gravação de ensaio.
 const browser = await chromium.launch({
@@ -284,17 +286,29 @@ const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click(
     await expectText(page, /Doxologia/);
   });
 
-  await step(page, who, 'Agenda com 5 eventos', async () => {
+  await step(page, who, 'Agenda por mês: os 5 eventos (este mês e o próximo)', async () => {
     await page.goto(`${BASE}/agenda`);
     await page.waitForLoadState('networkidle');
-    for (const t of [
+    await page.getByRole('navigation', { name: 'Mês' }).waitFor();
+    // Os eventos do seed vão até 13 dias à frente: podem cair no mês seguinte.
+    await page.waitForTimeout(500);
+    const thisMonth = await main(page).innerText();
+    await page.getByRole('button', { name: 'Próximo mês' }).click();
+    await page.waitForURL(/mes=/);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+    const nextMonth = await main(page).innerText();
+    const all = `${thisMonth}\n${nextMonth}`;
+    const missing = [
       'Ensaio geral',
       'Culto de celebração',
       'Ensaio de vozes',
       'Culto da família',
       'Noite de louvor',
-    ])
-      await expectText(page, t);
+    ].filter((t) => !all.includes(t));
+    if (missing.length) throw new Error(`faltando: ${missing.join(', ')}`);
+    await page.getByRole('button', { name: 'Hoje' }).click();
+    await page.waitForURL((u) => !u.search.includes('mes='));
   });
 
   await step(page, who, 'Integrantes sem telefone', async () => {
@@ -508,7 +522,7 @@ const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click(
   await step(page, who, 'Montar escala: validação de campos', async () => {
     await page.goto(`${BASE}/escalas/montar`);
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: 'Salvar escala' }).click();
+    await page.getByRole('button', { name: /^Criar evento/ }).click();
     await expectText(page, 'Informe o título.');
   });
 
@@ -529,10 +543,36 @@ const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click(
     await page.getByRole('button', { name: 'Adicionar pessoa' }).click();
     await pessoas.nth(1).selectOption({ index: 1 });
     await funcoes.nth(1).selectOption({ label: 'Teclado' });
-    await page.getByRole('button', { name: 'Salvar escala' }).click();
-    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    await page.getByRole('button', { name: 'Criar evento e salvar escala' }).click();
+    // Passo 3: repertório (evento e equipe já gravados numa transação só).
+    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}\/repertorio\?montar=1$/, { timeout: 15000 });
+    await expectText(page, /Passo 3/);
+  });
+
+  await step(page, who, 'Montar escala: repertório com 2 músicas, ordem e tom do dia', async () => {
+    const search = page.getByLabel('Buscar no repertório');
+    for (const title of ['Doxologia', 'Santo! Santo! Santo!']) {
+      await search.fill(title);
+      await page
+        .getByRole('list', { name: 'Resultado da busca' })
+        .getByRole('button', { name: new RegExp(`Adicionar.*${title.replace(/[!]/g, '.')}`) })
+        .first()
+        .click();
+    }
+    const order = page.getByRole('list', { name: 'Ordem do repertório' });
+    await order.getByRole('group').nth(1).waitFor();
+    // Santo! primeiro (sobe), tom do dia E na segunda música.
+    await page.getByRole('button', { name: 'Subir Santo! Santo! Santo!' }).click();
+    await order.getByRole('group').nth(1).getByLabel('Tom do dia').selectOption('A');
+    await page.getByRole('button', { name: 'Salvar repertório' }).click();
+    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}#repertorio$/, { timeout: 15000 });
+    eventE2E = new URL(page.url()).pathname.split('/').pop();
     await expectText(page, 'Culto de teste E2E');
     await expectText(page, '19:30');
+    const region = main(page).getByRole('region', { name: 'Repertório' });
+    const first = await region.getByRole('link').first().innerText();
+    if (!/Santo/.test(first)) throw new Error(`primeira música: ${first}`);
+    return eventE2E;
   });
 
   await step(page, who, 'Desktop: Início', async () => {
@@ -701,6 +741,22 @@ let newSongPath = '';
     await page.goto(`${BASE}/notificacoes`);
     await page.waitForLoadState('networkidle');
     await expectText(page, /Culto de teste E2E/);
+  });
+  await step(page, 'integrante', 'Modo culto: 1ª música no tom do dia e "Próxima"', async () => {
+    if (!eventE2E) throw new Error('o evento de teste não foi criado');
+    await page.goto(`${BASE}/escalas/${eventE2E}`);
+    await page.waitForLoadState('networkidle');
+    await main(page).getByRole('region', { name: 'Repertório' }).getByRole('link').first().click();
+    await page.waitForURL(/\/repertorio\/.+evento=/);
+    await page.getByText(/^1 de 2 · Culto de teste E2E/).waitFor();
+    await page
+      .getByRole('navigation', { name: 'Sequência do repertório' })
+      .getByRole('button', { name: /Próxima/ })
+      .click();
+    await page.getByText(/^2 de 2 · Culto de teste E2E em A$/).waitFor();
+    const tom = await page.getByRole('combobox', { name: 'Tom', exact: true }).inputValue();
+    if (tom !== 'A') throw new Error(`tom do dia: ${tom}`);
+    return page.url().replace(BASE, '');
   });
   await context.close();
 }
