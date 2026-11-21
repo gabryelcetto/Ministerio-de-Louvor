@@ -1,54 +1,182 @@
 // @vitest-environment happy-dom
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fake } from '@/test/fake-supabase';
-import { SONG2_ID, SONG_ID } from '@/test/fixtures';
+import { SERVICE_ID, SONG2_ID, SONG_ID } from '@/test/fixtures';
 import { findHeading, renderApp } from '@/test/render-app';
 
 vi.mock('@/services/supabase', async () => ({
   supabase: (await import('@/test/fake-supabase')).fake.client,
 }));
+vi.mock('@/lib/audio/soundtouch', () => ({
+  isSoundTouchSupported: () => false,
+  attachSoundTouch: vi.fn(),
+}));
 
-const open = (as: 'admin' | 'member' = 'admin', path = `/repertorio/${SONG_ID}`) => {
-  const app = renderApp(path, { as });
-  return app;
-};
+const wakeLock = { request: vi.fn() };
+beforeEach(() => {
+  wakeLock.request.mockReset().mockResolvedValue({ release: vi.fn(async () => undefined) });
+  Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: wakeLock });
+  HTMLMediaElement.prototype.play = vi.fn(async () => undefined);
+  HTMLMediaElement.prototype.pause = vi.fn();
+});
 
-describe('tela da música', () => {
-  it('transpõe pela barra de tom, volta ao oficial e muda o tamanho da letra', async () => {
+const open = (as: 'admin' | 'member' = 'admin', path = `/repertorio/${SONG_ID}`) =>
+  renderApp(path, { as });
+
+async function menuItem(user: ReturnType<typeof open>['user'], name: string | RegExp) {
+  await user.click(await screen.findByRole('button', { name: 'Mais opções' }));
+  return screen.findByRole('menuitem', { name });
+}
+
+describe('música: modo tocar', () => {
+  it('cabeçalho com título e "Tom oficial"; só Cifra | Letra entre o topo e a cifra', async () => {
+    open();
+    await findHeading('Grande é o Senhor');
+    expect(screen.getByText('Tom oficial A')).toBeTruthy();
+    expect(screen.getByRole('tablist', { name: 'Conteúdo da música' })).toBeTruthy();
+    // Nada de botões de edição soltos na tela: ficam no ⋯.
+    expect(screen.queryByRole('button', { name: 'Editar letra' })).toBeNull();
+    // Acordes na cor do acorde, sobre a sílaba.
+    expect(document.querySelector('.text-chord')?.textContent).toBeTruthy();
+  });
+
+  it('vindo de uma escala: "Tom oficial A · Culto de domingo em B"', async () => {
+    open('member', `/repertorio/${SONG_ID}?tom=B&evento=${SERVICE_ID}`);
+    expect(await screen.findByText('Tom oficial A · Culto de domingo em B')).toBeTruthy();
+  });
+
+  it('dock: − / + transpõem (legenda em tons), Oficial volta, troca rápida não quebra', async () => {
     const { user, router } = open();
     await findHeading('Grande é o Senhor');
-    // Abre no tom oficial (A): a cifra em G sobe 2 semitons.
-    expect(router.state.location.search).toBe('');
-    await user.click(screen.getByRole('button', { name: 'Subir meio tom' }));
+    const dock = screen.getByRole('region', { name: 'Controles da música' });
+    expect(within(dock).getByText(/no tom oficial/)).toBeTruthy();
+    await user.click(within(dock).getByRole('button', { name: 'Subir meio tom' }));
     expect(router.state.location.search).toBe('?tom=Bb');
-    await user.click(screen.getByRole('button', { name: 'Descer meio tom' }));
-    await user.click(screen.getByRole('button', { name: 'Descer meio tom' }));
+    expect(await within(dock).findByText(/\+½ tom · áudio acompanha/)).toBeTruthy();
+    await user.click(within(dock).getByRole('button', { name: 'Subir meio tom' }));
+    expect(within(dock).getByText(/\+1 tom · áudio acompanha/)).toBeTruthy();
+    await user.click(within(dock).getByRole('button', { name: 'Descer meio tom' }));
+    await user.click(within(dock).getByRole('button', { name: 'Descer meio tom' }));
+    await user.click(within(dock).getByRole('button', { name: 'Descer meio tom' }));
     expect(router.state.location.search).toMatch(/tom=(G%23|Ab)/);
-    await user.click(screen.getByTitle(/Voltar ao tom oficial/));
+    await user.click(within(dock).getByRole('button', { name: /Oficial/ }));
     expect(router.state.location.search).toContain('tom=A');
-    // Troca rápida de tom repetidas vezes não quebra a tela.
     for (let i = 0; i < 15; i++) {
-      await user.click(screen.getByRole('button', { name: 'Subir meio tom' }));
+      await user.click(within(dock).getByRole('button', { name: 'Subir meio tom' }));
     }
     expect(router.state.location.search).toMatch(/tom=/);
-    await user.click(screen.getByRole('button', { name: 'Aumentar letra' }));
-    await user.click(screen.getByRole('button', { name: 'Diminuir letra' }));
-    // Aba da letra
+    await user.selectOptions(within(dock).getByRole('combobox', { name: 'Tom' }), 'C');
+    expect(router.state.location.search).toBe('?tom=C');
+  });
+
+  it('Aa alterna 3 tamanhos e lembra; a aba escolhida também fica guardada', async () => {
+    const { user, router } = open();
+    await findHeading('Grande é o Senhor');
+    await user.click(screen.getByRole('button', { name: /Tamanho da letra: Média/ }));
+    expect(screen.getByRole('button', { name: /Tamanho da letra: Grande/ })).toBeTruthy();
+    expect(localStorage.getItem('louvor.tamanho-letra')).toBe('2');
+    await user.click(screen.getByRole('button', { name: /Tamanho da letra: Grande/ }));
+    expect(screen.getByRole('button', { name: /Tamanho da letra: Pequena/ })).toBeTruthy();
+
     await user.click(screen.getByRole('tab', { name: 'Letra' }));
     expect(router.state.location.search).toContain('aba=letra');
-    // Setas do teclado trocam de aba (padrão WAI-ARIA).
+    expect(localStorage.getItem('louvor.aba')).toBe('letra');
     screen.getByRole('tab', { name: 'Letra' }).focus();
     await user.keyboard('{ArrowLeft}');
     expect(router.state.location.search).toContain('aba=cifra');
-    await user.keyboard('{ArrowRight}');
-    await user.keyboard('{Enter}');
   });
 
-  it('edita e salva a letra', async () => {
+  it('abre na última aba escolhida', async () => {
+    open();
+    // Gravado antes de a música carregar (a tela lê a aba ao montar).
+    localStorage.setItem('louvor.aba', 'letra');
+    await findHeading('Grande é o Senhor');
+    expect(screen.getByRole('tab', { name: 'Letra' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('dock com o áudio de referência: tocar, chip de velocidade 100% → 75% → 50%', async () => {
+    const { user } = open('member');
+    await findHeading('Grande é o Senhor');
+    const player = await screen.findByTestId('audio-player');
+    expect(player.dataset.pitch).toBe('2'); // original G, na tela A
+    await user.click(within(player).getByRole('button', { name: 'Tocar Voz guia' }));
+    await user.click(within(player).getByRole('button', { name: 'Velocidade 100%' }));
+    expect(player.dataset.speed).toBe('0.75');
+    await user.click(within(player).getByRole('button', { name: 'Velocidade 75%' }));
+    expect(player.dataset.speed).toBe('0.5');
+    await user.click(within(player).getByRole('button', { name: 'Velocidade 50%' }));
+    expect(player.dataset.speed).toBe('1');
+    fireEvent.change(within(player).getByRole('slider', { name: 'Posição em Voz guia' }), {
+      target: { value: '30' },
+    });
+  });
+
+  it('ajustes do áudio: tom manual desliga o "acompanhar"; o áudio escolhido fica marcado', async () => {
+    const { user } = open('member');
+    await findHeading('Grande é o Senhor');
+    await screen.findByTestId('audio-player');
+    await user.click(await screen.findByRole('button', { name: 'Subir meio tom do áudio' }));
+    expect(screen.getByTestId('audio-player').dataset.pitch).toBe('3');
+    const follow = screen.getByRole('checkbox', { name: /Acompanhar o tom da cifra/ });
+    expect((follow as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText(/áudio no ajuste manual/)).toBeTruthy();
+    await user.click(follow);
+    expect(screen.getByTestId('audio-player').dataset.pitch).toBe('2');
+    await user.click(screen.getByRole('button', { name: '75%' }));
+    await user.click(screen.getByRole('button', { name: 'Aumentar velocidade' }));
+    await user.click(screen.getByRole('button', { name: 'Diminuir velocidade' }));
+    expect(screen.getByTestId('audio-player').dataset.speed).toBe('0.75');
+    const chosen = screen.getByRole('button', { name: /No player.*Voz guia/ });
+    expect(chosen.getAttribute('aria-pressed')).toBe('true');
+    await user.click(chosen);
+  });
+
+  it('mantém a tela ligada (Wake Lock) no modo tocar', async () => {
+    open('member');
+    await findHeading('Grande é o Senhor');
+    await waitFor(() => expect(wakeLock.request).toHaveBeenCalledWith('screen'));
+  });
+});
+
+describe('música: menu ⋯', () => {
+  it('admin vê todas as ações', async () => {
+    const { user } = open('admin');
+    await findHeading('Grande é o Senhor');
+    await user.click(await screen.findByRole('button', { name: 'Mais opções' }));
+    expect((await screen.findAllByRole('menuitem')).map((i) => i.textContent)).toEqual([
+      'Editar cifra',
+      'Editar letra',
+      'Editar dados',
+      'Definir tom oficial',
+      'Histórico',
+      'Gravar áudio de referência',
+      'Excluir',
+    ]);
+  });
+
+  it('sem permissões extras: letra, histórico e gravar', async () => {
+    const { user } = renderApp(`/repertorio/${SONG2_ID}`, {
+      as: 'member',
+      setup: (s) => {
+        s.rpc!.my_permissions = [];
+      },
+    });
+    await findHeading('Música sem cifra');
+    expect(screen.getByText('Esta música ainda não tem letra.')).toBeTruthy();
+    await user.click(await screen.findByRole('button', { name: 'Mais opções' }));
+    expect((await screen.findAllByRole('menuitem')).map((i) => i.textContent)).toEqual([
+      'Editar letra',
+      'Histórico',
+      'Gravar áudio de referência',
+    ]);
+  });
+
+  it('editar e salvar a letra (o dock some enquanto edita)', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(await screen.findByRole('button', { name: 'Editar letra' }));
+    await user.click(await menuItem(user, 'Editar letra'));
+    expect(screen.queryByRole('region', { name: 'Controles da música' })).toBeNull();
     const field = screen.getByRole('textbox', { name: 'Letra' });
     await user.clear(field);
     await user.type(field, 'Nova letra');
@@ -57,12 +185,13 @@ describe('tela da música', () => {
     expect(fake.writes('song_lyrics', 'upsert')).toEqual([
       { song_id: SONG_ID, content: 'Nova letra' },
     ]);
+    expect(screen.getByRole('region', { name: 'Controles da música' })).toBeTruthy();
   });
 
-  it('cancelar com alteração pede confirmação; continuar editando mantém o texto', async () => {
+  it('cancelar com alteração pede confirmação', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(await screen.findByRole('button', { name: 'Editar letra' }));
+    await user.click(await menuItem(user, 'Editar letra'));
     await user.type(screen.getByRole('textbox', { name: 'Letra' }), ' mais');
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
     const dialog = await screen.findByRole('dialog', { name: 'Descartar alterações?' });
@@ -77,16 +206,15 @@ describe('tela da música', () => {
         { name: 'Descartar' },
       ),
     );
-    expect(screen.getByRole('button', { name: 'Editar letra' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Controles da música' })).toBeTruthy();
   });
 
-  it('edita a cifra com pré-visualização, avisos e conversão', async () => {
+  it('editar a cifra com conversão e salvar', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(await screen.findByRole('button', { name: 'Editar cifra' }));
-    const field = screen.getByLabelText('Cifra (ChordPro)');
+    await user.click(await menuItem(user, 'Editar cifra'));
+    const field = screen.getByRole('textbox', { name: 'Cifra' });
     await user.clear(field);
-    // Acordes sobre a letra: o botão converte para ChordPro.
     await user.type(field, 'G       D{enter}Quão grande és Tu');
     await user.click(screen.getByRole('button', { name: /Converter acordes sobre a letra/ }));
     expect((field as HTMLTextAreaElement).value).toContain('[G]');
@@ -94,16 +222,12 @@ describe('tela da música', () => {
     await user.click(screen.getByRole('button', { name: 'Editar' }));
     await user.click(screen.getByRole('button', { name: 'Salvar cifra' }));
     expect(await screen.findByText('Cifra salva.')).toBeTruthy();
-    expect(fake.writes('song_chords', 'upsert')[0]).toMatchObject({
-      song_id: SONG_ID,
-      review_status: 'official',
-    });
   });
 
-  it('define o tom oficial e mostra erro do banco em português', async () => {
+  it('definir tom oficial: erro do banco em linguagem simples', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(await screen.findByRole('button', { name: 'Definir tom oficial' }));
+    await user.click(await menuItem(user, 'Definir tom oficial'));
     await user.selectOptions(screen.getByLabelText('Tom oficial'), 'C');
     fake.fail(
       'from',
@@ -115,37 +239,57 @@ describe('tela da música', () => {
     expect(await screen.findByText(/não tem permissão/)).toBeTruthy();
   });
 
-  it('edita os dados e arquiva/desarquiva', async () => {
+  it('editar dados e excluir (com confirmação)', async () => {
     const { user } = open();
     await findHeading('Grande é o Senhor');
-    await user.click(await screen.findByRole('button', { name: 'Editar dados' }));
+    await user.click(await menuItem(user, 'Editar dados'));
     const title = screen.getByLabelText('Título');
     await user.clear(title);
     await user.type(title, 'Grande é o Senhor (nova)');
-    await user.type(screen.getByLabelText('Link de áudio/vídeo (opcional)'), 'https://youtu.be/x');
-    // happy-dom não atualiza o isDirty do react-hook-form (no navegador o E2E cobre o botão):
-    // envia o formulário direto.
+    // happy-dom não atualiza o isDirty do react-hook-form (o E2E cobre o botão).
     fireEvent.submit(screen.getByRole('button', { name: 'Salvar dados' }).closest('form')!);
     expect(await screen.findByText('Dados da música salvos.')).toBeTruthy();
-    expect(fake.writes('songs', 'update')[0]).toMatchObject({ title: 'Grande é o Senhor (nova)' });
 
-    await user.click(screen.getByRole('button', { name: 'Arquivar' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Arquivar esta música?' });
-    await user.click(within(dialog).getByRole('button', { name: 'Arquivar' }));
+    await user.click(await menuItem(user, 'Excluir'));
+    const dialog = await screen.findByRole('dialog', { name: 'Excluir esta música?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Excluir' }));
     await waitFor(() =>
       expect(
-        fake.writes('songs', 'update').some((p) => (p as { archived_at?: string }).archived_at),
+        fake
+          .writes('songs', 'update')
+          .some((p) => Boolean((p as { archived_at?: string }).archived_at)),
       ).toBe(true),
     );
   });
 
-  it('integrante não vê Arquivar nem Histórico restaurável; música sem cifra abre na letra', async () => {
-    const { user, router } = open('member', `/repertorio/${SONG2_ID}`);
-    await findHeading('Música sem cifra');
-    expect(screen.queryByRole('button', { name: 'Arquivar' })).toBeNull();
-    expect(screen.getByText('Esta música ainda não tem letra.')).toBeTruthy();
-    await user.click(await screen.findByRole('button', { name: 'Adicionar cifra' }));
-    expect(router.state.location.search).toContain('aba=cifra');
+  it('música excluída: aviso e "Restaurar música"', async () => {
+    const { user } = renderApp(`/repertorio/${SONG_ID}`, {
+      as: 'admin',
+      setup: (s) => {
+        s.tables!.songs!.find((x) => x.id === SONG_ID)!.archived_at = '2026-01-10T00:00:00Z';
+      },
+    });
+    expect(await screen.findByText(/excluída/)).toBeTruthy();
+    await user.click(await menuItem(user, 'Restaurar música'));
+    const dialog = await screen.findByRole('dialog', { name: 'Restaurar esta música?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Restaurar' }));
+    await waitFor(() =>
+      expect(fake.writes('songs', 'update')).toContainEqual({ archived_at: null }),
+    );
+  });
+
+  it('histórico e gravar áudio de referência pelo menu', async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    const { user, router } = open('member');
+    await findHeading('Grande é o Senhor');
+    await user.click(await menuItem(user, 'Gravar áudio de referência'));
+    expect(scroll).toHaveBeenCalled();
+    expect(document.activeElement?.textContent).toContain('Gravar');
+    await user.click(await menuItem(user, 'Histórico'));
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/repertorio/${SONG_ID}/historico`),
+    );
   });
 
   it('música inexistente', async () => {

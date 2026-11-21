@@ -1,6 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Archive, ArchiveRestore } from 'lucide-react';
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { FormError } from '@/components/common/form-error';
@@ -62,42 +60,42 @@ export function SongDataEditor({
   );
 }
 
-/** Arquivar / desarquivar (songs.delete). Arquivada some da busca, mas o histórico fica. */
-export function ArchiveSongButton({
+/**
+ * Excluir (arquivar) ou restaurar a música (songs.delete), aberto pelo menu ⋯. Excluir só tira
+ * a música do repertório: o histórico e as escalas antigas continuam, e dá para restaurar.
+ */
+export function ArchiveSongDialog({
   songId,
   title,
   archived,
+  open,
+  onClose,
 }: {
   songId: string;
   title: string;
   archived: boolean;
+  open: boolean;
+  onClose: () => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
   const mutation = useSetSongArchived(songId);
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => (archived ? mutation.mutate(false) : setConfirming(true))}
-        disabled={mutation.isPending}
-      >
-        {archived ? <ArchiveRestore aria-hidden="true" /> : <Archive aria-hidden="true" />}
-        {archived ? 'Desarquivar' : 'Arquivar'}
-      </Button>
-      <FormError error={mutation.error} fallback="Não foi possível arquivar." />
+      <FormError
+        error={mutation.error}
+        fallback={archived ? 'Não foi possível restaurar.' : 'Não foi possível excluir.'}
+      />
       <ConfirmDialog
-        open={confirming}
-        title="Arquivar esta música?"
-        confirmLabel="Arquivar"
-        destructive
+        open={open}
+        title={archived ? 'Restaurar esta música?' : 'Excluir esta música?'}
+        confirmLabel={archived ? 'Restaurar' : 'Excluir'}
+        destructive={!archived}
         busy={mutation.isPending}
-        onCancel={() => setConfirming(false)}
-        onConfirm={() => mutation.mutate(true, { onSettled: () => setConfirming(false) })}
+        onCancel={onClose}
+        onConfirm={() => mutation.mutate(!archived, { onSettled: onClose })}
       >
-        “{title}” sai da lista do repertório. O histórico e as escalas antigas continuam, e quem
-        arquivou pode desarquivar.
+        {archived
+          ? `“${title}” volta para a lista do repertório.`
+          : `“${title}” sai da lista do repertório. O histórico e as escalas antigas continuam, e um administrador pode restaurar depois.`}
       </ConfirmDialog>
     </>
   );

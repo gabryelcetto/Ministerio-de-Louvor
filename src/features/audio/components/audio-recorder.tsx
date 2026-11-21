@@ -74,6 +74,7 @@ export function RecorderControls({
               className={cn(large && 'h-14 px-6 text-base')}
               onClick={onStart}
               disabled={disabled || recorder.state === 'starting'}
+              data-gravar
             >
               <Mic aria-hidden="true" className={icon} />
               {recorder.state === 'starting' ? 'Abrindo o microfone…' : startLabel}

@@ -14,6 +14,8 @@ import {
 } from '../api';
 import { useAudioNaming } from './use-audio-naming';
 import { AudioRecorder, UploadProgress } from './audio-recorder';
+import { useSongAudio } from '../song-audio';
+import { AudioSettingsPanel } from './audio-settings-panel';
 import { MediaList } from './media-list';
 
 /**
@@ -33,6 +35,7 @@ export function ReferenceAudios({
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const references = useSongReferences(songId);
+  const songAudio = useSongAudio();
   const upload = useUploadAudio('reference', songId);
   const naming = useAudioNaming('reference', songId);
   const [problem, setProblem] = useState<string | null>(null);
@@ -69,9 +72,13 @@ export function ReferenceAudios({
       : null;
 
   return (
-    <section aria-labelledby={`${id}-titulo`} className="flex flex-col gap-3">
-      <h2 id={`${id}-titulo`} className="text-lg font-semibold">
-        Áudio de referência
+    <section
+      id="audios-referencia"
+      aria-labelledby={`${id}-titulo`}
+      className="flex scroll-mt-20 flex-col gap-3"
+    >
+      <h2 id={`${id}-titulo`} className="section-label">
+        Áudios de referência
       </h2>
 
       <AudioRecorder
@@ -149,9 +156,13 @@ export function ReferenceAudios({
           followSemitones={followSemitones}
           followLabel={shift ?? undefined}
           onRename={(item) => naming.open(item.id, item.label, false)}
+          // Na tela da música, o áudio toca no dock (embaixo); aqui só se escolhe qual.
+          onSelect={songAudio ? (item) => songAudio.select(item.id) : undefined}
+          selectedId={songAudio?.selected?.id ?? null}
           emptyText="Nenhum áudio de referência ainda."
         />
       )}
+      {songAudio?.selected && <AudioSettingsPanel state={songAudio} />}
       {naming.dialog}
     </section>
   );

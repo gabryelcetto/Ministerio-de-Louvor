@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { transposeChordPro } from '@/lib/chords';
 import {
   currentKey,
+  formatTones,
+  transposeLegend,
   formatSemitones,
   keyOptions,
   mediaHost,
@@ -84,5 +86,28 @@ describe('categorias', () => {
       'Hino',
       'Louvor',
     ]);
+  });
+});
+
+describe('distância do tom oficial (legenda do dock)', () => {
+  it.each([
+    [0, 'no tom oficial'],
+    [1, '+½ tom'],
+    [2, '+1 tom'],
+    [3, '+1½ tom'],
+    [4, '+2 tons'],
+    [5, '+2½ tons'],
+    [-1, '−½ tom'],
+    [-2, '−1 tom'],
+    [-3, '−1½ tom'],
+    [-6, '−3 tons'],
+  ])('%i semitons → %s', (n, text) => {
+    expect(formatTones(n)).toBe(text);
+  });
+
+  it('legenda com o áudio', () => {
+    expect(transposeLegend(2, 'follow')).toBe('+1 tom · áudio acompanha');
+    expect(transposeLegend(-1, 'manual')).toBe('−½ tom · áudio no ajuste manual');
+    expect(transposeLegend(0, 'none')).toBe('no tom oficial');
   });
 });
