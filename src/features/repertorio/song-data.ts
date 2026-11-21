@@ -147,6 +147,7 @@ export function useSetSongArchived(songId: string) {
       Promise.all([
         client.invalidateQueries({ queryKey: songKeys.detail(songId) }),
         client.invalidateQueries({ queryKey: ['songs', 'search'] }),
+        client.invalidateQueries({ queryKey: ['songs', 'archived'] }),
       ]),
   });
 }

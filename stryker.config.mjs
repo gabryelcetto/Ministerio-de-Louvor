@@ -22,6 +22,7 @@ export default {
     'src/features/repertorio/editor-checks.ts',
     'src/features/repertorio/history-format.ts',
     'src/features/repertorio/song-key.ts',
+    'src/features/repertorio/song-list.ts',
     'src/features/auth/session-cache.ts',
     'src/features/comunicados/audience.ts',
     'supabase/functions/_shared/password.ts',

@@ -14,6 +14,7 @@ import {
   isoToZonedLocal,
   monthKey,
   monthRange,
+  relativeAgo,
   weeklyOccurrences,
   zonedLocalToIso,
 } from './dates';
@@ -121,5 +122,23 @@ describe('meses da agenda', () => {
     });
     expect(formatMonthLabel('2026-11')).toBe('novembro de 2026');
     expect(formatMonthLabel('2027-01')).toBe('janeiro de 2027');
+  });
+});
+
+describe('tempo relativo ("há 3 semanas")', () => {
+  const now = new Date('2026-11-22T15:00:00Z');
+  it.each([
+    ['2026-11-22T10:00:00Z', 'hoje'],
+    ['2026-11-21T20:00:00Z', 'ontem'],
+    ['2026-11-19T12:00:00Z', 'há 3 dias'],
+    ['2026-11-14T12:00:00Z', 'há 1 semana'],
+    ['2026-11-01T12:00:00Z', 'há 3 semanas'],
+    ['2026-10-10T12:00:00Z', 'há 1 mês'],
+    ['2026-07-10T12:00:00Z', 'há 4 meses'],
+    ['2025-11-01T12:00:00Z', 'há 1 ano'],
+    ['2023-11-01T12:00:00Z', 'há 3 anos'],
+    ['2026-11-30T12:00:00Z', 'hoje'],
+  ])('%s → %s', (value, expected) => {
+    expect(relativeAgo(value, now)).toBe(expected);
   });
 });

@@ -575,6 +575,14 @@ isOneToOne: false
               "action": string,"actor_id": string,"actor_name": string,"change_type": string,"field": string,"kind": string,"occurred_at": string,"song_id": string,"song_title": string,"version_id": string
             }[]
                            },
+"get_song_plays":
+{ Args: { "p_limit"?: number,"p_song_id": string }; Returns: Json
+                           },
+"get_song_stats":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "last_played_at": string,"play_count": number,"song_id": string
+            }[]
+                           },
 "get_storage_usage":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },

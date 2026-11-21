@@ -300,6 +300,7 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
         },
       ],
       announcement_reads: [],
+      song_favorites: [],
       media_files: [
         {
           id: 'm1',
@@ -322,6 +323,8 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
       preview_announcement_audience: 3,
       save_announcement: 'an-novo',
       create_event_with_team: ['ev-novo'],
+      get_song_stats: [],
+      get_song_plays: { total: 0, recent: [] },
       duplicate_event: 'ev-dup',
       mark_announcement_read: null,
       delete_announcement: null,

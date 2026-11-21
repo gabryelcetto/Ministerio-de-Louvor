@@ -221,3 +221,24 @@ export function formatMonthLabel(month: string): string {
   const name = monthNameFormat.format(new Date(Date.UTC(Number(y), Number(m) - 1, 15)));
   return `${name} de ${y}`;
 }
+
+/** "hoje", "ontem", "há 3 dias", "há 1 semana", "há 3 semanas", "há 2 meses", "há 1 ano". */
+export function relativeAgo(value: string | Date, now: Date = new Date()): string {
+  const days = Math.round(
+    (Date.parse(`${dayKey(now)}T00:00:00Z`) - Date.parse(`${dayKey(value)}T00:00:00Z`)) /
+      86_400_000,
+  );
+  if (days <= 0) return 'hoje';
+  if (days === 1) return 'ontem';
+  if (days < 7) return `há ${days} dias`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return weeks === 1 ? 'há 1 semana' : `há ${weeks} semanas`;
+  }
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    return months === 1 ? 'há 1 mês' : `há ${months} meses`;
+  }
+  const years = Math.floor(days / 365);
+  return years === 1 ? 'há 1 ano' : `há ${years} anos`;
+}

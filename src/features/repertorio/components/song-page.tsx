@@ -40,7 +40,9 @@ import {
   type TextSizeIndex,
 } from '@/lib/reading-prefs';
 import { cn } from '@/lib/utils';
-import { useSong, type SongDetail } from '../api';
+import { useFavorites, useSong, type SongDetail } from '../api';
+import { FavoriteToggle } from './favorite-toggle';
+import { PlayedIn } from './played-in';
 import { chordProToLyrics } from '../editor-checks';
 import {
   currentKey,
@@ -106,6 +108,7 @@ function SongView({ song }: { song: SongDetail }) {
   const canSetKey = usePermission('songs.set_official_key');
   const canManageSongs = usePermission('songs.manage');
   const canArchive = usePermission('songs.delete');
+  const favorites = useFavorites();
   // Vindo de uma escala: "Tom oficial G · Culto de domingo em A".
   const eventId = params.get('evento') ?? undefined;
   const event = useEventDetail(eventId);
@@ -257,7 +260,16 @@ function SongView({ song }: { song: SongDetail }) {
         title={song.title}
         subtitle={subtitle || undefined}
         back="/repertorio"
-        actions={<OverflowMenu items={menu} />}
+        actions={
+          <>
+            <FavoriteToggle
+              songId={song.id}
+              title={song.title}
+              favorite={favorites.data?.has(song.id) ?? false}
+            />
+            <OverflowMenu items={menu} />
+          </>
+        }
       />
       <ArchiveSongDialog
         songId={song.id}
@@ -426,6 +438,8 @@ function SongView({ song }: { song: SongDetail }) {
             )}
           </section>
         )}
+
+        <PlayedIn songId={song.id} />
 
         <ReferenceAudios
           songId={song.id}
