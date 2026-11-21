@@ -461,8 +461,23 @@ isOneToOne: false
               "reason": string,"storage_path": string
             }[]
                            },
+"audio_reference_count":
+{ Args: { "p_song": string }; Returns: number
+                           },
+"audio_upload_allowed":
+{ Args: { "p_name": string }; Returns: boolean
+                           },
+"audio_upload_block_bytes":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"audio_upload_problem":
+{ Args: { "p_except_path"?: string,"p_kind": string,"p_target": string }; Returns: string
+                           },
+"audio_used_bytes":
+{ Args: { "p_except_path"?: string }; Returns: number
+                           },
 "check_audio_upload":
-{ Args: { "p_kind": string; "p_target": string }; Returns: undefined
+{ Args: { "p_kind": string,"p_target": string }; Returns: undefined
                            },
 "complete_password_change":
 { Args: Record<PropertyKey, never>; Returns: undefined
