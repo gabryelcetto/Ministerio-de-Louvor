@@ -20,9 +20,10 @@ insert into auth.users (id, email, instance_id, aud, role, created_at, last_sign
   ('a6000000-0000-4000-8000-000000000003', 'antigo@s.local', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now());
 update public.profiles set access_role = 'admin', is_owner = true
 where id = 'a6000000-0000-4000-8000-000000000001';
-insert into auth.sessions (user_id) values
-  ('a6000000-0000-4000-8000-000000000003'), ('a6000000-0000-4000-8000-000000000003'),
-  ('a6000000-0000-4000-8000-000000000001');
+insert into auth.sessions (id, user_id) values
+  (gen_random_uuid(), 'a6000000-0000-4000-8000-000000000003'),
+  (gen_random_uuid(), 'a6000000-0000-4000-8000-000000000003'),
+  (gen_random_uuid(), 'a6000000-0000-4000-8000-000000000001');
 insert into auth.refresh_tokens (user_id, session_id, token)
 select user_id::text, id, 'tok' from auth.sessions;
 insert into public.songs (id, title) values ('a7000000-0000-4000-8000-000000000001', 'Segura');

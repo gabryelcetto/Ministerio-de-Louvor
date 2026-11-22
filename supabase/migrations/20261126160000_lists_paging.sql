@@ -7,7 +7,7 @@
 
 drop function if exists public.get_recent_activity(uuid, uuid, integer);
 
-create function public.get_recent_activity(
+create or replace function public.get_recent_activity(
   p_actor uuid default null,
   p_song uuid default null,
   p_limit integer default 100,
