@@ -79,14 +79,14 @@ isOneToOne: false
                   ]
                 },"announcements": {
                   Row: {
-                    "audience": string,"audience_filter": NonNullable<Json>,"body": string,"created_at": string,"created_by": string | null,"id": string,"last_reminder_at": string | null,"pinned_until": string | null,"published_at": string,"title": string,"updated_at": string
+                    "audience": string,"audience_filter": NonNullable<Json>,"body": string,"created_at": string,"created_by": string | null,"id": string,"last_reminder_at": string | null,"notified_at": string | null,"pinned_until": string | null,"published_at": string,"title": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title": string,"updated_at"?: string
+                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"notified_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title": string,"updated_at"?: string
                   }
                   Update: {
-                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title"?: string,"updated_at"?: string
+                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"notified_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -647,6 +647,9 @@ isOneToOne: false
 "preview_announcement_audience":
 { Args: { "p_filter": Json }; Returns: number
                            },
+"publish_due_announcements":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "remind_announcement":
 { Args: { "p_id": string }; Returns: number
                            },
@@ -660,7 +663,7 @@ isOneToOne: false
 { Args: { "p_user_id": string }; Returns: undefined
                            },
 "save_announcement":
-{ Args: { "p_body": string,"p_filter": Json,"p_id": string,"p_pinned_until"?: string,"p_title": string }; Returns: string
+{ Args: { p_body: string; p_filter: Json; p_id: string; p_pinned_until?: string; p_publish_at?: string; p_title: string }; Returns: string
                            },
 "search_songs":
 { Args: { "q": string }; Returns: {
