@@ -34,6 +34,7 @@ const broken: KeyValueStore = {
 describe('cache offline', () => {
   it('não salva áudio (URLs assinadas); salva o resto', () => {
     expect(shouldPersistQueryKey(['media', 'song', 's1'])).toBe(false);
+    expect(shouldPersistQueryKey(['recordings', 'local', 'rehearsal', 'e1'])).toBe(false);
     expect(shouldPersistQueryKey(['songs', 'detail', 's1'])).toBe(true);
     expect(shouldPersistQueryKey(['events', 'detail', 'e1'])).toBe(true);
     expect(shouldPersistQueryKey([])).toBe(true);

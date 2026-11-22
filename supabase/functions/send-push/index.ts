@@ -15,8 +15,7 @@
  *   PUSH_WEBHOOK_SECRET. SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já existem.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2.119.1';
-// @deno-types="npm:@types/web-push@3.6.4"
-import webpush from 'npm:web-push@3.6.7';
+import webpushModule from 'npm:web-push@3.6.7';
 import {
   isGoneStatus,
   parseDispatchBody,
@@ -24,6 +23,17 @@ import {
   safeEqual,
   type NotificationRow,
 } from '../_shared/push.ts';
+
+/** Parte da biblioteca web-push usada aqui (o pacote não traz tipos). */
+interface WebPush {
+  setVapidDetails(subject: string, publicKey: string, privateKey: string): void;
+  sendNotification(
+    subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+    payload: string,
+    options: { TTL: number; urgency: 'very-low' | 'low' | 'normal' | 'high' },
+  ): Promise<unknown>;
+}
+const webpush = webpushModule as unknown as WebPush;
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {

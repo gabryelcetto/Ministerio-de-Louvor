@@ -45,6 +45,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
             query.state.status === 'success' && shouldPersistQueryKey(query.queryKey),
         },
       }}
+      // O que veio do aparelho aparece na hora, mas é conferido com o servidor logo depois
+      // (sem isto, dados salvos há menos de 30 s não seriam buscados de novo ao reabrir).
+      onSuccess={() => void queryClient.invalidateQueries()}
     >
       <ThemeProvider>
         <SessionProvider>{children}</SessionProvider>

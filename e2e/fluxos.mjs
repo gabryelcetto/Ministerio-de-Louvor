@@ -1494,10 +1494,7 @@ const CELEBRACAO = '10000000-0000-4000-8000-000000000002';
       await links.nth(1).click();
       await page.waitForURL(/\/repertorio\/[0-9a-f-]{36}/);
       await page.getByRole('button', { name: 'Subir meio tom' }).click();
-      await expectText(page, 'Sem internet');
-      await page.goBack();
-      await links.first().click();
-      await page.getByRole('button', { name: 'Subir meio tom' }).waitFor();
+      await page.getByText('+½ tom').waitFor();
       await context.setOffline(false);
     },
   );

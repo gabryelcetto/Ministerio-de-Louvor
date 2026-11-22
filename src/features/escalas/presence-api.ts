@@ -62,7 +62,8 @@ export function useRespond() {
 
 export function useSubstitutes(assignmentId: string | null) {
   return useQuery({
-    queryKey: ['schedules', 'substitutes', assignmentId],
+    // Fora de 'schedules': trocar a pessoa invalida 'schedules', e a escala trocada já não existe.
+    queryKey: ['substitutes', assignmentId],
     queryFn: () => fetchSubstitutes(assignmentId ?? ''),
     enabled: !!assignmentId,
   });

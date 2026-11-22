@@ -15,8 +15,11 @@ export const OFFLINE_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** Muda quando o formato salvo deixar de ser compatível (o app descarta o cache antigo). */
 export const OFFLINE_CACHE_BUSTER = 'fase-h-1';
 
-/** Consultas que não vão para o aparelho: áudios (URLs assinadas que vencem). */
-const NOT_PERSISTED = new Set(['media']);
+/**
+ * Consultas que não vão para o cache salvo: áudios (URLs assinadas que vencem) e gravações
+ * locais (já ficam no IndexedDB do gravador e precisam ser relidas a cada abertura).
+ */
+const NOT_PERSISTED = new Set(['media', 'recordings']);
 
 export function shouldPersistQueryKey(queryKey: readonly unknown[]): boolean {
   return !NOT_PERSISTED.has(String(queryKey[0]));
