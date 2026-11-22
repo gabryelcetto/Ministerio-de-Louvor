@@ -35,7 +35,7 @@ jobs:
         with:
           deno-version: v2.x
       - name: Tipos da Edge Function (deno check)
-        run: deno check supabase/functions/invite-member/index.ts supabase/functions/purge-old-recordings/index.ts supabase/functions/reset-member-password/index.ts supabase/functions/change-password/index.ts supabase/functions/send-push/index.ts
+        run: deno check --node-modules-dir=none supabase/functions/invite-member/index.ts supabase/functions/purge-old-recordings/index.ts supabase/functions/reset-member-password/index.ts supabase/functions/change-password/index.ts supabase/functions/send-push/index.ts
       # Teste estrutural: cobertura do Vitest (provider v8). Reprova abaixo dos limites do
       # vitest.config.ts: projeto ≥ 70% de linhas; src/lib ≥ 90% de linhas e ≥ 85% de branches.
       - name: Testes com cobertura
