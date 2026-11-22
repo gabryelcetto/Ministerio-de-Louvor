@@ -41,8 +41,7 @@ export type Database = {
 isOneToOne: false
       referencedRelation: "announcements"
       referencedColumns: ["id"]
-    },
-                    {
+    },{
       foreignKeyName: "announcement_reads_user_id_fkey"
       columns: ["user_id"]
 isOneToOne: false
@@ -68,8 +67,7 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "announcements"
       referencedColumns: ["id"]
-    },
-                    {
+    },{
       foreignKeyName: "announcement_recipients_user_id_fkey"
       columns: ["user_id"]
 isOneToOne: false
@@ -531,7 +529,16 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "assert_can_reset_password":
+            "accept_privacy":
+{ Args: { "p_version": string }; Returns: undefined
+                           },
+"announcement_audience":
+{ Args: { "p_filter": Json }; Returns: string[]
+                           },
+"announcement_visible":
+{ Args: { "p_id": string }; Returns: boolean
+                           },
+"assert_can_reset_password":
 { Args: { "p_user_id": string }; Returns: {
               "access_role": Database["public"]['Enums']["access_role"],
 "created_at": string,
@@ -541,7 +548,10 @@ isOneToOne: false
 "is_owner": boolean,
 "must_change_password": boolean,
 "phone": string | null,
+"privacy_accepted_at": string | null,
+"privacy_version": string | null,
 "status": string,
+"temp_password_expires_at": string | null,
 "updated_at": string
             }
                           SetofOptions: {
@@ -550,15 +560,6 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
-"accept_privacy":
-{ Args: { "p_version": string }; Returns: undefined
-                           },
-"announcement_audience":
-{ Args: { "p_filter": Json }; Returns: string[]
-                           },
-"announcement_visible":
-{ Args: { "p_id": string }; Returns: boolean
-                           },
 "assignment_substitutes":
 { Args: { p_assignment_id: string }; Returns: { name: string; user_id: string }[]
                            },
@@ -589,7 +590,7 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "create_event_with_team":
-{ Args: { "p_assignments"?: Json,"p_ends_at": string,"p_location": string,"p_notes": string,"p_repeat_weeks"?: number,"p_starts_at": string,"p_title": string,"p_type": string }; Returns: string[]
+{ Args: { "p_assignments"?: Json,"p_ends_at": string,"p_location": string,"p_notes": string,"p_repeat_weeks"?: number,"p_starts_at": string,"p_title": string,"p_type": string }; Returns: (string)[]
                            },
 "create_song":
 { Args: { "p_artist": string,"p_category": string,"p_chords": string,"p_lyrics": string,"p_media_url": string,"p_notes": string,"p_official_key": string,"p_original_key": string,"p_title": string }; Returns: string
