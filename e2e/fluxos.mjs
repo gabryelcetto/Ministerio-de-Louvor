@@ -1335,6 +1335,123 @@ const skipNaming = async (page) => {
   await context.close();
 }
 
+// =============================================================================== FASE G
+// Comunicado para pessoas escolhidas, evento repetido + edição, editar/desativar integrante.
+const ANNOUNCEMENT = 'Aviso só para a Isa (E2E)';
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  const who = 'admin';
+  await step(page, who, 'Comunicado para pessoas escolhidas: só a Isa', async () => {
+    await page.goto(`${BASE}/comunicados/novo`);
+    await page.getByLabel('Título').fill(ANNOUNCEMENT);
+    await page.getByLabel('Texto').fill('Veja https://exemplo.org antes do ensaio.');
+    await page.getByRole('radio', { name: 'Pessoas escolhidas' }).check();
+    await page.getByLabel('Buscar pessoa').fill('Isa');
+    await page.getByRole('list', { name: 'Integrantes' }).getByRole('checkbox').first().check();
+    await page.getByText('Vai para 1 pessoa').waitFor();
+    await page.getByRole('button', { name: 'Publicar' }).click();
+    await page.waitForURL(/\/comunicados\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    await page.getByRole('button', { name: 'Visto por 0 de 1' }).waitFor();
+  });
+
+  await step(page, who, 'Evento repetido por 2 semanas e edição de um deles', async () => {
+    await page.goto(`${BASE}/escalas/montar?novo=1`);
+    await page.waitForLoadState('networkidle');
+    await page.getByLabel('Título').fill('Ensaio repetido E2E');
+    const d = new Date(Date.now() + 20 * 86400000);
+    const day = d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+    await page.getByLabel('Início (horário de Brasília)').fill(`${day}T20:00`);
+    await page.getByRole('checkbox', { name: 'Repetir toda semana' }).check();
+    await page.getByLabel('Por quantas semanas').selectOption('2');
+    await page.getByRole('button', { name: 'Criar 2 eventos' }).click();
+    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Editar evento', exact: true }).click();
+    await page.getByLabel('Local (opcional)').fill('Sala de ensaio E2E');
+    await page.getByRole('button', { name: 'Salvar evento' }).click();
+    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    await expectText(page, 'Sala de ensaio E2E');
+    await page.goto(`${BASE}/escalas?ver=todas`);
+    await page.waitForLoadState('networkidle');
+    const n = await main(page).getByText('Ensaio repetido E2E').count();
+    if (n !== 2) throw new Error(`${n} eventos repetidos na lista`);
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('lider@demo.local', MOBILE);
+  await step(page, 'lucas', 'Comunicado de outra pessoa: não aparece', async () => {
+    await page.goto(`${BASE}/comunicados`);
+    await page.waitForLoadState('networkidle');
+    await main(page).getByRole('list', { name: 'Comunicados' }).waitFor();
+    if (await main(page).getByText(ANNOUNCEMENT).count())
+      throw new Error('Lucas vê o aviso da Isa');
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE);
+  await step(page, 'integrante', 'Comunicado escolhido: notificação e leitura', async () => {
+    await page.goto(`${BASE}/notificacoes`);
+    await page.waitForLoadState('networkidle');
+    await main(page)
+      .getByText(new RegExp(ANNOUNCEMENT.replace(/[()]/g, '.')))
+      .first()
+      .click();
+    await page.waitForURL(/\/comunicados\/[0-9a-f-]{36}$/);
+    await page.getByRole('heading', { name: ANNOUNCEMENT }).waitFor();
+    const link = page.getByRole('link', { name: /exemplo\.org/ });
+    if ((await link.getAttribute('rel')) !== 'noopener noreferrer') throw new Error('rel do link');
+    await page.waitForLoadState('networkidle');
+  });
+  await step(page, 'integrante', 'Minha conta: edita o próprio telefone', async () => {
+    await page.goto(`${BASE}/configuracoes#minha-conta`);
+    await page.getByRole('button', { name: 'Editar meus dados' }).click();
+    await page.getByLabel('Telefone (opcional)').fill('(00) 90000-0099');
+    await page
+      .getByRole('form', { name: 'Editar meus dados' })
+      .getByRole('button', { name: 'Salvar' })
+      .click();
+    await expectText(page, 'Dados salvos.');
+    await expectText(page, '(00) 90000-0099');
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  const who = 'admin';
+  await step(page, who, 'Comunicado: "Visto por 1 de 1"', async () => {
+    await page.goto(`${BASE}/comunicados`);
+    await main(page)
+      .getByRole('link', { name: new RegExp(ANNOUNCEMENT.replace(/[()]/g, '.')) })
+      .click();
+    await page.getByRole('button', { name: 'Visto por 1 de 1' }).waitFor({ timeout: 15000 });
+  });
+  await step(page, who, 'Integrante: editar dados e desativar (Novato)', async () => {
+    await page.goto(`${BASE}/integrantes`);
+    await page.waitForLoadState('networkidle');
+    await main(page).getByRole('link', { name: 'Novato' }).click();
+    await page.waitForURL(/\/integrantes\/[0-9a-f-]{36}$/);
+    await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Editar', exact: true }).click();
+    const form = page.getByRole('form', { name: 'Editar Novato' });
+    await form.getByLabel('Telefone (opcional)').fill('(00) 98888-0000');
+    await form.getByRole('button', { name: 'Salvar' }).click();
+    await form.waitFor({ state: 'hidden' });
+    await page.getByRole('link', { name: 'Ligar' }).waitFor();
+    await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Desativar', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Desativar Novato?' });
+    await dialog.getByText('A pessoa não consegue mais entrar, mas o histórico fica.').waitFor();
+    await dialog.getByRole('button', { name: 'Desativar' }).click();
+    await page.getByText('Inativo').first().waitFor({ timeout: 15000 });
+  });
+  await context.close();
+}
+
 await browser.close();
 writeFileSync(`${OUT}/fluxos/relatorio.json`, JSON.stringify(results, null, 2));
 const failed = results.filter((r) => !r.ok).length;

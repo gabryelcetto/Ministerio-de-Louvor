@@ -72,6 +72,36 @@ const member = await login('integrante@demo.local');
   check(error?.code === '42501', 'integrante: não cria eventos', error?.code ?? 'sem erro');
 }
 
+// ---------------------------------------------------------------- Fase G: autopromoção
+{
+  const { data: me } = await member.auth.getUser();
+  const id = me.user?.id;
+  const { error: phoneError } = await member
+    .from('profiles')
+    .update({ phone: '(00) 90000-0003' })
+    .eq('id', id)
+    .select('id');
+  check(!phoneError, 'integrante edita o próprio telefone pela API', phoneError?.message ?? '');
+  const { error: roleError } = await member
+    .from('profiles')
+    .update({ access_role: 'admin' })
+    .eq('id', id)
+    .select('id');
+  check(Boolean(roleError), 'integrante NÃO vira admin pela API', roleError?.code ?? 'sem erro');
+  const { error: ownerError } = await member
+    .from('profiles')
+    .update({ is_owner: true })
+    .eq('id', id)
+    .select('id');
+  check(Boolean(ownerError), 'integrante NÃO vira dono pela API', ownerError?.code ?? 'sem erro');
+  const { error: annError } = await member.from('announcements').insert({ title: 'x' });
+  check(
+    Boolean(annError),
+    'integrante não publica comunicado direto',
+    annError?.code ?? 'sem erro',
+  );
+}
+
 // ---------------------------------------------------------------- modelo ADVOP (integrante)
 {
   const { data, error } = await member.rpc('get_recent_activity', {});

@@ -64,6 +64,18 @@ for (const [tema, theme] of Object.entries(THEMES)) {
     await expect(page.getByLabel('Título')).toBeVisible();
     await shoot(page, `${tema}-5-nova-musica`);
 
+    await page.goto('/comunicados');
+    await expect(page.getByRole('list', { name: 'Comunicados' })).toBeVisible();
+    await shoot(page, `${tema}-8-comunicados`);
+
+    await page.goto('/agenda');
+    await expect(page.getByRole('navigation', { name: 'Mês' })).toBeVisible();
+    await shoot(page, `${tema}-9-agenda`);
+
+    await page.goto('/escalas');
+    await expect(page.getByRole('heading', { name: 'Escalas' })).toBeVisible();
+    await shoot(page, `${tema}-10-escalas`);
+
     await page.goto('/mais');
     await expect(page.getByRole('button', { name: 'Sair' })).toBeVisible();
     await shoot(page, `${tema}-7-mais`);
