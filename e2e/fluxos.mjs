@@ -1473,29 +1473,34 @@ const CELEBRACAO = '10000000-0000-4000-8000-000000000002';
     await group.getByRole('button', { name: 'Não posso', pressed: true }).waitFor();
   });
 
-  await step(page, 'integrante', 'Offline: abre música do culto sem internet (pré-carregada)', async () => {
-    await page.goto(`${BASE}/escalas/${CELEBRACAO}`);
-    const repertorio = main(page).getByRole('region', { name: 'Repertório' });
-    const links = repertorio.getByRole('link');
-    await links.first().waitFor();
-    if ((await links.count()) < 2) throw new Error('culto sem 2 músicas');
-    // Abre a 1ª com internet; a 2ª nunca foi aberta (vem do pré-carregamento das escalas).
-    await links.first().click();
-    await page.getByRole('button', { name: 'Subir meio tom' }).waitFor();
-    await page.goBack();
-    await links.nth(1).waitFor();
-    await page.waitForLoadState('networkidle');
-    await context.setOffline(true);
-    await page.getByText('Sem internet: mostrando o que foi salvo neste aparelho.').waitFor();
-    await links.nth(1).click();
-    await page.waitForURL(/\/repertorio\/[0-9a-f-]{36}/);
-    await page.getByRole('button', { name: 'Subir meio tom' }).click();
-    await expectText(page, 'Sem internet');
-    await page.goBack();
-    await links.first().click();
-    await page.getByRole('button', { name: 'Subir meio tom' }).waitFor();
-    await context.setOffline(false);
-  });
+  await step(
+    page,
+    'integrante',
+    'Offline: abre música do culto sem internet (pré-carregada)',
+    async () => {
+      await page.goto(`${BASE}/escalas/${CELEBRACAO}`);
+      const repertorio = main(page).getByRole('region', { name: 'Repertório' });
+      const links = repertorio.getByRole('link');
+      await links.first().waitFor();
+      if ((await links.count()) < 2) throw new Error('culto sem 2 músicas');
+      // Abre a 1ª com internet; a 2ª nunca foi aberta (vem do pré-carregamento das escalas).
+      await links.first().click();
+      await page.getByRole('button', { name: 'Subir meio tom' }).waitFor();
+      await page.goBack();
+      await links.nth(1).waitFor();
+      await page.waitForLoadState('networkidle');
+      await context.setOffline(true);
+      await page.getByText('Sem internet: mostrando o que foi salvo neste aparelho.').waitFor();
+      await links.nth(1).click();
+      await page.waitForURL(/\/repertorio\/[0-9a-f-]{36}/);
+      await page.getByRole('button', { name: 'Subir meio tom' }).click();
+      await expectText(page, 'Sem internet');
+      await page.goBack();
+      await links.first().click();
+      await page.getByRole('button', { name: 'Subir meio tom' }).waitFor();
+      await context.setOffline(false);
+    },
+  );
   await context.close();
 }
 
@@ -1505,7 +1510,10 @@ const CELEBRACAO = '10000000-0000-4000-8000-000000000002';
   await step(page, who, 'Recusa: aviso para quem monta a escala', async () => {
     await page.goto(`${BASE}/notificacoes`);
     await page.waitForLoadState('networkidle');
-    await main(page).getByText(/Isa não pode: Culto da família/).first().waitFor();
+    await main(page)
+      .getByText(/Isa não pode: Culto da família/)
+      .first()
+      .waitFor();
   });
   await step(page, who, 'Recusa: "Trocar por Lucas (sugestão)" com um toque', async () => {
     await page.goto(`${BASE}/escalas/${FAMILIA}`);
