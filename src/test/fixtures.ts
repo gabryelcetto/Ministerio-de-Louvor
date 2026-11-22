@@ -149,6 +149,9 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
       user_id: MEMBER_ID,
       function_id: 1,
       notes: 'Abre o culto',
+      response: 'pending',
+      response_note: null,
+      suggested_user_id: null,
       profile: { id: MEMBER_ID, full_name: member.full_name, display_name: member.display_name },
       function: functions[0],
     },
@@ -157,6 +160,9 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
       user_id: OTHER_ID,
       function_id: 3,
       notes: null,
+      response: 'pending',
+      response_note: null,
+      suggested_user_id: null,
       profile: { id: OTHER_ID, full_name: other.full_name, display_name: null },
       function: functions[2],
     },
@@ -218,6 +224,7 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
   return {
     session: as ? session(me.id, as === 'member' ? 'isa@teste.local' : 'ana@teste.local') : null,
     tables: {
+      member_unavailability: [],
       profiles: [admin, member, other].map((p) => ({
         ...p,
         member_functions: memberFunctions
@@ -330,6 +337,9 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
       delete_ministry_function: null,
       get_song_plays: { total: 0, recent: [] },
       duplicate_event: 'ev-dup',
+      respond_assignment: null,
+      swap_assignment: 'd-novo',
+      assignment_substitutes: [{ user_id: ADMIN_ID, name: 'Admin' }],
       mark_announcement_read: null,
       delete_announcement: null,
       remind_announcement: 1,
@@ -357,6 +367,7 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
             starts_at: events[0]!.starts_at,
             location: 'Templo',
             function: 'Vocal',
+            response: 'pending',
           },
         ],
         next_service_songs: [

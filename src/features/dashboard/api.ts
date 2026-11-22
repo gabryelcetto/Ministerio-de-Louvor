@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from '@/features/auth';
 import { supabase } from '@/services/supabase';
-import type { Dashboard, Json } from '@/types/app.types';
+import type { AssignmentResponse, Dashboard, Json } from '@/types/app.types';
 
 const EMPTY: Dashboard = {
   next_service: null,
@@ -60,6 +60,9 @@ export interface DashboardScheduleItem {
   startsAt: string;
   location: string | null;
   functions: string[];
+  /** Escalas da pessoa no evento (uma por função) e as respostas (Fase H). */
+  assignmentIds: string[];
+  responses: AssignmentResponse[];
 }
 
 /** Uma linha por evento (a pessoa pode ter mais de uma função no mesmo culto). */
@@ -75,8 +78,12 @@ export function groupDashboardAssignments(
       startsAt: a.starts_at,
       location: a.location,
       functions: [],
+      assignmentIds: [],
+      responses: [],
     };
     if (!item.functions.includes(a.function)) item.functions.push(a.function);
+    item.assignmentIds.push(a.assignment_id);
+    item.responses.push(a.response ?? 'pending');
     byEvent.set(a.event_id, item);
   }
   return [...byEvent.values()].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));

@@ -14,18 +14,28 @@ const detail: EventDetail = {
     notes: null,
   },
   team: [],
+  assignments: [],
   teamBySection: [
     {
       section: 'vocal',
       label: 'Cantores',
       members: [
-        { userId: 'u1', name: 'Lucas', initials: 'L', functions: ['Vocal principal'], notes: [] },
+        {
+          userId: 'u1',
+          name: 'Lucas',
+          initials: 'L',
+          functions: ['Vocal principal'],
+          notes: [],
+          response: 'confirmed',
+        },
       ],
     },
     {
       section: 'instrumental',
       label: 'Instrumentistas',
-      members: [{ userId: 'u2', name: 'Isa', initials: 'I', functions: [], notes: [] }],
+      members: [
+        { userId: 'u2', name: 'Isa', initials: 'I', functions: [], notes: [], response: 'pending' },
+      ],
     },
     { section: 'outros', label: 'Outras funções', members: [] },
   ],

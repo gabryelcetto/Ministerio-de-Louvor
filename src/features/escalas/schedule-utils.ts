@@ -1,4 +1,5 @@
-import type { EventRow } from '@/types/app.types';
+import type { AssignmentResponse, EventRow } from '@/types/app.types';
+import { combinedResponse } from './presence';
 
 /** Campos do evento usados nas listas. */
 export type EventSummary = Pick<
@@ -20,6 +21,7 @@ export interface MyAssignmentRow {
   notes: string | null;
   event: EventSummary | null;
   function: FunctionRef | null;
+  response?: AssignmentResponse;
 }
 
 /** Um evento em "Minhas escalas": a pessoa pode ter mais de uma função no mesmo evento. */
@@ -27,22 +29,45 @@ export interface MyScheduleItem {
   event: EventSummary;
   functions: string[];
   notes: string[];
+  /** "Confirmo" / "Não posso" (com várias funções: uma recusa pesa mais). */
+  response: AssignmentResponse;
+  /** As escalas da pessoa no evento (uma por função), para responder. */
+  assignmentIds: string[];
 }
 
 /** Junta as atribuições por evento e ordena as funções pela ordem do ministério. */
 export function groupAssignmentsByEvent(rows: readonly MyAssignmentRow[]): MyScheduleItem[] {
-  const byEvent = new Map<string, { event: EventSummary; fns: FunctionRef[]; notes: string[] }>();
+  const byEvent = new Map<
+    string,
+    {
+      event: EventSummary;
+      fns: FunctionRef[];
+      notes: string[];
+      ids: string[];
+      responses: AssignmentResponse[];
+    }
+  >();
   for (const row of rows) {
     if (!row.event) continue;
-    const entry = byEvent.get(row.event.id) ?? { event: row.event, fns: [], notes: [] };
+    const entry = byEvent.get(row.event.id) ?? {
+      event: row.event,
+      fns: [],
+      notes: [],
+      ids: [],
+      responses: [],
+    };
     if (row.function) entry.fns.push(row.function);
     if (row.notes?.trim()) entry.notes.push(row.notes.trim());
+    entry.ids.push(row.id);
+    entry.responses.push(row.response ?? 'pending');
     byEvent.set(row.event.id, entry);
   }
-  return [...byEvent.values()].map(({ event, fns, notes }) => ({
+  return [...byEvent.values()].map(({ event, fns, notes, ids, responses }) => ({
     event,
     functions: [...fns].sort(byFunctionOrder).map((f) => f.name),
     notes,
+    response: combinedResponse(responses),
+    assignmentIds: ids,
   }));
 }
 
@@ -78,6 +103,10 @@ export interface TeamAssignmentRow {
   notes: string | null;
   profile: { id: string; full_name: string; display_name: string | null } | null;
   function: FunctionRef | null;
+  /** Resposta da pessoa (Fase H). Ausente = "pending". */
+  response?: AssignmentResponse;
+  response_note?: string | null;
+  suggested_user_id?: string | null;
 }
 
 export function displayName(profile: { full_name: string; display_name: string | null }): string {
@@ -129,6 +158,8 @@ export interface TeamChip {
   /** Funções da pessoa neste grupo, na ordem do ministério ("Vocal · Violão"). */
   functions: string[];
   notes: string[];
+  /** "Confirmo" / "Não posso" (com várias funções: uma recusa pesa mais). */
+  response: AssignmentResponse;
 }
 
 export interface TeamSectionGroup {
@@ -142,7 +173,13 @@ export interface TeamSectionGroup {
  * pessoa em cada grupo, na ordem da primeira função dela e depois do nome.
  */
 export function groupTeamBySection(rows: readonly TeamAssignmentRow[]): TeamSectionGroup[] {
-  const sections = new Map<TeamSection, Map<string, TeamChip & { order: FunctionRef }>>();
+  const sections = new Map<
+    TeamSection,
+    Map<
+      string,
+      Omit<TeamChip, 'response'> & { order: FunctionRef; responses: AssignmentResponse[] }
+    >
+  >();
   const sorted = [...rows].sort((a, b) =>
     byFunctionOrder(
       a.function ?? { name: '', sort_order: Number.MAX_SAFE_INTEGER },
@@ -165,11 +202,13 @@ export function groupTeamBySection(rows: readonly TeamAssignmentRow[]): TeamSect
       initials: initials(name),
       functions: [],
       notes: [],
+      responses: [] as AssignmentResponse[],
       order: row.function ?? { name: '', sort_order: Number.MAX_SAFE_INTEGER },
     };
     const fn = row.function?.name ?? 'Sem função';
     if (!chip.functions.includes(fn)) chip.functions.push(fn);
     if (row.notes?.trim()) chip.notes.push(row.notes.trim());
+    chip.responses.push(row.response ?? 'pending');
     people.set(userId, chip);
     sections.set(section, people);
   }
@@ -186,6 +225,7 @@ export function groupTeamBySection(rows: readonly TeamAssignmentRow[]): TeamSect
           initials: chip.initials,
           functions: chip.functions,
           notes: chip.notes,
+          response: combinedResponse(chip.responses),
         })),
     }));
 }
