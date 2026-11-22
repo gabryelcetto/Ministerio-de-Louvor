@@ -119,14 +119,14 @@ isOneToOne: false
                   ]
                 },"event_assignments": {
                   Row: {
-                    "created_at": string,"event_id": string,"function_id": number,"id": string,"notes": string | null,"user_id": string
+                    "created_at": string,"event_id": string,"function_id": number,"id": string,"notes": string | null,"responded_at": string | null,"response": string,"response_note": string | null,"suggested_user_id": string | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"event_id": string,"function_id": number,"id"?: string,"notes"?: string | null,"user_id": string
+                    "created_at"?: string,"event_id": string,"function_id": number,"id"?: string,"notes"?: string | null,"responded_at"?: string | null,"response"?: string,"response_note"?: string | null,"suggested_user_id"?: string | null,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"event_id"?: string,"function_id"?: number,"id"?: string,"notes"?: string | null,"user_id"?: string
+                    "created_at"?: string,"event_id"?: string,"function_id"?: number,"id"?: string,"notes"?: string | null,"responded_at"?: string | null,"response"?: string,"response_note"?: string | null,"suggested_user_id"?: string | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -247,6 +247,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "member_functions_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"member_unavailability": {
+                  Row: {
+                    "created_at": string,"ends_on": string,"id": string,"note": string | null,"starts_on": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"ends_on": string,"id"?: string,"note"?: string | null,"starts_on": string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"ends_on"?: string,"id"?: string,"note"?: string | null,"starts_on"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "member_unavailability_user_id_fkey"
       columns: ["user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
@@ -519,6 +539,9 @@ isOneToOne: false
 "announcement_visible":
 { Args: { "p_id": string }; Returns: boolean
                            },
+"assignment_substitutes":
+{ Args: { p_assignment_id: string }; Returns: { name: string; user_id: string }[]
+                           },
 "audio_files_to_purge":
 { Args: { "p_days"?: number }; Returns: {
               "reason": string,"storage_path": string
@@ -627,6 +650,9 @@ isOneToOne: false
 "remind_announcement":
 { Args: { "p_id": string }; Returns: number
                            },
+"respond_assignment":
+{ Args: { p_assignment_id: string; p_note?: string; p_response: string; p_suggested_user_id?: string }; Returns: undefined
+                           },
 "restore_song_version":
 { Args: { "version_id": string }; Returns: undefined
                            },
@@ -662,6 +688,9 @@ isOneToOne: false
                            },
 "setup_new_member":
 { Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_user_id": string }; Returns: undefined
+                           },
+"swap_assignment":
+{ Args: { p_assignment_id: string; p_user_id: string }; Returns: string
                            },
 "update_member":
 { Args: { "p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_phone": string,"p_user_id": string }; Returns: undefined
