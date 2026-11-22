@@ -7,6 +7,7 @@ import { usePermission } from '@/features/auth';
 import { formatDayLabel, formatTime } from '@/lib/dates';
 import { LoadMore } from '@/components/common/load-more';
 import { useAnnouncements, useMyReads, type AnnouncementItem } from '../api';
+import { scheduledLabel } from '../publish';
 
 /** Comunicados: fixados primeiro, depois do mais recente. Toque abre o detalhe. */
 export function AnnouncementsPage() {
@@ -77,7 +78,7 @@ function AnnouncementCard({ item, unread }: { item: AnnouncementItem; unread: bo
         {item.scheduled && (
           <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
             <CalendarClock aria-hidden="true" className="size-3.5" />
-            Agendado — ainda não visível aos integrantes
+            {scheduledLabel(item.publishedAt)} — ainda não visível aos integrantes
           </span>
         )}
       </span>

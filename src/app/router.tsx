@@ -9,6 +9,7 @@ import { SettingsPage } from '@/features/configuracoes/components/settings-page'
 import { DashboardPage } from '@/features/dashboard/components/dashboard-page';
 import { EventDetailPage } from '@/features/escalas/components/event-detail-page';
 import { EventEditPage } from '@/features/escalas/components/event-edit-page';
+import { UnavailabilityPage } from '@/features/escalas/components/unavailability-page';
 import { SetlistEditorPage } from '@/features/escalas/components/setlist-editor-page';
 import { MySchedulesPage } from '@/features/escalas/components/my-schedules-page';
 import { ScheduleBuilderPage } from '@/features/escalas/components/schedule-builder-page';
@@ -45,6 +46,7 @@ export const routes: RouteObject[] = [
           { path: 'escalas/:eventId', element: <EventDetailPage /> },
           { path: 'escalas/:eventId/editar', element: <EventEditPage /> },
           { path: 'escalas/:eventId/repertorio', element: <SetlistEditorPage /> },
+          { path: 'indisponibilidades', element: <UnavailabilityPage /> },
           { path: 'repertorio', element: <SongsPage /> },
           { path: 'repertorio/nova', element: <NewSongPage /> },
           { path: 'repertorio/:songId', element: <SongPage /> },

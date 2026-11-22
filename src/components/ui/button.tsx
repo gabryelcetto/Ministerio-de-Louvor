@@ -1,6 +1,7 @@
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
+import { NEEDS_INTERNET, useOnline } from '@/hooks/use-online';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
@@ -31,13 +32,26 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  /**
+   * Ação que grava no servidor: fica desativada sem internet (modo offline). Padrão: só os
+   * botões `type="submit"` (todo formulário do app salva algo).
+   */
+  needsNetwork?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, needsNetwork, disabled, title, ...props }, ref) => {
+    const online = useOnline();
+    const blocked = !asChild && !online && (needsNetwork ?? props.type === 'submit');
     const Comp = asChild ? Slot : 'button';
     return (
-      <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        disabled={disabled || blocked}
+        title={blocked ? NEEDS_INTERNET : title}
+        {...props}
+      />
     );
   },
 );

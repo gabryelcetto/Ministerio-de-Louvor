@@ -9,6 +9,7 @@ import { StorageUsageCard } from '@/features/audio';
 import { InstallButton } from '@/features/instalar';
 import { ROLE_LABEL, useMyFunctions, useMyPhone } from '@/features/integrantes';
 import { MyAccountForm } from './my-account-form';
+import { PushSettings } from './push-settings';
 import { useScrollToHash } from '@/hooks/use-scroll-to-hash';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -24,6 +25,7 @@ export function SettingsPage() {
       <section className="mx-auto flex max-w-2xl flex-col gap-5">
         <ThemeCard />
         <ProfileCard />
+        <PushSettings />
         <Section title="Trocar senha">
           <PasswordForm askCurrent submitLabel="Trocar senha" />
         </Section>

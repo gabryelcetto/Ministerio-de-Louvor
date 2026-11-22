@@ -9,7 +9,9 @@ import { cn } from '@/lib/utils';
 import { PAST_DAYS, type ScheduleOverview } from '../api';
 import { useAllSchedules, useMySchedules } from '../hooks';
 import { eventIssues } from '../pending';
+import { canRespond } from '../presence';
 import { splitByTime, type MyScheduleItem } from '../schedule-utils';
+import { PresenceActions, ResponseBadge } from './presence-actions';
 
 type View = 'minhas' | 'todas';
 type Period = 'proximas' | 'anteriores';
@@ -143,8 +145,8 @@ function MineView({ period }: { period: Period }) {
 function ScheduleList({ items }: { items: MyScheduleItem[] }) {
   return (
     <ul aria-label="Minhas escalas" className="flex flex-col gap-3">
-      {items.map(({ event, functions, notes }) => (
-        <li key={event.id}>
+      {items.map(({ event, functions, notes, response, assignmentIds }) => (
+        <li key={event.id} className="flex flex-col gap-2">
           <EventCard event={event} dateLabel={formatShortDate(event.starts_at)}>
             <span className="flex flex-wrap gap-1.5">
               <span className="sr-only">Suas funções:</span>
@@ -160,7 +162,17 @@ function ScheduleList({ items }: { items: MyScheduleItem[] }) {
             {notes.length > 0 && (
               <span className="text-sm text-muted-foreground">Obs.: {notes.join(' · ')}</span>
             )}
+            <ResponseBadge response={response} />
           </EventCard>
+          {event.status === 'scheduled' && canRespond(event.starts_at) && (
+            <PresenceActions
+              assignmentIds={assignmentIds}
+              startsAt={event.starts_at}
+              response={response}
+              eventTitle={event.title}
+              showStatus={false}
+            />
+          )}
         </li>
       ))}
     </ul>
@@ -189,6 +201,7 @@ function AllView({
         startsAt: row.event.starts_at,
         teamCount: row.teamCount,
         songCount: row.songCount,
+        declinedCount: row.declinedCount,
       },
       now,
     ),

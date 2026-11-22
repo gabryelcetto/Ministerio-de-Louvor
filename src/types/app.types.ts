@@ -21,6 +21,8 @@ export type VersionField = 'lyrics' | 'chords' | 'official_key' | 'metadata';
 export type ChangeType = 'create' | 'update' | 'restore';
 export type Audience = 'all' | 'function' | 'event' | 'users';
 export type PermissionEffect = 'grant' | 'deny';
+/** Resposta da pessoa escalada (Fase H): "Confirmo" / "Não posso". */
+export type AssignmentResponse = 'pending' | 'confirmed' | 'declined';
 export type PermissionKey =
   | 'schedules.manage'
   | 'events.manage'
@@ -61,6 +63,7 @@ type Narrowed = {
   song_chords: NarrowTable<'song_chords', { review_status: ReviewStatus }>;
   song_versions: NarrowTable<'song_versions', { field: VersionField; change_type: ChangeType }>;
   announcements: NarrowTable<'announcements', { audience: Audience }>;
+  event_assignments: NarrowTable<'event_assignments', { response: AssignmentResponse }>;
 };
 
 /** Banco usado pelo cliente: o gerado, com as colunas de domínio estreitadas. */
@@ -91,6 +94,8 @@ export interface DashboardAssignment {
   starts_at: string;
   location: string | null;
   function: string;
+  /** Resposta da pessoa (Fase H). */
+  response?: AssignmentResponse;
 }
 
 export interface DashboardSong {
@@ -119,6 +124,8 @@ export interface DashboardAttention {
   starts_at: string;
   no_team: boolean;
   no_songs: boolean;
+  /** Quantas pessoas responderam "Não posso" (Fase H). */
+  declined?: number;
 }
 
 export interface Dashboard {

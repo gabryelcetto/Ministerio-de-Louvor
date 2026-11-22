@@ -50,6 +50,7 @@ function screensFor(role) {
     ['Comunicados', '/comunicados'],
     ['Integrantes', '/integrantes'],
     ['Configurações', '/configuracoes'],
+    ['Minhas indisponibilidades', '/indisponibilidades'],
     ['Mais', '/mais'],
     ['Instalar', '/instalar'],
     ['Página inexistente', '/nao-existe'],
@@ -61,6 +62,7 @@ function screensFor(role) {
       ['Atividade recente', '/atividade'],
       ['Cadastrar integrante', '/integrantes/cadastrar'],
       ['Funções do ministério', '/integrantes/funcoes'],
+      ['Novo comunicado', '/comunicados/novo'],
     );
   }
   return list;

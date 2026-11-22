@@ -1,5 +1,6 @@
 import { supabase } from '@/services/supabase';
 import {
+  displayName,
   groupAssignmentsByEvent,
   groupTeamByFunction,
   groupTeamBySection,
@@ -12,7 +13,7 @@ import {
   type TeamGroup,
   type TeamSectionGroup,
 } from './schedule-utils';
-import type { EventRow } from '@/types/app.types';
+import type { AssignmentResponse, EventRow } from '@/types/app.types';
 
 /** Quantos dias para trás "Minhas escalas" mostra em "Anteriores". */
 export const PAST_DAYS = 60;
@@ -27,7 +28,7 @@ export async function fetchMySchedules(
     .from('event_assignments')
     // Strings de select precisam ser literais únicos (sem `${}` ou `+`) para o supabase-js inferir o tipo.
     .select(
-      'id, notes, event:events!inner(id, type, title, starts_at, ends_at, location, status), function:ministry_functions(name, sort_order)',
+      'id, notes, response, event:events!inner(id, type, title, starts_at, ends_at, location, status), function:ministry_functions(name, sort_order)',
     )
     .eq('user_id', userId)
     .gte('event.starts_at', since);
@@ -53,6 +54,18 @@ export interface EventDetail {
   /** Equipe em Cantores e Instrumentistas (tela do evento). */
   teamBySection: TeamSectionGroup[];
   songs: EventSongItem[];
+  /** Uma linha por função escalada, com a resposta (Fase H). */
+  assignments: AssignmentInfo[];
+}
+
+export interface AssignmentInfo {
+  id: string;
+  userId: string;
+  name: string;
+  functionName: string;
+  response: AssignmentResponse;
+  note: string | null;
+  suggestedUserId: string | null;
 }
 
 /** Evento com equipe (por função) e repertório (na ordem). `null` se não existir/sem acesso. */
@@ -60,7 +73,7 @@ export async function fetchEventDetail(eventId: string): Promise<EventDetail | n
   const { data, error } = await supabase
     .from('events')
     .select(
-      'id, type, title, starts_at, ends_at, location, status, notes, event_assignments(id, notes, profile:profiles(id, full_name, display_name), function:ministry_functions(id, name, sort_order, section)), event_songs(id, position, key_for_event, notes, song:songs(id, title, artist, official_key, original_key))',
+      'id, type, title, starts_at, ends_at, location, status, notes, event_assignments(id, notes, response, response_note, suggested_user_id, profile:profiles(id, full_name, display_name), function:ministry_functions(id, name, sort_order, section)), event_songs(id, position, key_for_event, notes, song:songs(id, title, artist, official_key, original_key))',
     )
     .eq('id', eventId)
     .maybeSingle();
@@ -87,6 +100,15 @@ export async function fetchEventDetail(eventId: string): Promise<EventDetail | n
     team: groupTeamByFunction(event_assignments satisfies TeamAssignmentRow[]),
     teamBySection: groupTeamBySection(event_assignments satisfies TeamAssignmentRow[]),
     songs,
+    assignments: event_assignments.map((row) => ({
+      id: row.id,
+      userId: row.profile?.id ?? '',
+      name: row.profile ? displayName(row.profile) : 'Integrante',
+      functionName: row.function?.name ?? 'Sem função',
+      response: row.response,
+      note: row.response_note,
+      suggestedUserId: row.suggested_user_id,
+    })),
   };
 }
 
@@ -94,6 +116,7 @@ export interface ScheduleOverview {
   event: EventSummary;
   teamCount: number;
   songCount: number;
+  declinedCount: number;
 }
 
 /**
@@ -109,7 +132,7 @@ export async function fetchAllSchedules(
   const base = supabase
     .from('events')
     .select(
-      'id, type, title, starts_at, ends_at, location, status, event_assignments(id), event_songs(id)',
+      'id, type, title, starts_at, ends_at, location, status, event_assignments(id, response), event_songs(id)',
     );
   const { data, error } =
     period === 'proximas'
@@ -124,5 +147,6 @@ export async function fetchAllSchedules(
     event,
     teamCount: event_assignments.length,
     songCount: event_songs.length,
+    declinedCount: event_assignments.filter((a) => a.response === 'declined').length,
   }));
 }

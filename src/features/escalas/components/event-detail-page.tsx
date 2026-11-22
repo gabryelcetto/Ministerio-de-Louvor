@@ -28,12 +28,15 @@ import { downloadBlob, shareText } from '@/lib/browser-share';
 import { dateBlock, formatDayLabel, dayKey, formatTimeRange, isoToZonedLocal } from '@/lib/dates';
 import { icsFileName } from '@/lib/ics';
 import { mapsSearchUrl } from '@/lib/share';
+import { combinedResponse } from '../presence';
 import { cn } from '@/lib/utils';
 import type { EventDetail, EventSongItem } from '../api';
 import { useEventDetail } from '../hooks';
 import { useDuplicateEvent, useSetEventStatus } from '../manage';
 import { eventIcs, eventShareText } from '../share-text';
 import type { TeamSectionGroup } from '../schedule-utils';
+import { DeclinesPanel } from './declines-panel';
+import { PresenceActions, ResponseBadge } from './presence-actions';
 import { SongRow } from './song-row';
 
 /** Escala / detalhe do evento: data, equipe (Cantores e Instrumentistas) e repertório. */
@@ -212,6 +215,8 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
           <p className="rounded-xl bg-chip p-4 text-sm whitespace-pre-line">{event.notes}</p>
         )}
 
+        {!cancelled && <MyPresence detail={detail} />}
+        {canSchedule && !cancelled && <DeclinesPanel assignments={detail.assignments} />}
         <Team groups={teamBySection} />
         <Songs songs={songs} eventId={event.id} />
 
@@ -259,6 +264,26 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
   );
 }
 
+/** "Confirmo" / "Não posso" de quem está escalado neste evento. */
+function MyPresence({ detail }: { detail: EventDetail }) {
+  const { session } = useSession();
+  const mine = detail.assignments.filter((a) => a.userId === session?.user.id);
+  if (mine.length === 0) return null;
+  return (
+    <section aria-labelledby="presenca-titulo" className="flex flex-col gap-2">
+      <h2 id="presenca-titulo" className="section-label">
+        Sua presença
+      </h2>
+      <PresenceActions
+        assignmentIds={mine.map((a) => a.id)}
+        startsAt={detail.event.starts_at}
+        response={combinedResponse(mine.map((a) => a.response))}
+        eventTitle={detail.event.title}
+      />
+    </section>
+  );
+}
+
 function Team({ groups }: { groups: TeamSectionGroup[] }) {
   const { session } = useSession();
   const myId = session?.user.id;
@@ -302,6 +327,7 @@ function Team({ groups }: { groups: TeamSectionGroup[] }) {
                       <span className="text-caption text-muted-foreground">
                         {member.functions.join(' · ')}
                       </span>
+                      <ResponseBadge response={member.response} />
                       {member.notes.map((note) => (
                         <span key={note} className="text-caption text-muted-foreground">
                           {note}

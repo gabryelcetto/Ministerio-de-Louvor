@@ -146,6 +146,8 @@ export interface SaveAnnouncementInput {
   body: string;
   filter: AudienceFilter;
   pinnedUntil: string | null;
+  /** ISO da publicação agendada; `null` = publicar agora (ou manter, se já publicado). */
+  publishAt?: string | null;
 }
 
 export async function saveAnnouncement(input: SaveAnnouncementInput): Promise<string> {
@@ -156,6 +158,7 @@ export async function saveAnnouncement(input: SaveAnnouncementInput): Promise<st
     p_body: input.body,
     p_filter: input.filter as unknown as Json,
     p_pinned_until: input.pinnedUntil as string,
+    ...(input.publishAt ? { p_publish_at: input.publishAt } : {}),
   });
   if (error) throw error;
   return data;

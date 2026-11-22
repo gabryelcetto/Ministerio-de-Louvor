@@ -13,7 +13,7 @@ import { Link } from 'react-router';
 import { ErrorState, LoadingState } from '@/components/common/states';
 import { Button } from '@/components/ui/button';
 import { useMyProfile } from '@/features/auth';
-import { SongRow, useEventDetail } from '@/features/escalas';
+import { PresenceActions, SongRow, combinedResponse, useEventDetail } from '@/features/escalas';
 import { InstallTip } from '@/features/instalar';
 import { useMyFunctions } from '@/features/integrantes';
 import { formatDayLabel, formatTime, formatTimeRange, greeting } from '@/lib/dates';
@@ -186,6 +186,15 @@ function NextSchedule({ item }: { item: DashboardScheduleItem }) {
         </Button>
       </article>
 
+      <div className="rounded-xl border bg-card p-3">
+        <PresenceActions
+          assignmentIds={item.assignmentIds}
+          startsAt={item.startsAt}
+          response={combinedResponse(item.responses)}
+          eventTitle={item.title}
+        />
+      </div>
+
       {songs.length > 0 && (
         <section
           aria-label={`Repertório de ${item.title}`}
@@ -253,6 +262,11 @@ function Attention({ items, total }: { items: Dashboard['attention']; total: num
                 <span className="flex flex-wrap gap-1.5">
                   {item.no_team && <IssueChip>Sem equipe</IssueChip>}
                   {item.no_songs && <IssueChip>Sem repertório</IssueChip>}
+                  {(item.declined ?? 0) > 0 && (
+                    <IssueChip>
+                      {item.declined === 1 ? '1 recusa' : `${item.declined} recusas`}
+                    </IssueChip>
+                  )}
                 </span>
               </span>
               <ChevronRight aria-hidden="true" className="size-5 text-muted-foreground" />

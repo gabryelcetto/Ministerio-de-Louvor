@@ -33,13 +33,25 @@ describe('groupAssignmentsByEvent', () => {
     const e1 = event('1', '2026-11-22T22:00:00Z');
     const rows: MyAssignmentRow[] = [
       { id: 'a', notes: null, event: e1, function: violao },
-      { id: 'b', notes: ' levar capo ', event: e1, function: ministro },
+      { id: 'b', notes: ' levar capo ', event: e1, function: ministro, response: 'declined' },
       { id: 'c', notes: null, event: event('2', '2026-11-25T22:00:00Z'), function: vocal },
       { id: 'd', notes: null, event: null, function: vocal }, // evento invisível: ignora
     ];
     expect(groupAssignmentsByEvent(rows)).toEqual([
-      { event: e1, functions: ['Ministro', 'Violão'], notes: ['levar capo'] },
-      { event: expect.objectContaining({ id: '2' }), functions: ['Vocal'], notes: [] },
+      {
+        event: e1,
+        functions: ['Ministro', 'Violão'],
+        notes: ['levar capo'],
+        response: 'declined',
+        assignmentIds: ['a', 'b'],
+      },
+      {
+        event: expect.objectContaining({ id: '2' }),
+        functions: ['Vocal'],
+        notes: [],
+        response: 'pending',
+        assignmentIds: ['c'],
+      },
     ]);
   });
 });
@@ -129,6 +141,7 @@ describe('equipe em Cantores e Instrumentistas', () => {
         notes: 'Abre o culto',
         profile: person('u1', 'Isa Integrante', 'Isa'),
         function: fn('Vocal', 1, 'vocal'),
+        response: 'confirmed',
       },
       {
         id: 'a3',
@@ -147,6 +160,7 @@ describe('equipe em Cantores e Instrumentistas', () => {
         notes: ' ',
         profile: person('u1', 'Isa Integrante', 'Isa'),
         function: fn('Backing vocal', 4, 'vocal'),
+        response: 'confirmed',
       },
       { id: 'a6', notes: null, profile: null, function: null },
       { id: 'a7', notes: null, profile: person('u4', 'Ana'), function: fn('Dança', 9) },
@@ -163,8 +177,10 @@ describe('equipe em Cantores e Instrumentistas', () => {
         initials: 'I',
         functions: ['Vocal', 'Backing vocal'],
         notes: ['Abre o culto'],
+        response: 'confirmed',
       },
     ]);
+    expect(groups[1]!.members.map((m) => m.response)).toEqual(['pending', 'pending', 'pending']);
     expect(groups[1]!.members.map((m) => [m.name, m.functions.join(' · '), m.initials])).toEqual([
       ['Bruno Bateria', 'Bateria', 'BB'],
       ['Isa', 'Violão', 'I'],

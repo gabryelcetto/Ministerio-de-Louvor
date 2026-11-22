@@ -77,14 +77,14 @@ isOneToOne: false
                   ]
                 },"announcements": {
                   Row: {
-                    "audience": string,"audience_filter": NonNullable<Json>,"body": string,"created_at": string,"created_by": string | null,"id": string,"last_reminder_at": string | null,"pinned_until": string | null,"published_at": string,"title": string,"updated_at": string
+                    "audience": string,"audience_filter": NonNullable<Json>,"body": string,"created_at": string,"created_by": string | null,"id": string,"last_reminder_at": string | null,"notified_at": string | null,"pinned_until": string | null,"published_at": string,"title": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title": string,"updated_at"?: string
+                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"notified_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title": string,"updated_at"?: string
                   }
                   Update: {
-                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title"?: string,"updated_at"?: string
+                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"notified_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -117,14 +117,14 @@ isOneToOne: false
                   ]
                 },"event_assignments": {
                   Row: {
-                    "created_at": string,"event_id": string,"function_id": number,"id": string,"notes": string | null,"user_id": string
+                    "created_at": string,"event_id": string,"function_id": number,"id": string,"notes": string | null,"responded_at": string | null,"response": string,"response_note": string | null,"suggested_user_id": string | null,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"event_id": string,"function_id": number,"id"?: string,"notes"?: string | null,"user_id": string
+                    "created_at"?: string,"event_id": string,"function_id": number,"id"?: string,"notes"?: string | null,"responded_at"?: string | null,"response"?: string,"response_note"?: string | null,"suggested_user_id"?: string | null,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"event_id"?: string,"function_id"?: number,"id"?: string,"notes"?: string | null,"user_id"?: string
+                    "created_at"?: string,"event_id"?: string,"function_id"?: number,"id"?: string,"notes"?: string | null,"responded_at"?: string | null,"response"?: string,"response_note"?: string | null,"suggested_user_id"?: string | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -251,6 +251,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"member_unavailability": {
+                  Row: {
+                    "created_at": string,"ends_on": string,"id": string,"note": string | null,"starts_on": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"ends_on": string,"id"?: string,"note"?: string | null,"starts_on": string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"ends_on"?: string,"id"?: string,"note"?: string | null,"starts_on"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "member_unavailability_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"ministry_functions": {
                   Row: {
                     "active": boolean,"id": number,"name": string,"section": string,"sort_order": number
@@ -312,6 +332,26 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"push_subscriptions": {
+                  Row: {
+                    "auth": string,"created_at": string,"endpoint": string,"id": string,"p256dh": string,"user_agent": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "auth": string,"created_at"?: string,"endpoint": string,"id"?: string,"p256dh": string,"user_agent"?: string | null,"user_id"?: string
+                  }
+                  Update: {
+                    "auth"?: string,"created_at"?: string,"endpoint"?: string,"id"?: string,"p256dh"?: string,"user_agent"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "push_subscriptions_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"role_permissions": {
                   Row: {
@@ -520,6 +560,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"assignment_substitutes":
+{ Args: { p_assignment_id: string }; Returns: { name: string; user_id: string }[]
+                           },
 "audio_files_to_purge":
 { Args: { "p_days"?: number }; Returns: {
               "reason": string,"storage_path": string
@@ -625,8 +668,14 @@ isOneToOne: false
 "preview_announcement_audience":
 { Args: { "p_filter": Json }; Returns: number
                            },
+"publish_due_announcements":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "remind_announcement":
 { Args: { "p_id": string }; Returns: number
+                           },
+"respond_assignment":
+{ Args: { p_assignment_id: string; p_note?: string; p_response: string; p_suggested_user_id?: string }; Returns: undefined
                            },
 "restore_song_version":
 { Args: { "version_id": string }; Returns: undefined
@@ -635,7 +684,10 @@ isOneToOne: false
 { Args: { "p_user_id": string }; Returns: undefined
                            },
 "save_announcement":
-{ Args: { "p_body": string,"p_filter": Json,"p_id": string,"p_pinned_until"?: string,"p_title": string }; Returns: string
+{ Args: { p_body: string; p_filter: Json; p_id: string; p_pinned_until?: string; p_publish_at?: string; p_title: string }; Returns: string
+                           },
+"save_push_subscription":
+{ Args: { p_auth: string; p_endpoint: string; p_p256dh: string; p_user_agent?: string }; Returns: undefined
                            },
 "search_songs":
 { Args: { "q": string }; Returns: {
@@ -663,6 +715,9 @@ isOneToOne: false
                            },
 "setup_new_member":
 { Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_user_id": string }; Returns: undefined
+                           },
+"swap_assignment":
+{ Args: { p_assignment_id: string; p_user_id: string }; Returns: string
                            },
 "update_member":
 { Args: { "p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_phone": string,"p_user_id": string }; Returns: undefined

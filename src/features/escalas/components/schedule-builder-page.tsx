@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, UserMinus } from 'lucide-react';
+import { CalendarOff, Plus, Trash2, UserMinus } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EVENT_TYPE_STYLES } from '@/features/agenda';
 import { matchesSection, SECTION_FILTER_LABEL, type SectionFilter } from '@/features/integrantes';
-import { formatShortDate, formatTime, weeklyOccurrences } from '@/lib/dates';
+import { dayKey, formatShortDate, formatTime, weeklyOccurrences } from '@/lib/dates';
 import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
 import {
@@ -29,6 +29,7 @@ import {
   type SchedulingData,
 } from '../manage';
 import { ScreenHeader } from '@/components/layout/screen-header';
+import { useUnavailableOn } from '../presence-api';
 import { EventFields } from './event-fields';
 
 const selectClass =
@@ -106,6 +107,7 @@ function Builder({ data }: { data: SchedulingData }) {
   const [repeat, setRepeat] = useState(false);
   const [weeks, setWeeks] = useState(4);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [confirmUnavailable, setConfirmUnavailable] = useState(false);
 
   const targetId = mode === 'novo' ? null : eventId;
   const target = data.events.find((e) => e.id === targetId);
@@ -113,6 +115,20 @@ function Builder({ data }: { data: SchedulingData }) {
   const eventErrors = mode === 'novo' ? validateEventDraft(draft) : {};
   const problems = draftProblems(rows, existing);
   const pendingRows = assignmentsToInsert(targetId ?? 'novo', rows, existing);
+  // Indisponibilidades do dia do evento (Fase H): alerta e confirmação antes de escalar.
+  const day =
+    mode === 'novo' ? draft.startsAt.slice(0, 10) || null : target ? dayKey(target.startsAt) : null;
+  const unavailableQuery = useUnavailableOn(day);
+  const unavailable = new Map(
+    (unavailableQuery.data ?? []).map((u) => [u.user_id, u.note] as const),
+  );
+  const unavailableNames = [
+    ...new Set(
+      rows
+        .filter((r) => r.userId && unavailable.has(r.userId))
+        .map((r) => data.members.find((m) => m.id === r.userId)?.name ?? 'Integrante'),
+    ),
+  ];
 
   const dirty =
     !savedId &&
@@ -152,6 +168,10 @@ function Builder({ data }: { data: SchedulingData }) {
     if (Object.keys(eventErrors).length > 0 || Object.keys(problems).length > 0) return;
     if (mode === 'existente' && !eventId) return;
     if (mode === 'existente' && pendingRows.length === 0) return;
+    if (unavailableNames.length > 0) {
+      setConfirmUnavailable(true);
+      return;
+    }
     save.mutate();
   };
 
@@ -260,6 +280,7 @@ function Builder({ data }: { data: SchedulingData }) {
                 row={row}
                 data={data}
                 filter={sectionFilter}
+                unavailable={unavailable}
                 problem={showErrors ? problems[row.key] : undefined}
                 onChange={(patch) => updateRow(row.key, patch)}
                 onRemove={
@@ -283,6 +304,20 @@ function Builder({ data }: { data: SchedulingData }) {
       </fieldset>
 
       <FormError error={save.error} fallback="Não foi possível salvar a escala." />
+      <ConfirmDialog
+        open={confirmUnavailable}
+        title="Escalar mesmo assim?"
+        confirmLabel="Escalar mesmo assim"
+        cancelLabel="Voltar"
+        onConfirm={() => {
+          setConfirmUnavailable(false);
+          save.mutate();
+        }}
+        onCancel={() => setConfirmUnavailable(false)}
+      >
+        {unavailableNames.join(', ')} {unavailableNames.length === 1 ? 'marcou' : 'marcaram'} que
+        não pode nesse dia.
+      </ConfirmDialog>
       {showErrors && mode === 'existente' && eventId && pendingRows.length === 0 && (
         <p role="alert" className="text-sm text-destructive">
           Inclua pelo menos uma pessoa com a função.
@@ -354,6 +389,7 @@ function AssignmentRow({
   row,
   data,
   filter,
+  unavailable,
   problem,
   onChange,
   onRemove,
@@ -362,6 +398,8 @@ function AssignmentRow({
   row: AssignmentDraft;
   data: SchedulingData;
   filter: SectionFilter;
+  /** Quem marcou indisponibilidade no dia do evento (com o motivo). */
+  unavailable: Map<string, string | null>;
   problem?: string;
   onChange: (patch: Partial<AssignmentDraft>) => void;
   onRemove?: () => void;
@@ -405,9 +443,17 @@ function AssignmentRow({
           {people.map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
+              {unavailable.has(m.id) ? ' (indisponível)' : ''}
             </option>
           ))}
         </select>
+        {row.userId && unavailable.has(row.userId) && (
+          <p role="status" className="flex items-start gap-1 text-caption text-destructive">
+            <CalendarOff aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+            Marcou que não pode nesse dia
+            {unavailable.get(row.userId) ? `: ${unavailable.get(row.userId)}` : '.'}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${base}-funcao`}>Função</Label>

@@ -34,6 +34,8 @@ select table_privs_are(
     -- histórico e auditoria: só por trigger/RPC (pendência 27)
     when 'song_versions' then array['SELECT']
     when 'audit_logs' then array['INSERT', 'SELECT']
+    -- Web Push: gravar só pela RPC save_push_subscription
+    when 'push_subscriptions' then array['DELETE', 'SELECT']
     when 'media_files' then array['DELETE', 'INSERT', 'SELECT'] -- UPDATE só em label (abaixo)
     else array['DELETE', 'INSERT', 'SELECT', 'UPDATE']
   end::name[],

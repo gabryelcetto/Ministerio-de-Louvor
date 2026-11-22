@@ -1,5 +1,6 @@
 import {
   Activity,
+  CalendarOff,
   ChevronRight,
   ClipboardList,
   ListChecks,
@@ -37,6 +38,12 @@ const GROUPS: { title: string; items: MoreItem[] }[] = [
     items: [
       { to: '/integrantes', label: 'Integrantes', icon: Users },
       { to: '/comunicados', label: 'Comunicados', icon: Megaphone },
+      {
+        to: '/indisponibilidades',
+        label: 'Minhas indisponibilidades',
+        hint: 'Dias em que você não pode ser escalado(a)',
+        icon: CalendarOff,
+      },
     ],
   },
   {

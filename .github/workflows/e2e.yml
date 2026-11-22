@@ -90,6 +90,8 @@ jobs:
           # Só no CI: os usuários demo já aceitaram a política de privacidade (a tela de aceite
           # é testada com a pessoa cadastrada pelo roteiro).
           echo "update public.profiles set privacy_accepted_at = now(), privacy_version = '2026-11';"             | docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres
+          # Só no CI: Lucas também toca bateria (é o substituto sugerido no roteiro da Fase H).
+          echo "insert into public.member_functions (user_id, function_id) select p.id, f.id from public.profiles p, public.ministry_functions f where p.display_name = 'Lucas' and f.name = 'Bateria' on conflict do nothing;"             | docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres
 
       # A Edge Function invite-member é servida pelo edge-runtime do `supabase start`. Se esta
       # versão da CLI não servir sozinha, sobe com `supabase functions serve`.
