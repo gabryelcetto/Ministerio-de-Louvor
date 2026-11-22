@@ -189,6 +189,42 @@ describe('Comunicados', () => {
     expect(rpcArgs('save_announcement')[0]).toMatchObject({ p_id: 'an1', p_pinned_until: null });
   });
 
+  it('agendar: data obrigatória, envia p_publish_at e o detalhe mostra "Agendado para"', async () => {
+    const { user } = renderApp('/comunicados/novo', { as: 'admin' });
+    await findHeading('Novo comunicado');
+    await user.type(await screen.findByLabelText('Título'), 'Ensaio geral');
+    await user.click(screen.getByRole('radio', { name: 'Agendar' }));
+    await user.click(screen.getByRole('button', { name: 'Agendar' }));
+    expect(await screen.findByText('Escolha a data e a hora da publicação.')).toBeTruthy();
+    expect(rpcArgs('save_announcement')).toHaveLength(0);
+    fireEvent.change(screen.getByLabelText('Data e hora (horário de Brasília)'), {
+      target: { value: '2999-01-10T08:00' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Agendar' }));
+    await waitFor(() => expect(rpcArgs('save_announcement')).toHaveLength(1));
+    expect(rpcArgs('save_announcement')[0]!.p_publish_at).toBe('2999-01-10T11:00:00.000Z');
+  });
+
+  it('agendado: lista e detalhe avisam, sem "Visto por"; a edição reabre o agendamento', async () => {
+    const setup = (s: { tables?: Record<string, Record<string, unknown>[]> }) => {
+      s.tables!.announcements![0]!.published_at = '2999-01-10T11:00:00.000Z';
+    };
+    const { unmount } = renderApp('/comunicados/an1', { as: 'admin', setup });
+    await screen.findByRole('heading', { level: 2, name: 'Bem-vindos ao app' });
+    expect(screen.getByText(/Agendado para .*10\/01 às 08:00/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Visto por/ })).toBeNull();
+    unmount();
+    renderApp('/comunicados/an1/editar', { as: 'admin', setup });
+    await findHeading('Editar comunicado');
+    expect(
+      ((await screen.findByRole('radio', { name: 'Agendar' })) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(
+      (screen.getByLabelText('Data e hora (horário de Brasília)') as HTMLInputElement).value,
+    ).toBe('2999-01-10T08:00');
+    expect(screen.getByRole('button', { name: 'Salvar agendamento' })).toBeTruthy();
+  });
+
   it('sem permissão, a tela de novo comunicado explica', async () => {
     renderApp('/comunicados/novo', { as: 'member' });
     expect(

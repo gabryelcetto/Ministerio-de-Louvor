@@ -1,4 +1,4 @@
-import { BellRing, Eye, Pencil, Pin, Trash2, Users } from 'lucide-react';
+import { BellRing, CalendarClock, Eye, Pencil, Pin, Trash2, Users } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
@@ -20,6 +20,7 @@ import {
   useRemindAnnouncement,
   type AudienceStatus,
 } from '../api';
+import { scheduledLabel } from '../publish';
 import { audienceSummary, seenLabel } from '../audience';
 
 /** Detalhe do comunicado: texto completo, leitura registrada ao abrir e "Visto por" (admin). */
@@ -96,9 +97,16 @@ export function AnnouncementDetailPage() {
             {item.title}
           </h2>
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-muted-foreground">
-            <time dateTime={item.publishedAt}>
-              {formatDayLabel(item.publishedAt)}, {formatTime(item.publishedAt)}
-            </time>
+            {item.scheduled ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 font-medium text-secondary-foreground">
+                <CalendarClock aria-hidden="true" className="size-3.5" />
+                {scheduledLabel(item.publishedAt)}
+              </span>
+            ) : (
+              <time dateTime={item.publishedAt}>
+                {formatDayLabel(item.publishedAt)}, {formatTime(item.publishedAt)}
+              </time>
+            )}
             {item.author && <span>por {item.author}</span>}
             {item.pinned && (
               <span className="inline-flex items-center gap-1 rounded-md bg-brand-soft px-2 py-0.5 font-semibold text-brand-text">
@@ -121,7 +129,7 @@ export function AnnouncementDetailPage() {
         )}
       </article>
 
-      {canManage && <SeenBy id={item.id} />}
+      {canManage && !item.scheduled && <SeenBy id={item.id} />}
 
       <ConfirmDialog
         open={confirmDelete}

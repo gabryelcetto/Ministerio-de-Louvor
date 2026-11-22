@@ -20,8 +20,9 @@ import {
   type Section,
 } from '@/features/integrantes';
 import { useSingleFlight } from '@/hooks/use-single-flight';
-import { formatDayLabel, formatShortDate, formatTime } from '@/lib/dates';
+import { formatDayLabel, formatShortDate, formatTime, isoToZonedLocal } from '@/lib/dates';
 import { cn } from '@/lib/utils';
+import { publishChoice, submitLabel, type PublishMode } from '../publish';
 import {
   useAnnouncement,
   useAudiencePreview,
@@ -107,6 +108,12 @@ function AnnouncementForm({ initial }: { initial: AnnouncementItem | null }) {
   const [body, setBody] = useState(initial?.body ?? '');
   const [filter, setFilter] = useState<AudienceFilter>(initial?.filter ?? { type: 'all' });
   const [pin, setPin] = useState<PinOption | 'keep'>(initial?.pinned ? 'keep' : 'none');
+  const stage = !initial ? 'new' : initial.scheduled ? 'scheduled' : 'published';
+  const [mode, setMode] = useState<PublishMode>(stage === 'scheduled' ? 'schedule' : 'now');
+  const [publishLocal, setPublishLocal] = useState(
+    initial?.scheduled ? isoToZonedLocal(initial.publishedAt) : '',
+  );
+  const choice = publishChoice(mode, publishLocal);
   const [tried, setTried] = useState(false);
   // Salvou: guarda o id e navega no efeito, depois que o aviso de "não salvo" foi desligado.
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -128,7 +135,7 @@ function AnnouncementForm({ initial }: { initial: AnnouncementItem | null }) {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     setTried(true);
-    if (titleProblem || problem) return;
+    if (titleProblem || problem || choice.problem) return;
     void once(async () => {
       const newId = await save.mutateAsync({
         id: initial?.id ?? null,
@@ -136,6 +143,7 @@ function AnnouncementForm({ initial }: { initial: AnnouncementItem | null }) {
         body: body.trim(),
         filter,
         pinnedUntil: pin === 'keep' ? (initial?.pinnedUntil ?? null) : pinnedUntil(pin),
+        publishAt: choice.publishAt,
       });
       setSavedId(newId);
     }).catch(() => undefined); // o erro aparece pelo save.error
@@ -206,6 +214,62 @@ function AnnouncementForm({ initial }: { initial: AnnouncementItem | null }) {
         </select>
       </div>
 
+      {stage !== 'published' && (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1.5 text-sm font-semibold">Quando publicar</legend>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ['now', 'Publicar agora'],
+                ['schedule', 'Agendar'],
+              ] as const
+            ).map(([value, label]) => (
+              <label
+                key={value}
+                className={cn(
+                  'flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-medium has-focus-visible:ring-2 has-focus-visible:ring-ring',
+                  mode === value ? 'border-brand bg-brand-soft' : 'bg-card',
+                )}
+              >
+                <input
+                  type="radio"
+                  name={`${id}-quando`}
+                  value={value}
+                  checked={mode === value}
+                  onChange={() => setMode(value)}
+                  className="size-4 accent-brand"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          {mode === 'schedule' && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`${id}-quando-data`}>Data e hora (horário de Brasília)</Label>
+              <Input
+                id={`${id}-quando-data`}
+                type="datetime-local"
+                value={publishLocal}
+                onChange={(e) => setPublishLocal(e.target.value)}
+                aria-invalid={tried && !!choice.problem}
+                aria-describedby={`${id}-quando-dica`}
+              />
+              <p
+                id={`${id}-quando-dica`}
+                className={cn(
+                  'text-caption',
+                  tried && choice.problem ? 'text-destructive' : 'text-muted-foreground',
+                )}
+              >
+                {tried && choice.problem
+                  ? choice.problem
+                  : 'Os integrantes só veem e recebem o aviso na hora marcada.'}
+              </p>
+            </div>
+          )}
+        </fieldset>
+      )}
+
       <FormError error={save.error} fallback="Não foi possível publicar." />
 
       <div className="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 border-t bg-card px-4 py-3 md:bottom-0 md:left-60 md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
@@ -221,7 +285,7 @@ function AnnouncementForm({ initial }: { initial: AnnouncementItem | null }) {
           </p>
           <Button type="submit" disabled={save.isPending || saved}>
             <Send aria-hidden="true" />
-            {save.isPending ? 'Publicando…' : initial ? 'Salvar alterações' : 'Publicar'}
+            {save.isPending ? 'Salvando…' : submitLabel(mode, stage)}
           </Button>
         </div>
       </div>
