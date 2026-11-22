@@ -218,6 +218,7 @@ export function useAnnouncement(id: string) {
   return useQuery({
     queryKey: ['announcements', 'detail', id],
     queryFn: () => fetchAnnouncement(id),
+    enabled: id !== '',
   });
 }
 

@@ -25,7 +25,7 @@ insert into auth.sessions (id, user_id) values
   (gen_random_uuid(), 'a6000000-0000-4000-8000-000000000003'),
   (gen_random_uuid(), 'a6000000-0000-4000-8000-000000000001');
 insert into auth.refresh_tokens (user_id, session_id, token)
-select user_id::text, id, 'tok' from auth.sessions;
+select user_id::text, id, 'tok-' || id from auth.sessions;
 insert into public.songs (id, title) values ('a7000000-0000-4000-8000-000000000001', 'Segura');
 
 -- Cadastro e redefinição: senha provisória vale 7 dias ----------------------------------------
