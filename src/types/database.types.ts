@@ -335,6 +335,26 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"push_subscriptions": {
+                  Row: {
+                    "auth": string,"created_at": string,"endpoint": string,"id": string,"p256dh": string,"user_agent": string | null,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "auth": string,"created_at"?: string,"endpoint": string,"id"?: string,"p256dh": string,"user_agent"?: string | null,"user_id"?: string
+                  }
+                  Update: {
+                    "auth"?: string,"created_at"?: string,"endpoint"?: string,"id"?: string,"p256dh"?: string,"user_agent"?: string | null,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "push_subscriptions_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"role_permissions": {
                   Row: {
                     "permission_key": string,"role": Database["public"]['Enums']["access_role"]
@@ -664,6 +684,9 @@ isOneToOne: false
                            },
 "save_announcement":
 { Args: { p_body: string; p_filter: Json; p_id: string; p_pinned_until?: string; p_publish_at?: string; p_title: string }; Returns: string
+                           },
+"save_push_subscription":
+{ Args: { p_auth: string; p_endpoint: string; p_p256dh: string; p_user_agent?: string }; Returns: undefined
                            },
 "search_songs":
 { Args: { "q": string }; Returns: {
