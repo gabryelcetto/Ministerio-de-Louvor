@@ -90,6 +90,7 @@ export function PresenceActions({
       >
         <Button
           type="button"
+          needsNetwork
           size="sm"
           variant={response === 'confirmed' ? 'default' : 'outline'}
           aria-pressed={response === 'confirmed'}
@@ -101,6 +102,7 @@ export function PresenceActions({
         </Button>
         <Button
           type="button"
+          needsNetwork
           size="sm"
           variant={response === 'declined' ? 'destructive' : 'outline'}
           aria-pressed={response === 'declined'}

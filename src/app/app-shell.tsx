@@ -12,11 +12,13 @@ import {
 } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { FlameLogo } from '@/components/brand/flame-logo';
+import { OfflineBanner } from '@/components/common/offline-banner';
 import { brand } from '@/config/brand';
 import { unreadLabel, useUnreadCount } from '@/features/notificacoes';
 import { cn } from '@/lib/utils';
 import { activePrimary, isMainScreen } from './nav';
 import { ThemeChoiceDialog } from './theme-choice-dialog';
+import { usePreloadNextSongs } from './use-preload-next-songs';
 
 interface NavItem {
   to: string;
@@ -168,6 +170,7 @@ export function AppShell() {
   const { pathname } = useLocation();
   const active = activePrimary(pathname);
   const main = isMainScreen(pathname);
+  usePreloadNextSongs();
 
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
@@ -179,6 +182,7 @@ export function AppShell() {
       </a>
       <SideNav active={active} />
       <div className="flex min-h-dvh min-w-0 flex-col">
+        <OfflineBanner />
         {main && <MainHeader />}
         <main
           id="conteudo"

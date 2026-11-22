@@ -94,6 +94,7 @@ export function ReferenceAudios({
           <>
             <Button
               type="button"
+              needsNetwork
               variant="outline"
               onClick={() => inputRef.current?.click()}
               disabled={full || upload.isPending}
@@ -141,7 +142,13 @@ export function ReferenceAudios({
         <p role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
           {friendlyError(upload.error, 'Não foi possível enviar o áudio.')}
           {lastFile && !full && (
-            <Button type="button" variant="outline" size="sm" onClick={() => void send(lastFile)}>
+            <Button
+              type="button"
+              needsNetwork
+              variant="outline"
+              size="sm"
+              onClick={() => void send(lastFile)}
+            >
               Tentar de novo
             </Button>
           )}

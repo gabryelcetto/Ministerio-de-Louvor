@@ -55,6 +55,7 @@ export function UnavailabilityPage() {
                 </span>
                 <Button
                   type="button"
+                  needsNetwork
                   variant="ghost"
                   size="icon"
                   disabled={remove.isPending}

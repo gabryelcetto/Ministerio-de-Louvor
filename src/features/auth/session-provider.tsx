@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { clearOfflineCache } from '@/lib/offline-cache';
 import { supabase } from '@/services/supabase';
 import { shouldClearCache } from './session-cache';
 import { SessionContext } from './session-context';
@@ -24,7 +25,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const { data } = supabase.auth.onAuthStateChange((event, newSession) => {
       const nextUserId = newSession?.user.id ?? null;
       // Saiu ou trocou de usuário: nenhum dado do usuário anterior pode ficar em cache.
-      if (shouldClearCache(event, userIdRef.current, nextUserId)) queryClient.clear();
+      if (shouldClearCache(event, userIdRef.current, nextUserId)) {
+        queryClient.clear();
+        // Modo offline: o que estava salvo no aparelho também sai (outra pessoa pode entrar).
+        void clearOfflineCache();
+      }
       userIdRef.current = nextUserId;
       setSession(newSession);
       setLoading(false);

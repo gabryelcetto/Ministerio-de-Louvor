@@ -440,7 +440,12 @@ function PendingRecording({
           </span>
         </span>
         <span className="flex gap-2">
-          <Button type="button" onClick={() => void send()} disabled={upload.isPending}>
+          <Button
+            type="button"
+            needsNetwork
+            onClick={() => void send()}
+            disabled={upload.isPending}
+          >
             <Upload aria-hidden="true" />
             {upload.isError ? 'Tentar de novo' : upload.isPending ? 'Enviando…' : 'Enviar'}
           </Button>

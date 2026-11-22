@@ -56,6 +56,7 @@ function DeclineRow({ assignment }: { assignment: AssignmentInfo }) {
             <Button
               key={s.user_id}
               type="button"
+              needsNetwork
               size="sm"
               variant={s.user_id === assignment.suggestedUserId ? 'default' : 'outline'}
               disabled={swap.isPending}
