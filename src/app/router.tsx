@@ -1,3 +1,4 @@
+import { PrivacyPage } from './privacy-page';
 import { createBrowserRouter, type RouteObject } from 'react-router';
 import { AgendaPage } from '@/features/agenda/components/agenda-page';
 import { LoginPage } from '@/features/auth/components/login-page';
@@ -30,6 +31,7 @@ import { ProtectedRoute } from './protected-route';
 /** Rotas do app (exportadas para os testes montarem o app num roteador em memória). */
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
+  { path: '/privacidade', element: <PrivacyPage /> },
   {
     element: <ProtectedRoute />,
     children: [

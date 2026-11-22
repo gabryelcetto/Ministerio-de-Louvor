@@ -4,7 +4,7 @@ import type { ProfileRow } from '@/types/app.types';
 
 /** Colunas legíveis de profiles (phone NÃO: só via get_member_contacts). */
 export const PROFILE_COLUMNS =
-  'id, full_name, display_name, access_role, is_owner, status, must_change_password, temp_password_expires_at, created_at, updated_at';
+  'id, full_name, display_name, access_role, is_owner, status, must_change_password, temp_password_expires_at, privacy_version, created_at, updated_at';
 
 export async function fetchMyProfile(userId: string): Promise<ProfileRow> {
   const { data, error } = await supabase

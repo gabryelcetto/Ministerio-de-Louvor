@@ -71,6 +71,7 @@ const profile = (
   access_role,
   is_owner: false,
   status: 'active',
+  privacy_version: '2026-11',
   must_change_password: false,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',

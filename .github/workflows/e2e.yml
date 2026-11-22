@@ -87,6 +87,9 @@ jobs:
         run: |
           node e2e/create-demo-users.mjs
           docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres < supabase/demo-users.sql
+          # Só no CI: os usuários demo já aceitaram a política de privacidade (a tela de aceite
+          # é testada com a pessoa cadastrada pelo roteiro).
+          echo "update public.profiles set privacy_accepted_at = now(), privacy_version = '2026-11';"             | docker exec -i supabase_db_ministerio-de-louvor psql -v ON_ERROR_STOP=1 -U postgres -d postgres
 
       # A Edge Function invite-member é servida pelo edge-runtime do `supabase start`. Se esta
       # versão da CLI não servir sozinha, sobe com `supabase functions serve`.

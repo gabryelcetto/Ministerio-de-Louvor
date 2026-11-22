@@ -389,3 +389,32 @@ describe('início, agenda, comunicados, escalas e instalar', () => {
     );
   });
 });
+
+describe('privacidade (LGPD)', () => {
+  it('primeiro acesso pede "Li e concordo" e grava o aceite', async () => {
+    const { user } = renderApp('/', {
+      as: 'member',
+      setup: (s) => {
+        s.tables!.profiles!.find((p) => p.id === MEMBER_ID)!.privacy_version = null;
+        s.rpc!.accept_privacy = null;
+      },
+    });
+    expect(await screen.findByRole('heading', { name: 'Seus dados no app' })).toBeTruthy();
+    const go = screen.getByRole('button', { name: 'Continuar' });
+    expect((go as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByRole('checkbox', { name: 'Li e concordo' }));
+    await user.click(go);
+    await waitFor(() =>
+      expect(fake.calls.find((c) => c.name === 'accept_privacy')?.ops[0]?.args[0]).toEqual({
+        p_version: '2026-11',
+      }),
+    );
+  });
+
+  it('página de privacidade aberta sem login, com o que guardamos e o prazo das gravações', async () => {
+    renderApp('/privacidade', { as: null });
+    await findHeading('Privacidade');
+    expect(screen.getByText(/Gravações de ensaio: 90 dias/)).toBeTruthy();
+    expect(screen.getByText(/NOME DO MINISTÉRIO/)).toBeTruthy();
+  });
+});

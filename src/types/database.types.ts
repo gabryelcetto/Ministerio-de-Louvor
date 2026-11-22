@@ -303,14 +303,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"must_change_password": boolean,"phone": string | null,"status": string,"temp_password_expires_at": string | null,"updated_at": string
+                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"must_change_password": boolean,"phone": string | null,"privacy_accepted_at": string | null,"privacy_version": string | null,"status": string,"temp_password_expires_at": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"temp_password_expires_at"?: string | null,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"privacy_accepted_at"?: string | null,"privacy_version"?: string | null,"status"?: string,"temp_password_expires_at"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"temp_password_expires_at"?: string | null,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"privacy_accepted_at"?: string | null,"privacy_version"?: string | null,"status"?: string,"temp_password_expires_at"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -510,6 +510,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"accept_privacy":
+{ Args: { "p_version": string }; Returns: undefined
+                           },
 "announcement_audience":
 { Args: { "p_filter": Json }; Returns: string[]
                            },

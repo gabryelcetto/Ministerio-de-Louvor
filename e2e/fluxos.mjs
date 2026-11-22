@@ -855,6 +855,10 @@ let temporaryPassword = '';
     await page.getByLabel('Nova senha', { exact: true }).fill(NEW_PASSWORD);
     await page.getByLabel('Repita a nova senha').fill(NEW_PASSWORD);
     await page.getByRole('button', { name: 'Salvar e entrar' }).click();
+    // Primeiro acesso: aceite da política de privacidade (LGPD).
+    await page.getByRole('heading', { name: 'Seus dados no app' }).waitFor({ timeout: 15000 });
+    await page.getByRole('checkbox', { name: 'Li e concordo' }).check();
+    await page.getByRole('button', { name: 'Continuar' }).click();
     await page
       .getByRole('navigation', { name: 'Navegação principal' })
       .first()

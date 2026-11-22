@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Navigate, useLocation, useNavigate } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { FlameLogo } from '@/components/brand/flame-logo';
@@ -127,6 +127,12 @@ function ForgotPassword() {
           provisória (vale 7 dias) e manda para você; no primeiro acesso, você cria a sua.
         </p>
       )}
+      <Link
+        to="/privacidade"
+        className="min-h-11 rounded-lg px-3 py-2 text-sm text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Privacidade
+      </Link>
     </div>
   );
 }
