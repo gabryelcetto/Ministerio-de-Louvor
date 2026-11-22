@@ -2,6 +2,8 @@ import { Navigate, Outlet, useLocation } from 'react-router';
 import { useMyProfile, useSession, signOut } from '@/features/auth';
 import { Button } from '@/components/ui/button';
 import { FirstAccessPage } from '@/features/auth/components/first-access-page';
+import { needsPrivacyConsent } from '@/lib/privacy';
+import { PrivacyConsent } from './privacy-consent';
 
 function FullScreenMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -51,7 +53,13 @@ export function ProtectedRoute() {
     );
   }
   if (profile.data?.must_change_password) {
-    return <FirstAccessPage name={profile.data.display_name || profile.data.full_name} />;
+    return (
+      <FirstAccessPage
+        name={profile.data.display_name || profile.data.full_name}
+        expiresAt={profile.data.temp_password_expires_at}
+      />
+    );
   }
+  if (needsPrivacyConsent(profile.data?.privacy_version)) return <PrivacyConsent />;
   return <Outlet />;
 }

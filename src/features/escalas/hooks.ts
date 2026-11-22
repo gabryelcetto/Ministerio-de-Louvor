@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from '@/features/auth';
-import { fetchEventDetail, fetchMySchedules } from './api';
+import { fetchAllSchedules, fetchEventDetail, fetchMySchedules } from './api';
 
 export function useMySchedules() {
   const { session } = useSession();
@@ -17,5 +17,13 @@ export function useEventDetail(eventId: string | undefined) {
     queryKey: ['events', 'detail', eventId],
     queryFn: () => fetchEventDetail(eventId as string),
     enabled: Boolean(eventId),
+  });
+}
+
+export function useAllSchedules(period: 'proximas' | 'anteriores', enabled: boolean) {
+  return useQuery({
+    queryKey: ['schedules', 'all', period],
+    queryFn: () => fetchAllSchedules(period),
+    enabled,
   });
 }

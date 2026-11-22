@@ -1,9 +1,10 @@
 name: Mutação
 
 # Teste de mutação (StrykerJS) no núcleo puro (src/lib) e nos módulos puros das features.
-# - PR que mexe nesses arquivos (ou nos testes deles): modo incremental, reaproveitando o
-#   resultado da última execução completa (cache) e testando só o que mudou.
-# - Toda segunda-feira de madrugada (03:00 em Brasília): execução completa, que renova o cache.
+# - PR que mexe nesses arquivos (ou nos testes deles): só os arquivos da lista `mutate` alterados
+#   contra a base (scripts/mutation-files.mjs), em modo incremental. Limite de 45 minutos.
+# - Toda segunda-feira de madrugada (03:00 em Brasília) e pelo botão (workflow_dispatch):
+#   execução completa, que renova o cache do incremental. Limite de 180 minutos.
 # Reprova abaixo do limite "break" do stryker.config.mjs. Relatório HTML como artefato.
 
 on:
@@ -11,13 +12,19 @@ on:
     paths:
       - 'src/lib/**'
       - 'src/features/escalas/schedule-utils*'
+      - 'src/features/escalas/share-text*'
+      - 'src/features/escalas/setlist.*'
+      - 'src/features/escalas/pending*'
       - 'src/features/integrantes/sections*'
       - 'src/features/repertorio/editor-checks*'
       - 'src/features/repertorio/history-format*'
       - 'src/features/repertorio/song-key*'
+      - 'src/features/repertorio/song-list*'
       - 'src/features/auth/session-cache*'
+      - 'src/features/comunicados/audience*'
       - 'supabase/functions/_shared/**'
       - 'stryker.config.mjs'
+      - 'scripts/mutation-files.mjs'
       - 'vitest.config.ts'
       - '.github/workflows/mutation.yml'
   schedule:
@@ -35,9 +42,11 @@ jobs:
   mutation:
     name: Mutação
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 45 || 180 }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -55,15 +64,24 @@ jobs:
           restore-keys: stryker-incremental-
 
       - name: Stryker (incremental no PR, completo no agendamento)
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            npx stryker run --incremental
+            files=$(git diff --name-only --diff-filter=d "origin/$BASE_REF...HEAD" | node scripts/mutation-files.mjs)
+            if [ -z "$files" ]; then
+              echo "Nenhum arquivo da lista \`mutate\` mudou neste PR: mutação pulada." >> "$GITHUB_STEP_SUMMARY"
+              echo "SKIPPED=1" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "Arquivos mutados neste PR: $files" | tee -a "$GITHUB_STEP_SUMMARY"
+            npx stryker run --incremental --mutate "$files"
           else
             npx stryker run --incremental --force
           fi
 
       - name: Score no resumo
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.SKIPPED != '1' }}
         run: node scripts/mutation-summary.mjs >> "$GITHUB_STEP_SUMMARY"
 
       - name: Relatório de mutação (HTML)

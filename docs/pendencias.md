@@ -48,12 +48,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   com as regras atualizadas (fluxo de branches a partir da `main`, coautoria, fim da regra 5.1) e
   as convenções que aparecem no diário. Se existir uma versão local mais completa, junte as duas.
 
-### 13. Listas com limite fixo
-
-- **O quê:** Notificações mostra as 100 mais recentes e Comunicados os 50 mais recentes (com
-  aviso na tela quando o limite é atingido). Não há paginação ("carregar mais").
-- **O que fazer:** quando o volume justificar, trocar por `useInfiniteQuery` com `range()`.
-
 ### 14. Conferir o texto dos hinos do seed com um hinário impresso antigo
 
 - **O quê:** o seed traz a 1ª estrofe de 4 hinos em português de domínio público: "Santo! Santo!
@@ -70,14 +64,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   e tom continuam consistentes.
 - **Fora do seed:** "Castelo Forte" (trad. J. Eduardo von Hafe, 1886) ficou de fora porque não
   foi possível confirmar a data de falecimento do tradutor.
-
-### 17. Criar evento + equipe são duas gravações
-
-- **O quê:** "Montar escala" com evento novo grava o evento e depois a equipe. Se a equipe
-  falhar, o evento fica criado; a tela avisa ("O evento foi criado, mas a equipe não foi salva") e
-  a nova tentativa grava só a equipe.
-- **O que fazer (se incomodar):** uma RPC `create_event_with_team(...)` no banco faria tudo numa
-  transação.
 
 ### 19. Instalação do app só testada em navegador simulado
 
@@ -160,15 +146,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   deploy command" e se as variáveis de build valem para todas as branches (ou desligar builds de
   branches não-produção, se não quiser prévias).
 
-### 27. Endurecer privilégios das tabelas só de inserção (opcional)
-
-- **O quê:** `song_versions` (gravada só por trigger) e `audit_logs` (só inserção) recebem
-  `update/delete` para `authenticated` como as demais; quem impede alterar é o RLS (sem policy).
-  Tirar o GRANT seria uma segunda barreira, mas muda a regra "S/I/U/D em todas as tabelas".
-- **O que fazer (se quiser):** migration com
-  `revoke update, delete on public.song_versions, public.audit_logs from authenticated;` (e
-  `insert` em `song_versions`) e ajustar o `privileges.test.sql`.
-
 ### 28. Conferir os privilégios na nuvem
 
 - **O quê:** `20261120200000_explicit_grants.sql` foi aplicada na nuvem em 21/11/2026 (`db push`,
@@ -185,22 +162,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   group by 1, 2
   order by 1, 2;
   ```
-
-### 30. `complete_password_change()` não confere se a senha mudou de fato
-
-- **O quê:** o app troca a senha no Auth e depois chama a RPC. Alguém que chamasse só a RPC pelo
-  console liberaria a própria conta mantendo a senha provisória, que quem cadastrou conhece.
-  Só a própria pessoa consegue fazer isso.
-- **O que fazer (se quiser fechar):** fazer a troca numa Edge Function (`change-password`), que
-  chama `auth.admin.updateUserById` e limpa a flag na mesma operação.
-
-### 31. Senha provisória sem validade e sem "esqueci minha senha"
-
-- **O quê:** a senha provisória não expira. Também não há recuperação de senha por e-mail: isso
-  depende de SMTP, que ficou fora do protótipo.
-- **O que fazer:** depois do protótipo, expirar contas com `must_change_password` que não
-  entraram em X dias. (A ação "Redefinir senha" para o admin já existe: PR "admin redefine senha
-  de integrante".)
 
 ### 35. Detecção de tom é uma sugestão
 
@@ -235,14 +196,6 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
   `npx supabase db push` e `npx supabase functions deploy reset-member-password --use-api`
   (README, "Redefinir a senha de um integrante").
 - **Sem teste com dados reais nesta máquina** (sem Docker, disco cheio): pgTAP e E2E rodam no CI.
-
-### 41. Sessões abertas continuam com o token antigo após a redefinição
-
-- **O quê:** redefinir a senha não derruba os aparelhos em que a pessoa já estava logada; o
-  token antigo vale até expirar. Não é brecha: com `must_change_password = true` o banco não
-  deixa essa sessão ler nem alterar nada, e o app mostra "Defina sua senha".
-- **O que fazer (se quiser):** na Edge Function, depois de trocar a senha, encerrar as sessões
-  da pessoa (apagar as linhas dela em `auth.sessions` por uma RPC só para `service_role`).
 
 ### 42. Publicar "gravar na música" na nuvem (o dono roda)
 
@@ -288,17 +241,27 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **O que fazer:** abrir o app no celular (Ctrl+Shift+R no computador ou fechar e abrir o app
   instalado, por causa do cache do PWA) e seguir o checklist do PR.
 
-### 51. Roteiros E2E e capturas atualizados sem rodar nesta máquina — médio
+### 52. Preencher o controlador dos dados (LGPD) — dono
 
-- **O quê:** `e2e/fluxos.mjs`, `e2e/qa.mjs`, `e2e/varredura.mjs` e `tests/e2e/capturas.spec.ts`
-  foram atualizados para o novo visual (menu ⋯, tela Mais, dock, modal de tema), mas só rodam no
-  workflow **E2E (dados reais)** (sem Docker e sem Playwright aqui). A primeira execução no PR é
-  a validação.
-- **Sem teste com dados reais:** "Cancelar evento"/"Reativar evento" (menu ⋯ da escala) só tem
-  teste de tela com o Supabase de mentira; o RLS de `events` já é coberto pelo pgTAP.
-- **O que fazer:** olhar o resultado do E2E no PR; se algum seletor falhar, ajustar o roteiro.
+- **O quê:** a página /privacidade mostra "[NOME DO MINISTÉRIO / RESPONSÁVEL]".
+- **O que fazer:** trocar `PRIVACY_CONTROLLER` em `src/lib/privacy.ts`. Se o texto da política
+  mudar, subir `PRIVACY_VERSION` (todos aceitam de novo no próximo acesso).
+
+### 53. Fase G: telas novas conferidas só no CI — médio
+
+- **O quê:** comunicados com público, agenda por mês, modo culto, repertório do evento,
+  integrantes e funções foram testados com Vitest (happy-dom), pgTAP no CI (e localmente num
+  Postgres em WASM) e Playwright no CI. Falta usar em celulares de verdade: gesto de deslizar
+  no modo culto, Web Share com arquivo de áudio, .ics no iPhone e no Android.
+- **Função desativada:** some das telas de escolha, mas `create_event_with_team` ainda aceita uma
+  função desativada se alguém chamar a RPC à mão (a tela não oferece). Endurecer se for preciso.
 
 ## Resolvidas recentemente
+
+- **13, 17, 27, 30, 31, 41 e 51** — PR "feat(gestao)" (Fase G): "Carregar mais" nas listas;
+  evento + equipe numa transação (create_event_with_team); song_versions/audit_logs sem
+  update/delete pela API; troca de senha pela Edge Function change-password; senha provisória
+  de 7 dias e "Esqueci minha senha"; redefinição encerra as sessões; E2E do PR #20 rodou verde.
 
 - **44 a 47. Salvar duas vezes, espera sem internet e mensagens do envio de áudio** — PR
   "feat(design): novo visual Louvor ADVOP":

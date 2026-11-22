@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { nextOffset, PAGE_SIZE } from '@/lib/paging';
 import { supabase } from '@/services/supabase';
 import type { ChangeType, VersionField } from '@/types/app.types';
 
@@ -17,8 +18,6 @@ export interface ActivityItem {
   changeType: ChangeType | null;
   action: string | null;
 }
-
-export const ACTIVITY_LIMIT = 150;
 
 const ACTION_LABEL: Record<string, string> = {
   archive_song: 'Excluiu a música',
@@ -50,14 +49,15 @@ export function describeActivity(
   return `Editou ${what}`;
 }
 
-export async function fetchActivity(filters: {
-  actorId: string | null;
-  songId: string | null;
-}): Promise<ActivityItem[]> {
+export async function fetchActivity(
+  filters: { actorId: string | null; songId: string | null },
+  offset = 0,
+): Promise<ActivityItem[]> {
   const { data, error } = await supabase.rpc('get_recent_activity', {
     p_actor: filters.actorId ?? undefined,
     p_song: filters.songId ?? undefined,
-    p_limit: ACTIVITY_LIMIT,
+    p_limit: PAGE_SIZE,
+    p_offset: offset,
   });
   if (error) throw error;
   return data.map((row) => ({
@@ -74,9 +74,12 @@ export async function fetchActivity(filters: {
 }
 
 export function useActivity(actorId: string | null, songId: string | null) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['activity', actorId, songId],
-    queryFn: () => fetchActivity({ actorId, songId }),
+    queryFn: ({ pageParam }) => fetchActivity({ actorId, songId }, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, all) => nextOffset(last, all),
+    select: (data) => data.pages.flat(),
   });
 }
 

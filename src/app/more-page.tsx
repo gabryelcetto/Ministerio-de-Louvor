@@ -6,6 +6,7 @@ import {
   LogOut,
   Megaphone,
   Palette,
+  ShieldCheck,
   Smartphone,
   UserCog,
   UserPlus,
@@ -54,6 +55,7 @@ const GROUPS: { title: string; items: MoreItem[] }[] = [
         icon: UserCog,
       },
       { to: '/instalar', label: 'Instalar o app', icon: Smartphone },
+      { to: '/privacidade', label: 'Privacidade', icon: ShieldCheck },
     ],
   },
   {

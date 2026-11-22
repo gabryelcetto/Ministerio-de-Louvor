@@ -23,16 +23,68 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "announcements": {
+            "announcement_reads": {
                   Row: {
-                    "audience": string,"body": string,"created_at": string,"created_by": string | null,"id": string,"published_at": string,"title": string
+                    "announcement_id": string,"read_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "audience"?: string,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"published_at"?: string,"title": string
+                    "announcement_id": string,"read_at"?: string,"user_id"?: string
                   }
                   Update: {
-                    "audience"?: string,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"published_at"?: string,"title"?: string
+                    "announcement_id"?: string,"read_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "announcement_reads_announcement_id_fkey"
+      columns: ["announcement_id"]
+isOneToOne: false
+      referencedRelation: "announcements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "announcement_reads_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"announcement_recipients": {
+                  Row: {
+                    "announcement_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "announcement_id": string,"user_id": string
+                  }
+                  Update: {
+                    "announcement_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "announcement_recipients_announcement_id_fkey"
+      columns: ["announcement_id"]
+isOneToOne: false
+      referencedRelation: "announcements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "announcement_recipients_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"announcements": {
+                  Row: {
+                    "audience": string,"audience_filter": NonNullable<Json>,"body": string,"created_at": string,"created_by": string | null,"id": string,"last_reminder_at": string | null,"pinned_until": string | null,"published_at": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "audience"?: string,"audience_filter"?: NonNullable<Json>,"body"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"last_reminder_at"?: string | null,"pinned_until"?: string | null,"published_at"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -201,14 +253,14 @@ isOneToOne: false
                   ]
                 },"ministry_functions": {
                   Row: {
-                    "id": number,"name": string,"section": string,"sort_order": number
+                    "active": boolean,"id": number,"name": string,"section": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "id"?: never,"name": string,"section": string,"sort_order"?: number
+                    "active"?: boolean,"id"?: never,"name": string,"section": string,"sort_order"?: number
                   }
                   Update: {
-                    "id"?: never,"name"?: string,"section"?: string,"sort_order"?: number
+                    "active"?: boolean,"id"?: never,"name"?: string,"section"?: string,"sort_order"?: number
                   }
                   Relationships: [
                     
@@ -249,14 +301,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"must_change_password": boolean,"phone": string | null,"status": string,"updated_at": string
+                    "access_role": Database["public"]['Enums']["access_role"],"created_at": string,"display_name": string | null,"full_name": string,"id": string,"is_owner": boolean,"must_change_password": boolean,"phone": string | null,"privacy_accepted_at": string | null,"privacy_version": string | null,"status": string,"temp_password_expires_at": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id": string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"privacy_accepted_at"?: string | null,"privacy_version"?: string | null,"status"?: string,"temp_password_expires_at"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string
+                    "access_role"?: Database["public"]['Enums']["access_role"],"created_at"?: string,"display_name"?: string | null,"full_name"?: string,"id"?: string,"is_owner"?: boolean,"must_change_password"?: boolean,"phone"?: string | null,"privacy_accepted_at"?: string | null,"privacy_version"?: string | null,"status"?: string,"temp_password_expires_at"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -437,7 +489,16 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "assert_can_reset_password":
+            "accept_privacy":
+{ Args: { "p_version": string }; Returns: undefined
+                           },
+"announcement_audience":
+{ Args: { "p_filter": Json }; Returns: string[]
+                           },
+"announcement_visible":
+{ Args: { "p_id": string }; Returns: boolean
+                           },
+"assert_can_reset_password":
 { Args: { "p_user_id": string }; Returns: {
               "access_role": Database["public"]['Enums']["access_role"],
 "created_at": string,
@@ -447,7 +508,10 @@ isOneToOne: false
 "is_owner": boolean,
 "must_change_password": boolean,
 "phone": string | null,
+"privacy_accepted_at": string | null,
+"privacy_version": string | null,
 "status": string,
+"temp_password_expires_at": string | null,
 "updated_at": string
             }
                           SetofOptions: {
@@ -482,11 +546,31 @@ isOneToOne: false
 "complete_password_change":
 { Args: Record<PropertyKey, never>; Returns: undefined
                            },
+"create_event_with_team":
+{ Args: { "p_assignments"?: Json,"p_ends_at": string,"p_location": string,"p_notes": string,"p_repeat_weeks"?: number,"p_starts_at": string,"p_title": string,"p_type": string }; Returns: (string)[]
+                           },
 "create_song":
 { Args: { "p_artist": string,"p_category": string,"p_chords": string,"p_lyrics": string,"p_media_url": string,"p_notes": string,"p_official_key": string,"p_original_key": string,"p_title": string }; Returns: string
                            },
 "current_change_type":
 { Args: { "op": string }; Returns: string
+                           },
+"delete_announcement":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
+"delete_ministry_function":
+{ Args: { "p_id": number }; Returns: undefined
+                           },
+"duplicate_event":
+{ Args: { "p_event_id": string,"p_starts_at": string }; Returns: string
+                           },
+"finish_password_change":
+{ Args: { "p_user_id": string }; Returns: undefined
+                           },
+"get_announcement_audience_status":
+{ Args: { "p_id": string }; Returns: {
+              "display_name": string,"full_name": string,"read_at": string,"user_id": string
+            }[]
                            },
 "get_dashboard":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -497,8 +581,16 @@ isOneToOne: false
             }[]
                            },
 "get_recent_activity":
-{ Args: { "p_actor"?: string,"p_limit"?: number,"p_song"?: string }; Returns: {
+{ Args: { "p_actor"?: string,"p_limit"?: number,"p_offset"?: number,"p_song"?: string }; Returns: {
               "action": string,"actor_id": string,"actor_name": string,"change_type": string,"field": string,"kind": string,"occurred_at": string,"song_id": string,"song_title": string,"version_id": string
+            }[]
+                           },
+"get_song_plays":
+{ Args: { "p_limit"?: number,"p_song_id": string }; Returns: Json
+                           },
+"get_song_stats":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "last_played_at": string,"play_count": number,"song_id": string
             }[]
                            },
 "get_storage_usage":
@@ -513,8 +605,14 @@ isOneToOne: false
 "is_active_member":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
+"mark_announcement_read":
+{ Args: { "p_id": string }; Returns: undefined
+                           },
 "mark_password_reset":
 { Args: { "p_user_id": string }; Returns: undefined
+                           },
+"move_ministry_function":
+{ Args: { "p_delta": number,"p_id": number }; Returns: undefined
                            },
 "my_permissions":
 { Args: Record<PropertyKey, never>; Returns: string[]
@@ -524,8 +622,20 @@ isOneToOne: false
               "display_name": string,"email": string,"full_name": string
             }[]
                            },
+"preview_announcement_audience":
+{ Args: { "p_filter": Json }; Returns: number
+                           },
+"remind_announcement":
+{ Args: { "p_id": string }; Returns: number
+                           },
 "restore_song_version":
 { Args: { "version_id": string }; Returns: undefined
+                           },
+"revoke_user_sessions":
+{ Args: { "p_user_id": string }; Returns: undefined
+                           },
+"save_announcement":
+{ Args: { "p_body": string,"p_filter": Json,"p_id": string,"p_pinned_until"?: string,"p_title": string }; Returns: string
                            },
 "search_songs":
 { Args: { "q": string }; Returns: {
@@ -548,8 +658,14 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"set_event_songs":
+{ Args: { "p_event_id": string,"p_items": Json }; Returns: number
+                           },
 "setup_new_member":
 { Args: { "p_access_role": Database["public"]['Enums']["access_role"],"p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_user_id": string }; Returns: undefined
+                           },
+"update_member":
+{ Args: { "p_display_name": string,"p_full_name": string,"p_function_ids": (number)[],"p_phone": string,"p_user_id": string }; Returns: undefined
                            }
           }
           Enums: {

@@ -92,6 +92,8 @@ async function fetchFunctions(): Promise<MinistryFunctionOption[]> {
   const { data, error } = await supabase
     .from('ministry_functions')
     .select('id, name, sort_order')
+    // Função desativada não aparece no cadastro (continua no histórico).
+    .eq('active', true)
     .order('sort_order');
   if (error) throw error;
   return data.map(({ id, name }) => ({ id, name }));

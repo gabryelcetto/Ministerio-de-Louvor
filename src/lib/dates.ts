@@ -164,3 +164,81 @@ export function dateBlock(value: string | Date): { weekday: string; day: string 
     day: dayOfMonthFormat.format(date),
   };
 }
+
+/**
+ * "Repetir toda semana por N semanas": as datas, no mesmo horário de São Paulo (como o banco
+ * faz em create_event_with_team). Valor de datetime-local → instantes ISO.
+ */
+export function weeklyOccurrences(local: string, weeks: number): string[] {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local.trim());
+  if (!match || weeks < 1) return [];
+  const [, y, mo, d, h, mi] = match;
+  const out: string[] = [];
+  for (let i = 0; i < weeks; i++) {
+    const day = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d) + 7 * i));
+    const iso = day.toISOString().slice(0, 10);
+    const instant = zonedLocalToIso(`${iso}T${h}:${mi}`);
+    if (instant) out.push(instant);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Meses (agenda): "2026-11" no fuso da igreja.
+// ---------------------------------------------------------------------------------------------
+const MONTH_RE = /^(\d{4})-(\d{2})$/;
+const monthNameFormat = new Intl.DateTimeFormat('pt-BR', { month: 'long', timeZone: 'UTC' });
+
+/** Mês de agora (ou da data) no fuso de São Paulo: "2026-11". */
+export function monthKey(value: string | Date = new Date()): string {
+  return dayKey(value).slice(0, 7);
+}
+
+/** "2026-11" é um mês válido? */
+export function isMonthKey(value: string | null | undefined): value is string {
+  const m = MONTH_RE.exec(value ?? '');
+  return !!m && Number(m[2]) >= 1 && Number(m[2]) <= 12;
+}
+
+/** Soma (ou subtrai) meses: addMonths("2026-12", 1) = "2027-01". */
+export function addMonths(month: string, delta: number): string {
+  const [, y, m] = MONTH_RE.exec(month) ?? [];
+  const index = Number(y) * 12 + (Number(m) - 1) + delta;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+}
+
+/** Início e fim (exclusivo) do mês, em instantes ISO, no horário de São Paulo. */
+export function monthRange(month: string): { from: string; to: string } {
+  return {
+    from: zonedLocalToIso(`${month}-01T00:00`)!,
+    to: zonedLocalToIso(`${addMonths(month, 1)}-01T00:00`)!,
+  };
+}
+
+/** "novembro de 2026". */
+export function formatMonthLabel(month: string): string {
+  const [, y, m] = MONTH_RE.exec(month) ?? [];
+  const name = monthNameFormat.format(new Date(Date.UTC(Number(y), Number(m) - 1, 15)));
+  return `${name} de ${y}`;
+}
+
+/** "hoje", "ontem", "há 3 dias", "há 1 semana", "há 3 semanas", "há 2 meses", "há 1 ano". */
+export function relativeAgo(value: string | Date, now: Date = new Date()): string {
+  const days = Math.round(
+    (Date.parse(`${dayKey(now)}T00:00:00Z`) - Date.parse(`${dayKey(value)}T00:00:00Z`)) /
+      86_400_000,
+  );
+  if (days <= 0) return 'hoje';
+  if (days === 1) return 'ontem';
+  if (days < 7) return `há ${days} dias`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return weeks === 1 ? 'há 1 semana' : `há ${weeks} semanas`;
+  }
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    return months === 1 ? 'há 1 mês' : `há ${months} meses`;
+  }
+  const years = Math.floor(days / 365);
+  return years === 1 ? 'há 1 ano' : `há ${years} anos`;
+}

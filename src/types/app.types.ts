@@ -107,6 +107,18 @@ export interface DashboardAnnouncement {
   title: string;
   body: string;
   published_at: string;
+  /** "Fixar no topo" ainda valendo (vem primeiro). */
+  pinned?: boolean;
+}
+
+/** "Precisa de atenção" (só para quem monta escala). */
+export interface DashboardAttention {
+  id: string;
+  title: string;
+  type: EventType;
+  starts_at: string;
+  no_team: boolean;
+  no_songs: boolean;
 }
 
 export interface Dashboard {
@@ -116,4 +128,6 @@ export interface Dashboard {
   next_service_songs: DashboardSong[];
   recent_announcements: DashboardAnnouncement[];
   unread_notifications: number;
+  attention: DashboardAttention[];
+  attention_total: number;
 }

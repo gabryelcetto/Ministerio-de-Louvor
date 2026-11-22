@@ -1,5 +1,17 @@
-import { Ban, CalendarCheck, Clock, MapPin, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import {
+  Ban,
+  CalendarCheck,
+  CalendarPlus,
+  Clock,
+  Copy,
+  ListMusic,
+  MapPin,
+  Navigation,
+  Pencil,
+  Share2,
+  SquarePen,
+} from 'lucide-react';
+import { useId, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { FormError } from '@/components/common/form-error';
@@ -10,11 +22,17 @@ import { EVENT_TYPE_STYLES } from '@/features/agenda';
 import { RehearsalRecordings } from '@/features/audio';
 import { useSession, usePermission } from '@/features/auth';
 import { useScrollToHash } from '@/hooks/use-scroll-to-hash';
-import { dateBlock, formatDayLabel, formatTimeRange } from '@/lib/dates';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { downloadBlob, shareText } from '@/lib/browser-share';
+import { dateBlock, formatDayLabel, dayKey, formatTimeRange, isoToZonedLocal } from '@/lib/dates';
+import { icsFileName } from '@/lib/ics';
+import { mapsSearchUrl } from '@/lib/share';
 import { cn } from '@/lib/utils';
 import type { EventDetail, EventSongItem } from '../api';
 import { useEventDetail } from '../hooks';
-import { useSetEventStatus } from '../manage';
+import { useDuplicateEvent, useSetEventStatus } from '../manage';
+import { eventIcs, eventShareText } from '../share-text';
 import type { TeamSectionGroup } from '../schedule-utils';
 import { SongRow } from './song-row';
 
@@ -52,18 +70,59 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
   const canSchedule = usePermission('schedules.manage');
   const canManageEvents = usePermission('events.manage');
   const status = useSetEventStatus();
+  const duplicate = useDuplicateEvent(event.id);
   const [confirming, setConfirming] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+  const [notice, setNotice] = useState('');
+  const appUrl = window.location.origin;
+
+  const share = async () => {
+    const outcome = await shareText({ title: event.title, text: eventShareText(detail, appUrl) });
+    setNotice(
+      outcome === 'copied-whatsapp'
+        ? 'Texto copiado. Se o WhatsApp não abrir, cole a mensagem.'
+        : outcome === 'copied'
+          ? 'Texto copiado. Cole onde quiser enviar.'
+          : outcome === 'failed'
+            ? 'Não foi possível compartilhar neste aparelho.'
+            : '',
+    );
+  };
+  const addToCalendar = () => {
+    downloadBlob(
+      new Blob([eventIcs(detail, appUrl)], { type: 'text/calendar;charset=utf-8' }),
+      icsFileName(event.title, event.starts_at),
+    );
+    setNotice('Arquivo da agenda baixado. Abra-o para adicionar ao calendário.');
+  };
   const cancelled = event.status === 'cancelled';
   const block = dateBlock(event.starts_at);
   const typeLabel = EVENT_TYPE_STYLES[event.type].label;
 
   const menu: OverflowMenuItem[] = [
+    { label: 'Compartilhar', icon: Share2, onSelect: () => void share() },
+    { label: 'Adicionar à agenda', icon: CalendarPlus, onSelect: addToCalendar },
+    ...(canManageEvents
+      ? [
+          {
+            label: 'Editar evento',
+            icon: SquarePen,
+            onSelect: () => void navigate(`/escalas/${event.id}/editar`),
+          },
+          { label: 'Duplicar evento', icon: Copy, onSelect: () => setDuplicating(true) },
+        ]
+      : []),
     ...(canSchedule
       ? [
           {
             label: 'Editar escala',
             icon: Pencil,
             onSelect: () => void navigate(`/escalas/montar?evento=${event.id}`),
+          },
+          {
+            label: 'Editar repertório',
+            icon: ListMusic,
+            onSelect: () => void navigate(`/escalas/${event.id}/repertorio`),
           },
         ]
       : []),
@@ -91,6 +150,13 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
       />
       <section className="mx-auto flex max-w-[45rem] flex-col gap-6">
         <FormError error={status.error} />
+        <p
+          role="status"
+          aria-live="polite"
+          className="text-sm font-medium text-brand-text empty:hidden"
+        >
+          {notice}
+        </p>
         <div className="flex gap-4 rounded-xl border bg-card p-4">
           <div
             aria-hidden="true"
@@ -119,7 +185,19 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
                   <MapPin aria-hidden="true" className="size-4" />
                   <span className="sr-only">Local</span>
                 </dt>
-                <dd>{event.location}</dd>
+                <dd className="flex flex-wrap items-center gap-x-2">
+                  {event.location}
+                  <a
+                    href={mapsSearchUrl(event.location)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-11 items-center gap-1 font-semibold text-brand-text underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Navigation aria-hidden="true" className="size-4" />
+                    Como chegar
+                    <span className="sr-only"> (abre o mapa em nova aba)</span>
+                  </a>
+                </dd>
               </div>
             )}
             {cancelled && (
@@ -137,7 +215,12 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
         <Team groups={teamBySection} />
         <Songs songs={songs} eventId={event.id} />
 
-        {event.type === 'ensaio' && <RehearsalRecordings eventId={event.id} />}
+        {event.type === 'ensaio' && (
+          <RehearsalRecordings
+            eventId={event.id}
+            downloadPrefix={`Ensaio ${dayKey(event.starts_at).slice(8, 10)}-${dayKey(event.starts_at).slice(5, 7)}`}
+          />
+        )}
       </section>
 
       <ConfirmDialog
@@ -157,6 +240,21 @@ function EventDetailView({ detail }: { detail: EventDetail }) {
       >
         A equipe escalada recebe um aviso no app.
       </ConfirmDialog>
+      <DuplicateDialog
+        open={duplicating}
+        defaultStartsAt={nextWeek(event.starts_at)}
+        busy={duplicate.isPending}
+        error={duplicate.error}
+        onCancel={() => setDuplicating(false)}
+        onConfirm={(startsAt) =>
+          duplicate.mutate(startsAt, {
+            onSuccess: (newId) => {
+              setDuplicating(false);
+              void navigate(`/escalas/${newId}`);
+            },
+          })
+        }
+      />
     </>
   );
 }
@@ -243,5 +341,54 @@ function Songs({ songs, eventId }: { songs: EventSongItem[]; eventId: string }) 
         </ol>
       )}
     </section>
+  );
+}
+
+/** Mesma hora, uma semana depois (sugestão para "Duplicar evento"). */
+function nextWeek(startsAt: string): string {
+  return isoToZonedLocal(new Date(Date.parse(startsAt) + 7 * 86_400_000));
+}
+
+function DuplicateDialog({
+  open,
+  defaultStartsAt,
+  busy,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  defaultStartsAt: string;
+  busy: boolean;
+  error: unknown;
+  onCancel: () => void;
+  onConfirm: (startsAtLocal: string) => void;
+}) {
+  const id = useId();
+  const [value, setValue] = useState(defaultStartsAt);
+  return (
+    <ConfirmDialog
+      open={open}
+      title="Duplicar evento"
+      confirmLabel="Duplicar"
+      busy={busy}
+      onCancel={onCancel}
+      onConfirm={() => value && onConfirm(value)}
+    >
+      <div className="flex flex-col gap-2">
+        <p>A cópia leva a equipe e o repertório. Escolha a nova data.</p>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={id}>Nova data e hora (horário de Brasília)</Label>
+          <Input
+            id={id}
+            type="datetime-local"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="h-11 text-base"
+          />
+        </div>
+        {error ? <FormError error={error} fallback="Não foi possível duplicar." /> : null}
+      </div>
+    </ConfirmDialog>
   );
 }

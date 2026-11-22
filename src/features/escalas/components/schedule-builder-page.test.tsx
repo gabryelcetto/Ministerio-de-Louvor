@@ -9,6 +9,11 @@ vi.mock('@/services/supabase', async () => ({
   supabase: (await import('@/test/fake-supabase')).fake.client,
 }));
 
+const rpcArgs = (name: string) =>
+  fake.calls
+    .filter((c) => c.name === name)
+    .map((c) => c.ops[0]!.args[0] as Record<string, unknown>);
+
 async function openBuilder(path = '/escalas/montar') {
   const app = renderApp(path, { as: 'admin' });
   await findHeading('Montar escala');
@@ -19,7 +24,7 @@ async function openBuilder(path = '/escalas/montar') {
 describe('montar escala', () => {
   it('sem escolher nada mostra os erros (evento novo e evento da agenda)', async () => {
     const { user } = await openBuilder();
-    await user.click(screen.getByRole('button', { name: 'Criar evento e salvar escala' }));
+    await user.click(screen.getByRole('button', { name: 'Criar evento' }));
     expect(await screen.findByText('Informe o título.')).toBeTruthy();
     await user.click(screen.getByRole('radio', { name: 'Evento da agenda' }));
     await user.selectOptions(screen.getByRole('combobox', { name: 'Evento' }), '');
@@ -84,13 +89,41 @@ describe('montar escala', () => {
       target: { value: '2030-05-10T21:00' },
     });
     await user.click(screen.getByRole('button', { name: 'Criar evento e salvar escala' }));
-    await waitFor(() => expect(fake.writes('events', 'insert')).toHaveLength(1));
-    expect(fake.writes('events', 'insert')[0]).toMatchObject({
-      type: 'ensaio',
-      title: 'Ensaio extra',
-      location: 'Sala 2',
+    // Evento + equipe numa chamada só (transação no banco).
+    await waitFor(() => expect(rpcArgs('create_event_with_team')).toHaveLength(1));
+    expect(rpcArgs('create_event_with_team')[0]).toMatchObject({
+      p_type: 'ensaio',
+      p_title: 'Ensaio extra',
+      p_location: 'Sala 2',
+      p_notes: 'Trazer cifras',
+      p_starts_at: '2030-05-10T22:30:00.000Z',
+      p_ends_at: '2030-05-11T00:00:00.000Z',
+      p_assignments: [{ user_id: OTHER_ID, function_id: 3, notes: null }],
+      p_repeat_weeks: 1,
     });
-    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/escalas\//));
+    expect(fake.writes('events', 'insert')).toEqual([]);
+    // Passo 3: repertório.
+    await waitFor(() => expect(router.state.location.pathname).toBe('/escalas/ev-novo/repertorio'));
+  });
+
+  it('evento novo sem equipe, repetido toda semana (mostra as datas virando o mês)', async () => {
+    const { user } = await openBuilder('/escalas/montar?novo=1');
+    expect((screen.getByRole('radio', { name: 'Novo evento' }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    await user.type(screen.getByLabelText('Título'), 'Ensaio semanal');
+    fireEvent.change(screen.getByLabelText('Início (horário de Brasília)'), {
+      target: { value: '2030-01-24T19:30' },
+    });
+    await user.click(screen.getByRole('checkbox', { name: 'Repetir toda semana' }));
+    await user.selectOptions(screen.getByLabelText('Por quantas semanas'), '3');
+    expect(screen.getByText(/Cria 3 eventos: .*24\/01.*31\/01.*07\/02/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Criar 3 eventos' }));
+    await waitFor(() => expect(rpcArgs('create_event_with_team')).toHaveLength(1));
+    expect(rpcArgs('create_event_with_team')[0]).toMatchObject({
+      p_repeat_weeks: 3,
+      p_assignments: [],
+    });
   });
 
   it('erro ao salvar a equipe aparece em português', async () => {

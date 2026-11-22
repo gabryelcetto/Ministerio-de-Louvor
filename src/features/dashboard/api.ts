@@ -10,6 +10,8 @@ const EMPTY: Dashboard = {
   next_service_songs: [],
   recent_announcements: [],
   unread_notifications: 0,
+  attention: [],
+  attention_total: 0,
 };
 
 /**
@@ -30,6 +32,8 @@ export function parseDashboard(raw: Json | null): Dashboard {
     ).sort((a, b) => a.position - b.position),
     recent_announcements: list(value.recent_announcements),
     unread_notifications: Number.isFinite(unread) && unread > 0 ? unread : 0,
+    attention: list(value.attention),
+    attention_total: Number(value.attention_total ?? 0) || 0,
   };
 }
 

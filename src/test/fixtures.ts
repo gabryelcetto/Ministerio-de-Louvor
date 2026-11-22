@@ -71,6 +71,7 @@ const profile = (
   access_role,
   is_owner: false,
   status: 'active',
+  privacy_version: '2026-11',
   must_change_password: false,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
@@ -78,9 +79,9 @@ const profile = (
 });
 
 const functions = [
-  { id: 1, name: 'Vocal', sort_order: 1, section: 'vocal' },
-  { id: 2, name: 'Violão', sort_order: 2, section: 'instrumental' },
-  { id: 3, name: 'Teclado', sort_order: 3, section: 'instrumental' },
+  { id: 1, name: 'Vocal', sort_order: 1, section: 'vocal', active: true },
+  { id: 2, name: 'Violão', sort_order: 2, section: 'instrumental', active: true },
+  { id: 3, name: 'Teclado', sort_order: 3, section: 'instrumental', active: true },
 ];
 
 const CHORDS = `[Intro] G D Em C
@@ -261,6 +262,7 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
         },
       ],
       events,
+      event_songs: events.flatMap((e) => e.event_songs.map((es) => ({ ...es, event_id: e.id }))),
       event_assignments: [
         ...serviceAssignments.map((a) => ({
           ...a,
@@ -293,9 +295,13 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
           title: 'Bem-vindos ao app',
           body: 'Escalas e cifras ficam aqui.',
           published_at: inDays(-3),
+          pinned_until: null,
+          audience_filter: { type: 'all' },
           author: { full_name: admin.full_name, display_name: 'Ana' },
         },
       ],
+      announcement_reads: [],
+      song_favorites: [],
       media_files: [
         {
           id: 'm1',
@@ -315,8 +321,31 @@ export function baseState(as: 'admin' | 'member' | null = 'admin'): Partial<Fake
     },
     rpc: {
       my_permissions: as === 'admin' ? ALL_PERMISSIONS : MEMBER_PERMISSIONS,
+      preview_announcement_audience: 3,
+      save_announcement: 'an-novo',
+      create_event_with_team: ['ev-novo'],
+      get_song_stats: [],
+      update_member: null,
+      move_ministry_function: null,
+      delete_ministry_function: null,
+      get_song_plays: { total: 0, recent: [] },
+      duplicate_event: 'ev-dup',
+      mark_announcement_read: null,
+      delete_announcement: null,
+      remind_announcement: 1,
+      get_announcement_audience_status: [
+        {
+          user_id: MEMBER_ID,
+          full_name: member.full_name,
+          display_name: 'Isa',
+          read_at: inDays(-1),
+        },
+        { user_id: OTHER_ID, full_name: other.full_name, display_name: null, read_at: null },
+      ],
       search_songs: songs,
       get_dashboard: {
+        attention: [],
+        attention_total: 0,
         next_service: events[0],
         next_rehearsal: events[1],
         my_assignments: [

@@ -41,8 +41,19 @@ describe('música: modo tocar', () => {
     expect(document.querySelector('.text-chord')?.textContent).toBeTruthy();
   });
 
-  it('vindo de uma escala: "Tom oficial A · Culto de domingo em B"', async () => {
+  it('vindo de uma escala com a música no repertório: posição e tom do dia no cabeçalho', async () => {
     open('member', `/repertorio/${SONG_ID}?tom=B&evento=${SERVICE_ID}`);
+    expect(await screen.findByText('1 de 2 · Culto de domingo em B')).toBeTruthy();
+  });
+
+  it('evento sem a música: cabeçalho com tom oficial e o tom do evento', async () => {
+    renderApp(`/repertorio/${SONG_ID}?tom=B&evento=${SERVICE_ID}`, {
+      as: 'member',
+      setup: (s) => {
+        const service = s.tables!.events!.find((e) => e.id === SERVICE_ID)!;
+        service.event_songs = [];
+      },
+    });
     expect(await screen.findByText('Tom oficial A · Culto de domingo em B')).toBeTruthy();
   });
 
@@ -332,5 +343,40 @@ describe('histórico da música', () => {
     await waitFor(() =>
       expect(fake.calls.some((c) => c.name === 'restore_song_version')).toBe(true),
     );
+  });
+
+  it('modo culto: "1 de 2 · Culto de domingo", Próxima/Anterior no tom do dia e deslizar', async () => {
+    const { user, router } = open('member', `/repertorio/${SONG_ID}?tom=B&evento=${SERVICE_ID}`);
+    await findHeading('Grande é o Senhor');
+    expect(await screen.findByText('1 de 2 · Culto de domingo em B')).toBeTruthy();
+    const nav = screen.getByRole('navigation', { name: 'Sequência do repertório' });
+    expect(
+      (within(nav).getByRole('button', { name: /Anterior/ }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await user.click(within(nav).getByRole('button', { name: /Próxima/ }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/repertorio/${SONG2_ID}`));
+    expect(router.state.location.search).toBe(`?evento=${SERVICE_ID}`);
+    await findHeading('Música sem cifra');
+    expect(await screen.findByText('2 de 2 · Culto de domingo')).toBeTruthy();
+
+    // Deslizar para a direita volta para a anterior, no tom do dia (B).
+    const content = screen.getByRole('tablist').closest('section')!;
+    fireEvent.touchStart(content, { touches: [{ clientX: 50, clientY: 100 }] });
+    fireEvent.touchEnd(content, { changedTouches: [{ clientX: 250, clientY: 110 }] });
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/repertorio/${SONG_ID}`));
+    expect(router.state.location.search).toBe(`?tom=B&evento=${SERVICE_ID}`);
+
+    // Rolagem na vertical não troca de música.
+    await findHeading('Grande é o Senhor');
+    const again = screen.getByRole('tablist').closest('section')!;
+    fireEvent.touchStart(again, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchEnd(again, { changedTouches: [{ clientX: 20, clientY: 400 }] });
+    expect(router.state.location.pathname).toBe(`/repertorio/${SONG_ID}`);
+  });
+
+  it('fora do repertório do evento: sem sequência', async () => {
+    open('member', `/repertorio/${SONG_ID}`);
+    await findHeading('Grande é o Senhor');
+    expect(screen.queryByRole('navigation', { name: 'Sequência do repertório' })).toBeNull();
   });
 });

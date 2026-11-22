@@ -1102,3 +1102,33 @@ migration: tudo é interface, textos e testes.
 fetch`), então supabase-js, Auth e `friendlyError` já o tratam como "Sem conexão. Tente de
   novo.". O texto digitado e a gravação ficam onde estavam.
 - **Capturas só com o seed:** o passo roda antes dos roteiros que criam dados.
+
+## Fase G: gestão, telas completas e segurança (22/11/2026)
+
+PR "feat(gestao): comunicados com público, eventos, repertório do culto, integrantes e
+segurança" (branch `feat/fase-g-gestao`). Migrations `20261126090000` a `20261126180000`; Edge
+Function nova `change-password`.
+
+### Decisões
+
+- **Destinatários e leituras dos comunicados:** `audience_filter` (jsonb) guarda a escolha do
+  formulário para reabrir na edição; `announcement_recipients` guarda quem recebeu de fato
+  (só integrantes ativos no momento da publicação). A leitura (RLS) vale para `audience = 'all'`,
+  para o destinatário e para quem gerencia. `announcement_reads` registra quem abriu; "Visto por
+  N de M" e "Lembrar quem não viu" (1 por dia, regra no banco) saem daí. Escrita só pelas RPCs
+  `save_announcement`/`delete_announcement`: a tabela ficou só com SELECT para a API.
+- **Proteções contra autopromoção:** tudo no trigger `guard_profile_update` (vale para a tela e
+  para a API direta): ninguém mexe no dono, ninguém se desativa nem tira o próprio admin, perfil
+  de acesso só com `permissions.manage`, e o último administrador ativo continua admin e ativo.
+- **Transações por RPC:** evento + equipe (+ repetição semanal) em `create_event_with_team`,
+  repertório em `set_event_songs` (apaga e regrava 1..N), funções em `move_ministry_function`,
+  edição do integrante em `update_member` (security invoker: RLS e trigger continuam valendo).
+  Um aviso por pessoa em vez de N (o trigger de escala é silenciado durante a repetição).
+- **Senhas:** a troca passa pela Edge Function `change-password` (troca no Auth e libera a conta
+  numa operação; `finish_password_change` só a service role executa). Senha provisória vale 7
+  dias; a redefinição encerra as sessões (`revoke_user_sessions`).
+- **Contagens no servidor:** "Tocada em", "Mais tocadas" e "Há mais tempo sem tocar" vêm de
+  `get_song_stats`/`get_song_plays` (o celular não baixa todos os eventos).
+- **Ambiente local de banco sem Docker:** para economizar rodadas de CI, as migrations e os
+  testes pgTAP rodaram também num Postgres em WASM (PGlite) fora do repositório, com o schema
+  `auth`/`storage` simulado e um "pgTAP mínimo". O CI continua sendo a referência.

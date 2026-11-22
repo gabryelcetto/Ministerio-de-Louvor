@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { useMyProfile, useSession, usePermission } from '@/features/auth';
 import { buildMembers, matchesName, ROLE_LABEL, telHref, useMembers, type Member } from '../api';
 import { canResetPassword, type ResetActor } from '../reset';
-import { SECTION_BADGE } from '../sections';
+import { SECTION_BADGE, SECTION_FILTER_LABEL, type SectionFilter } from '../sections';
+import { cn } from '@/lib/utils';
 import { ResetPasswordButton } from './reset-password-button';
 import { ScreenHeader } from '@/components/layout/screen-header';
 
@@ -17,6 +18,8 @@ export function MembersPage() {
   const canManage = usePermission('members.manage');
   const profile = useMyProfile();
   const [text, setText] = useState('');
+  const [group, setGroup] = useState<SectionFilter>('todos');
+  const [fn, setFn] = useState('');
   const me: ResetActor | null = profile.data
     ? { id: profile.data.id, isOwner: profile.data.is_owner, canManageMembers: canManage }
     : null;
@@ -24,7 +27,15 @@ export function MembersPage() {
   const all = members.data
     ? buildMembers(members.data, canViewContacts ? (contacts.data ?? null) : null)
     : [];
-  const filtered = all.filter((m) => matchesName(m, text));
+  const functionNames = [...new Set(all.flatMap((m) => m.functions))].sort((a, b) =>
+    a.localeCompare(b, 'pt-BR'),
+  );
+  const filtered = all.filter(
+    (m) =>
+      matchesName(m, text) &&
+      (group === 'todos' || m.sections.includes(group)) &&
+      (!fn || m.functions.includes(fn)),
+  );
   const active = filtered.filter((m) => m.active);
   // Inativos só aparecem para quem gerencia integrantes.
   const inactive = canManage ? filtered.filter((m) => !m.active) : [];
@@ -74,6 +85,42 @@ export function MembersPage() {
           />
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="group" aria-label="Grupo" className="flex flex-wrap gap-2">
+            {(Object.keys(SECTION_FILTER_LABEL) as SectionFilter[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={group === value}
+                onClick={() => setGroup(value)}
+                className={cn(
+                  'min-h-11 rounded-lg px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  group === value
+                    ? 'bg-brand-soft text-brand-text'
+                    : 'bg-chip text-foreground hover:bg-muted',
+                )}
+              >
+                {SECTION_FILTER_LABEL[value]}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            Função
+            <select
+              value={fn}
+              onChange={(e) => setFn(e.target.value)}
+              className="h-11 rounded-lg border bg-card px-3 text-sm font-normal"
+            >
+              <option value="">Todas</option>
+              {functionNames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
         {canViewContacts && contacts.isError && (
           <ErrorState
             message="Não foi possível carregar os telefones."
@@ -87,7 +134,11 @@ export function MembersPage() {
           <ErrorState onRetry={() => void members.refetch()} />
         ) : active.length === 0 && inactive.length === 0 ? (
           <EmptyState>
-            {text.trim() ? 'Ninguém encontrado com esse nome.' : 'Nenhum integrante cadastrado.'}
+            {text.trim()
+              ? 'Ninguém encontrado com esse nome.'
+              : group !== 'todos' || fn
+                ? 'Ninguém com esse filtro.'
+                : 'Nenhum integrante cadastrado.'}
           </EmptyState>
         ) : (
           <>
@@ -126,7 +177,7 @@ function MemberList({
         return (
           <li
             key={m.id}
-            className="flex items-start gap-3 rounded-xl border bg-card p-4 data-[inactive=true]:opacity-70"
+            className="relative flex items-start gap-3 rounded-xl border bg-card p-4 hover:border-brand"
             data-inactive={!m.active}
           >
             <span
@@ -137,7 +188,13 @@ function MemberList({
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="font-semibold">
-                {m.name}
+                {/* O cartão inteiro abre o integrante (link "esticado"); botões ficam acima. */}
+                <Link
+                  to={`/integrantes/${m.id}`}
+                  className="after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                >
+                  {m.name}
+                </Link>
                 {m.id === session?.user.id && (
                   <span className="ml-2 rounded bg-accent px-1.5 py-0.5 text-xs font-medium text-accent-foreground">
                     você
@@ -179,7 +236,7 @@ function MemberList({
                 (href ? (
                   <a
                     href={href}
-                    className="inline-flex items-center gap-1.5 self-start rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="relative z-10 inline-flex items-center gap-1.5 self-start rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <Phone aria-hidden="true" className="size-3.5" />
                     {m.phone}
@@ -190,7 +247,11 @@ function MemberList({
                     {m.phone}
                   </span>
                 ))}
-              {canResetPassword(me, m) && <ResetPasswordButton memberId={m.id} name={m.name} />}
+              {canResetPassword(me, m) && (
+                <span className="relative z-10 self-start">
+                  <ResetPasswordButton memberId={m.id} name={m.name} />
+                </span>
+              )}
             </div>
           </li>
         );

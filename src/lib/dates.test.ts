@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addMonths,
   dateBlock,
   dayKey,
   formatDayLabel,
+  formatMonthLabel,
+  formatShortDate,
   formatTime,
   formatTimeRange,
   greeting,
   groupByDay,
+  isMonthKey,
   isoToZonedLocal,
+  monthKey,
+  monthRange,
+  relativeAgo,
+  weeklyOccurrences,
   zonedLocalToIso,
 } from './dates';
 
@@ -72,5 +80,65 @@ describe('bloco de data dos cards de evento', () => {
     expect(dateBlock('2026-11-22T22:00:00Z')).toEqual({ weekday: 'DOM', day: '22' });
     expect(dateBlock('2026-11-22T02:00:00Z')).toEqual({ weekday: 'SÁB', day: '21' });
     expect(dateBlock(new Date('2026-11-25T15:00:00Z'))).toEqual({ weekday: 'QUA', day: '25' });
+  });
+});
+
+describe('repetir toda semana', () => {
+  it('mesmo horário de Brasília, virando o mês e o ano', () => {
+    expect(weeklyOccurrences('2026-12-24T19:30', 3)).toEqual([
+      '2026-12-24T22:30:00.000Z',
+      '2026-12-31T22:30:00.000Z',
+      '2027-01-07T22:30:00.000Z',
+    ]);
+    expect(weeklyOccurrences('2026-11-26T20:00', 2).map((d) => formatShortDate(d))).toEqual([
+      formatShortDate('2026-11-26T23:00:00Z'),
+      formatShortDate('2026-12-03T23:00:00Z'),
+    ]);
+  });
+
+  it('entrada inválida ou zero semanas: nada', () => {
+    expect(weeklyOccurrences('', 3)).toEqual([]);
+    expect(weeklyOccurrences('2026-12-24T19:30', 0)).toEqual([]);
+    expect(weeklyOccurrences('2026-12-24T19:30', 1)).toEqual(['2026-12-24T22:30:00.000Z']);
+  });
+});
+
+describe('meses da agenda', () => {
+  it('mês no fuso de São Paulo, validação e soma virando o ano', () => {
+    expect(monthKey('2026-12-01T02:00:00Z')).toBe('2026-11');
+    expect(isMonthKey('2026-11')).toBe(true);
+    expect(isMonthKey('2026-13')).toBe(false);
+    expect(isMonthKey('2026-00')).toBe(false);
+    expect(isMonthKey(null)).toBe(false);
+    expect(addMonths('2026-12', 1)).toBe('2027-01');
+    expect(addMonths('2026-01', -1)).toBe('2025-12');
+    expect(addMonths('2026-11', -13)).toBe('2025-10');
+  });
+
+  it('intervalo do mês e nome', () => {
+    expect(monthRange('2026-11')).toEqual({
+      from: '2026-11-01T03:00:00.000Z',
+      to: '2026-12-01T03:00:00.000Z',
+    });
+    expect(formatMonthLabel('2026-11')).toBe('novembro de 2026');
+    expect(formatMonthLabel('2027-01')).toBe('janeiro de 2027');
+  });
+});
+
+describe('tempo relativo ("há 3 semanas")', () => {
+  const now = new Date('2026-11-22T15:00:00Z');
+  it.each([
+    ['2026-11-22T10:00:00Z', 'hoje'],
+    ['2026-11-21T20:00:00Z', 'ontem'],
+    ['2026-11-19T12:00:00Z', 'há 3 dias'],
+    ['2026-11-14T12:00:00Z', 'há 1 semana'],
+    ['2026-11-01T12:00:00Z', 'há 3 semanas'],
+    ['2026-10-10T12:00:00Z', 'há 1 mês'],
+    ['2026-07-10T12:00:00Z', 'há 4 meses'],
+    ['2025-11-01T12:00:00Z', 'há 1 ano'],
+    ['2023-11-01T12:00:00Z', 'há 3 anos'],
+    ['2026-11-30T12:00:00Z', 'hoje'],
+  ])('%s → %s', (value, expected) => {
+    expect(relativeAgo(value, now)).toBe(expected);
   });
 });

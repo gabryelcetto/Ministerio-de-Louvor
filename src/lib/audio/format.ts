@@ -52,3 +52,26 @@ export function extensionFor(mimeType: string, fileName = ''): string {
   };
   return byType[baseMimeType(mimeType)] ?? fromName ?? 'audio';
 }
+
+/**
+ * Nome legível para baixar um áudio: "Ensaio 26-11 - Parte 1.webm",
+ * "Ensaio 26-11 - Arranjo.m4a" ou "Grande é o Senhor - Voz guia.mp3". Sem caracteres que os
+ * sistemas de arquivo recusam.
+ */
+export function audioDownloadName(input: {
+  prefix: string;
+  label: string | null;
+  position: number;
+  mimeType: string;
+  /** Sem nome: "Parte N" (ensaio) ou "Áudio N" (referência). */
+  fallback: 'Parte' | 'Áudio';
+}): string {
+  const name = input.label?.trim() || `${input.fallback} ${input.position}`;
+  const safe = (text: string) =>
+    text
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const ext = extensionFor(input.mimeType);
+  return `${safe(input.prefix)} - ${safe(name)}.${ext}`.slice(0, 120);
+}

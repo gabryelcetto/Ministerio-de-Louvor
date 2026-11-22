@@ -17,6 +17,8 @@ const MOBILE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch
 const DESKTOP = { viewport: { width: 1366, height: 900 } };
 
 const results = [];
+/** Evento "Culto de teste E2E" criado pelo admin (o modo culto da integrante abre ele). */
+let eventE2E = '';
 let shot = 0;
 // Microfone falso (um bipe gerado pelo Chromium) para testar a gravação de ensaio.
 const browser = await chromium.launch({
@@ -284,17 +286,29 @@ const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click(
     await expectText(page, /Doxologia/);
   });
 
-  await step(page, who, 'Agenda com 5 eventos', async () => {
+  await step(page, who, 'Agenda por mês: os 5 eventos (este mês e o próximo)', async () => {
     await page.goto(`${BASE}/agenda`);
     await page.waitForLoadState('networkidle');
-    for (const t of [
+    await page.getByRole('navigation', { name: 'Mês' }).waitFor();
+    // Os eventos do seed vão até 13 dias à frente: podem cair no mês seguinte.
+    await page.waitForTimeout(500);
+    const thisMonth = await main(page).innerText();
+    await page.getByRole('button', { name: 'Próximo mês' }).click();
+    await page.waitForURL(/mes=/);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+    const nextMonth = await main(page).innerText();
+    const all = `${thisMonth}\n${nextMonth}`;
+    const missing = [
       'Ensaio geral',
       'Culto de celebração',
       'Ensaio de vozes',
       'Culto da família',
       'Noite de louvor',
-    ])
-      await expectText(page, t);
+    ].filter((t) => !all.includes(t));
+    if (missing.length) throw new Error(`faltando: ${missing.join(', ')}`);
+    await page.getByRole('button', { name: 'Hoje' }).click();
+    await page.waitForURL((u) => !u.search.includes('mes='));
   });
 
   await step(page, who, 'Integrantes sem telefone', async () => {
@@ -508,7 +522,7 @@ const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click(
   await step(page, who, 'Montar escala: validação de campos', async () => {
     await page.goto(`${BASE}/escalas/montar`);
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: 'Salvar escala' }).click();
+    await page.getByRole('button', { name: /^Criar evento/ }).click();
     await expectText(page, 'Informe o título.');
   });
 
@@ -529,10 +543,36 @@ const pickTheme = (scope, name) => scope.getByText(name, { exact: true }).click(
     await page.getByRole('button', { name: 'Adicionar pessoa' }).click();
     await pessoas.nth(1).selectOption({ index: 1 });
     await funcoes.nth(1).selectOption({ label: 'Teclado' });
-    await page.getByRole('button', { name: 'Salvar escala' }).click();
-    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    await page.getByRole('button', { name: 'Criar evento e salvar escala' }).click();
+    // Passo 3: repertório (evento e equipe já gravados numa transação só).
+    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}\/repertorio\?montar=1$/, { timeout: 15000 });
+    await expectText(page, /Passo 3/);
+  });
+
+  await step(page, who, 'Montar escala: repertório com 2 músicas, ordem e tom do dia', async () => {
+    const search = page.getByLabel('Buscar no repertório');
+    for (const title of ['Doxologia', 'Santo! Santo! Santo!']) {
+      await search.fill(title);
+      await page
+        .getByRole('list', { name: 'Resultado da busca' })
+        .getByRole('button', { name: new RegExp(`Adicionar.*${title.replace(/[!]/g, '.')}`) })
+        .first()
+        .click();
+    }
+    const order = page.getByRole('list', { name: 'Ordem do repertório' });
+    await order.getByRole('group').nth(1).waitFor();
+    // Santo! primeiro (sobe), tom do dia E na segunda música.
+    await page.getByRole('button', { name: 'Subir Santo! Santo! Santo!' }).click();
+    await order.getByRole('group').nth(1).getByLabel('Tom do dia').selectOption('A');
+    await page.getByRole('button', { name: 'Salvar repertório' }).click();
+    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}#repertorio$/, { timeout: 15000 });
+    eventE2E = new URL(page.url()).pathname.split('/').pop();
     await expectText(page, 'Culto de teste E2E');
     await expectText(page, '19:30');
+    const region = main(page).getByRole('region', { name: 'Repertório' });
+    const first = await region.getByRole('link').first().innerText();
+    if (!/Santo/.test(first)) throw new Error(`primeira música: ${first}`);
+    return eventE2E;
   });
 
   await step(page, who, 'Desktop: Início', async () => {
@@ -702,6 +742,22 @@ let newSongPath = '';
     await page.waitForLoadState('networkidle');
     await expectText(page, /Culto de teste E2E/);
   });
+  await step(page, 'integrante', 'Modo culto: 1ª música no tom do dia e "Próxima"', async () => {
+    if (!eventE2E) throw new Error('o evento de teste não foi criado');
+    await page.goto(`${BASE}/escalas/${eventE2E}`);
+    await page.waitForLoadState('networkidle');
+    await main(page).getByRole('region', { name: 'Repertório' }).getByRole('link').first().click();
+    await page.waitForURL(/\/repertorio\/.+evento=/);
+    await page.getByText(/^1 de 2 · Culto de teste E2E/).waitFor();
+    await page
+      .getByRole('navigation', { name: 'Sequência do repertório' })
+      .getByRole('button', { name: /Próxima/ })
+      .click();
+    await page.getByText(/^2 de 2 · Culto de teste E2E em A$/).waitFor();
+    const tom = await page.getByRole('combobox', { name: 'Tom', exact: true }).inputValue();
+    if (tom !== 'A') throw new Error(`tom do dia: ${tom}`);
+    return page.url().replace(BASE, '');
+  });
   await context.close();
 }
 
@@ -799,6 +855,10 @@ let temporaryPassword = '';
     await page.getByLabel('Nova senha', { exact: true }).fill(NEW_PASSWORD);
     await page.getByLabel('Repita a nova senha').fill(NEW_PASSWORD);
     await page.getByRole('button', { name: 'Salvar e entrar' }).click();
+    // Primeiro acesso: aceite da política de privacidade (LGPD).
+    await page.getByRole('heading', { name: 'Seus dados no app' }).waitFor({ timeout: 15000 });
+    await page.getByRole('checkbox', { name: 'Li e concordo' }).check();
+    await page.getByRole('button', { name: 'Continuar' }).click();
     await page
       .getByRole('navigation', { name: 'Navegação principal' })
       .first()
@@ -1271,6 +1331,123 @@ const skipNaming = async (page) => {
     await page.goto(`${BASE}/configuracoes`);
     await page.waitForLoadState('networkidle');
     if (await page.getByText('Espaço dos áudios').count()) throw new Error('card visível');
+  });
+  await context.close();
+}
+
+// =============================================================================== FASE G
+// Comunicado para pessoas escolhidas, evento repetido + edição, editar/desativar integrante.
+const ANNOUNCEMENT = 'Aviso só para a Isa (E2E)';
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  const who = 'admin';
+  await step(page, who, 'Comunicado para pessoas escolhidas: só a Isa', async () => {
+    await page.goto(`${BASE}/comunicados/novo`);
+    await page.getByLabel('Título').fill(ANNOUNCEMENT);
+    await page.getByLabel('Texto').fill('Veja https://exemplo.org antes do ensaio.');
+    await page.getByRole('radio', { name: 'Pessoas escolhidas' }).check();
+    await page.getByLabel('Buscar pessoa').fill('Isa');
+    await page.getByRole('list', { name: 'Integrantes' }).getByRole('checkbox').first().check();
+    await page.getByText('Vai para 1 pessoa').waitFor();
+    await page.getByRole('button', { name: 'Publicar' }).click();
+    await page.waitForURL(/\/comunicados\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    await page.getByRole('button', { name: 'Visto por 0 de 1' }).waitFor();
+  });
+
+  await step(page, who, 'Evento repetido por 2 semanas e edição de um deles', async () => {
+    await page.goto(`${BASE}/escalas/montar?novo=1`);
+    await page.waitForLoadState('networkidle');
+    await page.getByLabel('Título').fill('Ensaio repetido E2E');
+    const d = new Date(Date.now() + 20 * 86400000);
+    const day = d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+    await page.getByLabel('Início (horário de Brasília)').fill(`${day}T20:00`);
+    await page.getByRole('checkbox', { name: 'Repetir toda semana' }).check();
+    await page.getByLabel('Por quantas semanas').selectOption('2');
+    await page.getByRole('button', { name: 'Criar 2 eventos' }).click();
+    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Editar evento', exact: true }).click();
+    await page.getByLabel('Local (opcional)').fill('Sala de ensaio E2E');
+    await page.getByRole('button', { name: 'Salvar evento' }).click();
+    await page.waitForURL(/\/escalas\/[0-9a-f-]{36}$/, { timeout: 15000 });
+    await expectText(page, 'Sala de ensaio E2E');
+    await page.goto(`${BASE}/escalas?ver=todas`);
+    await page.waitForLoadState('networkidle');
+    const n = await main(page).getByText('Ensaio repetido E2E').count();
+    if (n !== 2) throw new Error(`${n} eventos repetidos na lista`);
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('lider@demo.local', MOBILE);
+  await step(page, 'lucas', 'Comunicado de outra pessoa: não aparece', async () => {
+    await page.goto(`${BASE}/comunicados`);
+    await page.waitForLoadState('networkidle');
+    await main(page).getByRole('list', { name: 'Comunicados' }).waitFor();
+    if (await main(page).getByText(ANNOUNCEMENT).count())
+      throw new Error('Lucas vê o aviso da Isa');
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE);
+  await step(page, 'integrante', 'Comunicado escolhido: notificação e leitura', async () => {
+    await page.goto(`${BASE}/notificacoes`);
+    await page.waitForLoadState('networkidle');
+    await main(page)
+      .getByText(new RegExp(ANNOUNCEMENT.replace(/[()]/g, '.')))
+      .first()
+      .click();
+    await page.waitForURL(/\/comunicados\/[0-9a-f-]{36}$/);
+    await page.getByRole('heading', { name: ANNOUNCEMENT }).waitFor();
+    const link = page.getByRole('link', { name: /exemplo\.org/ });
+    if ((await link.getAttribute('rel')) !== 'noopener noreferrer') throw new Error('rel do link');
+    await page.waitForLoadState('networkidle');
+  });
+  await step(page, 'integrante', 'Minha conta: edita o próprio telefone', async () => {
+    await page.goto(`${BASE}/configuracoes#minha-conta`);
+    await page.getByRole('button', { name: 'Editar meus dados' }).click();
+    await page.getByLabel('Telefone (opcional)').fill('(00) 90000-0099');
+    await page
+      .getByRole('form', { name: 'Editar meus dados' })
+      .getByRole('button', { name: 'Salvar' })
+      .click();
+    await expectText(page, 'Dados salvos.');
+    await expectText(page, '(00) 90000-0099');
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  const who = 'admin';
+  await step(page, who, 'Comunicado: "Visto por 1 de 1"', async () => {
+    await page.goto(`${BASE}/comunicados`);
+    await main(page)
+      .getByRole('link', { name: new RegExp(ANNOUNCEMENT.replace(/[()]/g, '.')) })
+      .click();
+    await page.getByRole('button', { name: 'Visto por 1 de 1' }).waitFor({ timeout: 15000 });
+  });
+  await step(page, who, 'Integrante: editar dados e desativar (Novato)', async () => {
+    await page.goto(`${BASE}/integrantes`);
+    await page.waitForLoadState('networkidle');
+    await main(page).getByRole('link', { name: 'Novato' }).click();
+    await page.waitForURL(/\/integrantes\/[0-9a-f-]{36}$/);
+    await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Editar', exact: true }).click();
+    const form = page.getByRole('form', { name: 'Editar Novato' });
+    await form.getByLabel('Telefone (opcional)').fill('(00) 98888-0000');
+    await form.getByRole('button', { name: 'Salvar' }).click();
+    await form.waitFor({ state: 'hidden' });
+    await page.getByRole('link', { name: 'Ligar' }).waitFor();
+    await page.getByRole('button', { name: 'Mais opções', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Desativar', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Desativar Novato?' });
+    await dialog.getByText('A pessoa não consegue mais entrar, mas o histórico fica.').waitFor();
+    await dialog.getByRole('button', { name: 'Desativar' }).click();
+    await page.getByText('Inativo').first().waitFor({ timeout: 15000 });
   });
   await context.close();
 }

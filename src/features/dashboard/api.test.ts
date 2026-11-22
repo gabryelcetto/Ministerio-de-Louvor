@@ -15,6 +15,8 @@ describe('parseDashboard', () => {
         next_service_songs: [],
         recent_announcements: [],
         unread_notifications: 0,
+        attention: [],
+        attention_total: 0,
       });
     }
   });
@@ -33,6 +35,12 @@ describe('parseDashboard', () => {
     expect(parsed.my_assignments).toEqual([]);
     expect(parsed.next_service_songs.map((s) => s.song_id)).toEqual(['a', 'b']);
     expect(parsed.unread_notifications).toBe(3);
+    expect(parsed.attention).toEqual([]);
+    expect(parsed.attention_total).toBe(0);
+    expect(parseDashboard({ attention: [{ id: 'e' }], attention_total: '4' }).attention_total).toBe(
+      4,
+    );
+    expect(parseDashboard({ attention_total: 'x' }).attention_total).toBe(0);
   });
 });
 

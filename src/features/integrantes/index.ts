@@ -1,3 +1,14 @@
 /** API pública da feature integrantes (outras features importam só daqui). */
-export { ROLE_LABEL, useMyFunctions, type MyFunction } from './api';
+export {
+  buildMembers,
+  matchesName,
+  ROLE_LABEL,
+  useMembers,
+  useMyFunctions,
+  useMyPhone,
+  useUpdateMyAccount,
+  type Member,
+  type MyFunction,
+} from './api';
+export { useManagedFunctions, type MinistryFunction } from './functions';
 export * from './sections';

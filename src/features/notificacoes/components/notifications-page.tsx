@@ -7,12 +7,12 @@ import { formatShortDate, formatTime } from '@/lib/dates';
 import { cn } from '@/lib/utils';
 import {
   internalLink,
-  NOTIFICATIONS_LIMIT,
   unreadLabel,
   useMarkAsRead,
   useNotifications,
   type NotificationItem,
 } from '../api';
+import { LoadMore } from '@/components/common/load-more';
 import { ScreenHeader } from '@/components/layout/screen-header';
 
 const TYPE_ICONS: Record<string, typeof Bell> = {
@@ -105,11 +105,12 @@ export function NotificationsPage() {
                 </li>
               ))}
             </ul>
-            {query.data.length >= NOTIFICATIONS_LIMIT && (
-              <p className="text-center text-sm text-muted-foreground">
-                Mostrando as {NOTIFICATIONS_LIMIT} mais recentes.
-              </p>
-            )}
+            <LoadMore
+              hasMore={query.hasNextPage}
+              loading={query.isFetchingNextPage}
+              error={query.isFetchNextPageError}
+              onLoad={() => void query.fetchNextPage()}
+            />
           </>
         )}
       </section>

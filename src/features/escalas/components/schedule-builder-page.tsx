@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, UserMinus } from 'lucide-react';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ConfirmDialog } from '@/components/common/confirm-dialog';
 import { FormError } from '@/components/common/form-error';
@@ -9,17 +9,15 @@ import { useUnsavedGuard } from '@/components/common/use-unsaved-guard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { EVENT_TYPE_STYLES } from '@/features/agenda';
 import { matchesSection, SECTION_FILTER_LABEL, type SectionFilter } from '@/features/integrantes';
-import { formatShortDate, formatTime } from '@/lib/dates';
+import { formatShortDate, formatTime, weeklyOccurrences } from '@/lib/dates';
 import { usePermission } from '@/features/auth';
 import { cn } from '@/lib/utils';
-import type { EventType } from '@/types/app.types';
 import {
   addAssignments,
   assignmentsToInsert,
-  createEvent,
+  createEventWithTeam,
   draftProblems,
   functionOptions,
   invalidateSchedules,
@@ -31,6 +29,7 @@ import {
   type SchedulingData,
 } from '../manage';
 import { ScreenHeader } from '@/components/layout/screen-header';
+import { EventFields } from './event-fields';
 
 const selectClass =
   'h-11 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -89,7 +88,11 @@ function Builder({ data }: { data: SchedulingData }) {
 
   const initialId = params.get('evento');
   const [mode, setMode] = useState<'existente' | 'novo'>(
-    initialId || !canCreateEvent ? 'existente' : 'novo',
+    params.get('novo') === '1' && canCreateEvent
+      ? 'novo'
+      : initialId || !canCreateEvent
+        ? 'existente'
+        : 'novo',
   );
   const [eventId, setEventId] = useState(
     initialId && data.events.some((e) => e.id === initialId)
@@ -100,38 +103,45 @@ function Builder({ data }: { data: SchedulingData }) {
   const [rows, setRows] = useState<AssignmentDraft[]>(() => [emptyRow()]);
   const [sectionFilter, setSectionFilter] = useState<SectionFilter>('todos');
   const [showErrors, setShowErrors] = useState(false);
-  const [createdId, setCreatedId] = useState<string | null>(null);
+  const [repeat, setRepeat] = useState(false);
+  const [weeks, setWeeks] = useState(4);
   const [savedId, setSavedId] = useState<string | null>(null);
 
-  const targetId = mode === 'novo' ? createdId : eventId;
+  const targetId = mode === 'novo' ? null : eventId;
   const target = data.events.find((e) => e.id === targetId);
   const existing = target?.assignments ?? [];
-  const eventErrors = mode === 'novo' && !createdId ? validateEventDraft(draft) : {};
+  const eventErrors = mode === 'novo' ? validateEventDraft(draft) : {};
   const problems = draftProblems(rows, existing);
   const pendingRows = assignmentsToInsert(targetId ?? 'novo', rows, existing);
 
   const dirty =
     !savedId &&
     (rows.some((r) => r.userId || r.functionId !== null) ||
-      (mode === 'novo' && !createdId && Boolean(draft.title.trim() || draft.startsAt)));
+      (mode === 'novo' && Boolean(draft.title.trim() || draft.startsAt)));
   const guard = useUnsavedGuard(dirty);
 
   // Navega só depois que o formulário deixou de estar "sujo" (o guarda não bloqueia).
+  // Passo 3: repertório (menos na repetição semanal, que nasce sem repertório).
   useEffect(() => {
-    if (savedId) void navigate(`/escalas/${savedId}`);
-  }, [savedId, navigate]);
+    if (!savedId) return;
+    void navigate(
+      mode === 'novo' && repeat ? `/escalas/${savedId}` : `/escalas/${savedId}/repertorio?montar=1`,
+    );
+  }, [savedId, navigate, mode, repeat]);
 
   const save = useMutation({
     mutationFn: async () => {
-      let id = targetId;
-      if (mode === 'novo' && !createdId) {
-        id = await createEvent(draft);
-        // Se a equipe falhar depois, o evento já existe: a próxima tentativa só grava a equipe.
-        setCreatedId(id);
+      if (mode === 'novo') {
+        // Evento (ou um por semana) + equipe numa gravação só: nada fica pela metade.
+        const team = assignmentsToInsert('novo', rows, []).map(
+          ({ user_id, function_id, notes }) => ({ user_id, function_id, notes }),
+        );
+        const ids = await createEventWithTeam(draft, team, repeat ? weeks : 1);
+        return ids[0]!;
       }
-      if (!id) throw new Error('Escolha o evento.');
-      await addAssignments(assignmentsToInsert(id, rows, existing));
-      return id;
+      if (!eventId) throw new Error('Escolha o evento.');
+      await addAssignments(assignmentsToInsert(eventId, rows, existing));
+      return eventId;
     },
     onSettled: () => invalidateSchedules(client),
     onSuccess: (id) => setSavedId(id),
@@ -160,7 +170,7 @@ function Builder({ data }: { data: SchedulingData }) {
       <fieldset className="flex flex-col gap-4 rounded-xl border p-4">
         <legend className="px-1 text-lg font-semibold">1. Evento</legend>
 
-        {canCreateEvent && !createdId && (
+        {canCreateEvent && (
           <div role="radiogroup" aria-label="Evento" className="grid grid-cols-2 gap-2">
             {(
               [
@@ -198,16 +208,17 @@ function Builder({ data }: { data: SchedulingData }) {
             onChange={setEventId}
             showError={showErrors}
           />
-        ) : createdId ? (
-          <p className="rounded-lg bg-muted p-3 text-sm">
-            Evento <strong>{draft.title}</strong> criado. Falta salvar a equipe.
-          </p>
         ) : (
-          <NewEventFields
-            draft={draft}
-            onChange={setDraft}
-            errors={showErrors ? eventErrors : {}}
-          />
+          <>
+            <EventFields draft={draft} onChange={setDraft} errors={showErrors ? eventErrors : {}} />
+            <RepeatWeekly
+              checked={repeat}
+              weeks={weeks}
+              startsAt={draft.startsAt}
+              onCheckedChange={setRepeat}
+              onWeeksChange={setWeeks}
+            />
+          </>
         )}
         {!canCreateEvent && (
           <p className="text-xs text-muted-foreground">
@@ -271,9 +282,6 @@ function Builder({ data }: { data: SchedulingData }) {
         </Button>
       </fieldset>
 
-      {createdId && save.isError && (
-        <p className="text-sm font-medium">O evento foi criado, mas a equipe não foi salva.</p>
-      )}
       <FormError error={save.error} fallback="Não foi possível salvar a escala." />
       {showErrors && mode === 'existente' && eventId && pendingRows.length === 0 && (
         <p role="alert" className="text-sm text-destructive">
@@ -288,8 +296,12 @@ function Builder({ data }: { data: SchedulingData }) {
         <Button type="submit" disabled={save.isPending}>
           {save.isPending
             ? 'Salvando…'
-            : mode === 'novo' && !createdId
-              ? 'Criar evento e salvar escala'
+            : mode === 'novo'
+              ? repeat
+                ? `Criar ${weeks} eventos`
+                : pendingRows.length > 0
+                  ? 'Criar evento e salvar escala'
+                  : 'Criar evento'
               : 'Salvar escala'}
         </Button>
       </div>
@@ -333,114 +345,6 @@ function ExistingEventPicker({
         ))}
       </select>
       {showError && !value && <p className="text-sm text-destructive">Escolha o evento.</p>}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-  id,
-}: {
-  label: string;
-  error?: string;
-  children: ReactNode;
-  id: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {error && (
-        <p id={`${id}-erro`} className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function NewEventFields({
-  draft,
-  onChange,
-  errors,
-}: {
-  draft: EventDraft;
-  onChange: (draft: EventDraft) => void;
-  errors: ReturnType<typeof validateEventDraft>;
-}) {
-  const base = useId();
-  const set = (patch: Partial<EventDraft>) => onChange({ ...draft, ...patch });
-  const aria = (field: keyof typeof errors) =>
-    errors[field]
-      ? { 'aria-invalid': true, 'aria-describedby': `${base}-${field}-erro` }
-      : { 'aria-invalid': false };
-
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <Field label="Tipo" id={`${base}-type`}>
-        <select
-          id={`${base}-type`}
-          value={draft.type}
-          onChange={(e) => set({ type: e.target.value as EventType })}
-          className={selectClass}
-        >
-          {(Object.keys(EVENT_TYPE_STYLES) as EventType[]).map((t) => (
-            <option key={t} value={t}>
-              {EVENT_TYPE_STYLES[t].label}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Título" id={`${base}-title`} error={errors.title}>
-        <Input
-          id={`${base}-title`}
-          value={draft.title}
-          onChange={(e) => set({ title: e.target.value })}
-          placeholder="Ex.: Culto de domingo"
-          className="h-11 text-base"
-          {...aria('title')}
-        />
-      </Field>
-      <Field label="Início (horário de Brasília)" id={`${base}-startsAt`} error={errors.startsAt}>
-        <Input
-          id={`${base}-startsAt`}
-          type="datetime-local"
-          value={draft.startsAt}
-          onChange={(e) => set({ startsAt: e.target.value })}
-          className="h-11 text-base"
-          {...aria('startsAt')}
-        />
-      </Field>
-      <Field label="Término (opcional)" id={`${base}-endsAt`} error={errors.endsAt}>
-        <Input
-          id={`${base}-endsAt`}
-          type="datetime-local"
-          value={draft.endsAt}
-          min={draft.startsAt || undefined}
-          onChange={(e) => set({ endsAt: e.target.value })}
-          className="h-11 text-base"
-          {...aria('endsAt')}
-        />
-      </Field>
-      <Field label="Local (opcional)" id={`${base}-location`}>
-        <Input
-          id={`${base}-location`}
-          value={draft.location}
-          onChange={(e) => set({ location: e.target.value })}
-          className="h-11 text-base"
-        />
-      </Field>
-      <Field label="Observações (opcional)" id={`${base}-notes`}>
-        <Textarea
-          id={`${base}-notes`}
-          value={draft.notes}
-          onChange={(e) => set({ notes: e.target.value })}
-          rows={2}
-          className="min-h-11"
-        />
-      </Field>
     </div>
   );
 }
@@ -629,6 +533,61 @@ function CurrentTeam({
           </>
         )}
       </ConfirmDialog>
+    </div>
+  );
+}
+
+/** "Repetir toda semana por N semanas" (1 a 12): mesma equipe, sem repertório. */
+function RepeatWeekly({
+  checked,
+  weeks,
+  startsAt,
+  onCheckedChange,
+  onWeeksChange,
+}: {
+  checked: boolean;
+  weeks: number;
+  startsAt: string;
+  onCheckedChange: (value: boolean) => void;
+  onWeeksChange: (value: number) => void;
+}) {
+  const id = useId();
+  const dates = checked ? weeklyOccurrences(startsAt, weeks) : [];
+  return (
+    <div className="flex flex-col gap-2 rounded-lg bg-chip p-3">
+      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onCheckedChange(e.target.checked)}
+          className="size-4 accent-[var(--primary)]"
+        />
+        Repetir toda semana
+      </label>
+      {checked && (
+        <>
+          <div className="flex items-center gap-2">
+            <Label htmlFor={id}>Por quantas semanas</Label>
+            <select
+              id={id}
+              value={weeks}
+              onChange={(e) => onWeeksChange(Number(e.target.value))}
+              className="h-11 rounded-md border border-input bg-background px-3 text-base"
+            >
+              {Array.from({ length: 11 }, (_, i) => i + 2).map((n) => (
+                <option key={n} value={n}>
+                  {n} semanas
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-caption text-muted-foreground">
+            {dates.length > 0
+              ? `Cria ${dates.length} eventos: ${dates.map((d) => formatShortDate(d)).join(', ')}. Mesma equipe, sem repertório.`
+              : 'Escolha a data de início para ver as datas.'}
+          </p>
+        </>
+      )}
     </div>
   );
 }

@@ -6,10 +6,12 @@ import {
   groupTeamBySection,
   initials,
   keySource,
-  resolveEventKey,
-  splitByTime,
-  type EventSummary,
   type MyAssignmentRow,
+  resolveEventKey,
+  setlistPosition,
+  splitByTime,
+  swipeDirection,
+  type EventSummary,
 } from './schedule-utils';
 
 const event = (id: string, starts_at: string, ends_at: string | null = null): EventSummary => ({
@@ -183,5 +185,28 @@ describe('equipe em Cantores e Instrumentistas', () => {
     expect(initials('  maria  da   silva ')).toBe('MS');
     expect(initials('Lucas')).toBe('L');
     expect(initials('')).toBe('');
+  });
+});
+
+describe('modo culto: sequência do repertório', () => {
+  const songs = [{ songId: 'a' }, { songId: 'b' }, { songId: 'c' }];
+
+  it('posição, anterior e próxima', () => {
+    expect(setlistPosition(songs, 'b')).toEqual({
+      index: 1,
+      total: 3,
+      prev: { songId: 'a' },
+      next: { songId: 'c' },
+    });
+    expect(setlistPosition(songs, 'a')).toMatchObject({ index: 0, prev: null });
+    expect(setlistPosition(songs, 'c')).toMatchObject({ index: 2, next: null });
+    expect(setlistPosition(songs, 'x')).toBeNull();
+  });
+
+  it('deslizar: só gesto horizontal claro troca de música', () => {
+    expect(swipeDirection(-120, 10)).toBe(1); // para a esquerda → próxima
+    expect(swipeDirection(120, 10)).toBe(-1); // para a direita → anterior
+    expect(swipeDirection(40, 0)).toBe(0); // curto
+    expect(swipeDirection(-120, 80)).toBe(0); // diagonal: é rolagem
   });
 });
