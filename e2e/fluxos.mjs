@@ -1452,6 +1452,74 @@ const ANNOUNCEMENT = 'Aviso só para a Isa (E2E)';
   await context.close();
 }
 
+// =============================================================================== FASE H
+// Integrante recusa com substituto e o admin troca; música aberta sem internet.
+const FAMILIA = '10000000-0000-4000-8000-000000000004';
+const CELEBRACAO = '10000000-0000-4000-8000-000000000002';
+{
+  const { context, page } = await session('integrante@demo.local', MOBILE);
+  await step(page, 'integrante', 'Presença: "Não posso" com motivo e substituto', async () => {
+    await page.goto(`${BASE}/escalas/${FAMILIA}`);
+    await page.getByRole('heading', { name: 'Culto da família' }).waitFor();
+    const group = page.getByRole('group', { name: 'Sua presença em Culto da família' });
+    await group.getByRole('button', { name: 'Não posso' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Não vai poder?' });
+    await dialog.getByLabel('Motivo (opcional)').fill('Viagem (E2E)');
+    const select = dialog.getByLabel('Sugerir substituto (opcional)');
+    await select.locator('option', { hasText: 'Lucas' }).waitFor({ state: 'attached' });
+    await select.selectOption({ label: 'Lucas' });
+    await dialog.getByRole('button', { name: 'Avisar que não posso' }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    await group.getByRole('button', { name: 'Não posso', pressed: true }).waitFor();
+  });
+
+  await step(page, 'integrante', 'Offline: abre música do culto sem internet (pré-carregada)', async () => {
+    await page.goto(`${BASE}/escalas/${CELEBRACAO}`);
+    const repertorio = main(page).getByRole('region', { name: 'Repertório' });
+    const links = repertorio.getByRole('link');
+    await links.first().waitFor();
+    if ((await links.count()) < 2) throw new Error('culto sem 2 músicas');
+    // Abre a 1ª com internet; a 2ª nunca foi aberta (vem do pré-carregamento das escalas).
+    await links.first().click();
+    await page.getByRole('button', { name: 'Subir meio tom' }).waitFor();
+    await page.goBack();
+    await links.nth(1).waitFor();
+    await page.waitForLoadState('networkidle');
+    await context.setOffline(true);
+    await page.getByText('Sem internet: mostrando o que foi salvo neste aparelho.').waitFor();
+    await links.nth(1).click();
+    await page.waitForURL(/\/repertorio\/[0-9a-f-]{36}/);
+    await page.getByRole('button', { name: 'Subir meio tom' }).click();
+    await expectText(page, 'Sem internet');
+    await page.goBack();
+    await links.first().click();
+    await page.getByRole('button', { name: 'Subir meio tom' }).waitFor();
+    await context.setOffline(false);
+  });
+  await context.close();
+}
+
+{
+  const { context, page } = await session('admin@demo.local', MOBILE);
+  const who = 'admin';
+  await step(page, who, 'Recusa: aviso para quem monta a escala', async () => {
+    await page.goto(`${BASE}/notificacoes`);
+    await page.waitForLoadState('networkidle');
+    await main(page).getByText(/Isa não pode: Culto da família/).first().waitFor();
+  });
+  await step(page, who, 'Recusa: "Trocar por Lucas (sugestão)" com um toque', async () => {
+    await page.goto(`${BASE}/escalas/${FAMILIA}`);
+    const declines = page.getByRole('list', { name: 'Não podem ir' });
+    await declines.getByText('Viagem (E2E)').waitFor();
+    await declines.getByRole('button', { name: /Trocar por Lucas \(sugestão\)/ }).click();
+    await declines.waitFor({ state: 'detached', timeout: 15000 });
+    const team = page.getByRole('list', { name: 'Instrumentistas' });
+    await team.getByText('Lucas').waitFor();
+    if (await team.getByText('Isa').count()) throw new Error('Isa continua na escala');
+  });
+  await context.close();
+}
+
 await browser.close();
 writeFileSync(`${OUT}/fluxos/relatorio.json`, JSON.stringify(results, null, 2));
 const failed = results.filter((r) => !r.ok).length;

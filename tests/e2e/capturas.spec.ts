@@ -76,6 +76,10 @@ for (const [tema, theme] of Object.entries(THEMES)) {
     await expect(page.getByRole('heading', { name: 'Escalas' })).toBeVisible();
     await shoot(page, `${tema}-10-escalas`);
 
+    await page.goto('/indisponibilidades');
+    await expect(page.getByRole('form', { name: 'Adicionar indisponibilidade' })).toBeVisible();
+    await shoot(page, `${tema}-11-indisponibilidades`);
+
     await page.goto('/mais');
     await expect(page.getByRole('button', { name: 'Sair' })).toBeVisible();
     await shoot(page, `${tema}-7-mais`);
