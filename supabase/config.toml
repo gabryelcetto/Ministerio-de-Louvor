@@ -71,3 +71,10 @@ verify_jwt = true
 # Segredos das Edge Functions no ambiente LOCAL (na nuvem: supabase secrets set CRON_SECRET=...).
 [edge_runtime.secrets]
 CRON_SECRET = "env(CRON_SECRET)"
+
+# Avisos no celular (Web Push). Chamada pelo próprio banco (trigger de notifications via pg_net),
+# sem usuário logado: protegida pelo segredo PUSH_WEBHOOK_SECRET (cabeçalho x-push-secret, o
+# mesmo valor do segredo send_push_secret no Vault), não por JWT.
+[functions.send-push]
+enabled = true
+verify_jwt = false
