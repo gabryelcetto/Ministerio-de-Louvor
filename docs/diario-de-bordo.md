@@ -1132,3 +1132,43 @@ Function nova `change-password`.
 - **Ambiente local de banco sem Docker:** para economizar rodadas de CI, as migrations e os
   testes pgTAP rodaram também num Postgres em WASM (PGlite) fora do repositório, com o schema
   `auth`/`storage` simulado e um "pgTAP mínimo". O CI continua sendo a referência.
+
+## Fase H: presença, indisponibilidade, agendamento, offline e avisos no celular (22/11/2026)
+
+PR "feat(presenca): confirmação, indisponibilidade, agendamento, offline e notificações no
+celular" (branch `feat/fase-h-presenca-offline-push`, aberto para a branch da Fase G).
+Migrations `20261127090000` a `20261127110000`; Edge Function nova `send-push`.
+
+### Decisões
+
+- **Presença na própria linha da escala:** `event_assignments` ganhou `response`
+  (pending/confirmed/declined), `response_note`, `responded_at` e `suggested_user_id`. Uma
+  política deixa a pessoa atualizar só a própria linha; o trigger `guard_assignment_update`
+  limita aos campos de resposta, recusa depois que o evento começou e zera a resposta quando a
+  pessoa ou a função mudam. `suggested_user_id` não tem FK de propósito: uma segunda FK para
+  `profiles` deixaria ambíguos os embeds `profiles(...)` da API; a sugestão é validada no
+  trigger por `assignment_substitutes` (mesma função, ativo, fora da escala e disponível no dia).
+- **Recusa e troca:** "Não posso" gera um aviso para cada pessoa com `schedules.manage`
+  (`member_has_permission`, a mesma regra de `has_permission` para outra pessoa).
+  `swap_assignment` (security invoker: RLS vale) apaga e recria a linha, e os triggers de
+  sempre avisam quem saiu e quem entrou.
+- **Indisponibilidade:** `member_unavailability` com RLS: a pessoa grava as próprias; ela e
+  quem monta escala leem. O "Montar escala" alerta e pede confirmação; o banco não proíbe
+  (pode haver exceção combinada).
+- **Agendamento com pg_cron:** `save_announcement` ganhou `p_publish_at`; agendado fica com
+  `published_at` no futuro (o RLS já escondia) e `notified_at` nulo. O job
+  `publicar-comunicados` (a cada 5 minutos) chama `publish_due_announcements`, que recalcula
+  o público no momento da publicação, avisa e marca `notified_at` (rodar de novo não repete).
+- **Offline:** o cache do TanStack Query é salvo no IndexedDB (`persistQueryClient` +
+  `idb-keyval`, 7 dias, sem as consultas de áudio). Ao abrir o app, as músicas das 2 próximas
+  escalas são baixadas. Sem internet aparece a faixa "Sem internet: mostrando o que foi salvo
+  neste aparelho" e todo botão que grava (os `type="submit"` e os marcados `needsNetwork`) fica
+  desativado com a explicação. Sair da conta apaga o cache salvo.
+- **Web Push:** o aparelho se inscreve (VAPID) e a inscrição vai para `push_subscriptions` pela
+  RPC `save_push_subscription` (o mesmo aparelho pode trocar de conta). Cada linha nova em
+  `notifications` dispara, pelo trigger `dispatch_push`, um `net.http_post` para a função
+  `send-push` com o segredo guardado no Vault (`send_push_url`, `send_push_secret`). A função
+  confere o segredo, lê a notificação e os aparelhos com a service role (do corpo só vem o id),
+  envia e apaga as inscrições que voltam 404/410. Sem chave VAPID no build, a opção não aparece;
+  sem os segredos no Vault, nada é enviado.
+

@@ -256,6 +256,32 @@ Itens que dependem do dono do projeto ou que ficaram em aberto. Cada item diz **
 - **Função desativada:** some das telas de escolha, mas `create_event_with_team` ainda aceita uma
   função desativada se alguém chamar a RPC à mão (a tela não oferece). Endurecer se for preciso.
 
+### 54. Avisos no celular (Web Push): conferir num aparelho de verdade — dono / médio
+
+- **O quê:** a cadeia está testada por partes: pgTAP (inscrição, RLS, disparo pelo pg_net com o
+  segredo do Vault), Vitest (regras do aviso, da tela e do service worker) e `deno check` da
+  função `send-push`. O envio de verdade (biblioteca `web-push` no Deno, serviço de push do
+  Google/Apple) não roda no CI: precisa das chaves VAPID, que ficam só com o dono.
+- **O que fazer:** depois do passo a passo do PR da Fase H, ativar em Configurações → "Receber
+  avisos no celular" num Android (Chrome) e num iPhone com o app instalado (iOS 16.4+), escalar a
+  pessoa e conferir o aviso e o toque abrindo a escala.
+
+### 55. Comunicado agendado: atraso de até 5 minutos — baixo
+
+- **O quê:** o job `publicar-comunicados` (pg_cron) roda a cada 5 minutos; o comunicado aparece e
+  avisa entre 0 e 5 minutos depois da hora marcada. A tela pede pelo menos 5 minutos de
+  antecedência. Se o pg_cron estiver desligado no projeto, os agendados não saem: conferir em
+  Database → Extensions (pg_cron) e em `select * from cron.job`.
+
+### 56. Modo offline: limites conhecidos — baixo
+
+- **O quê:** o cache salvo vale 7 dias e guarda só o que já foi aberto (mais as músicas das 2
+  próximas escalas da pessoa). Áudio não fica salvo. Salvar e enviar arquivos ficam desativados
+  sem internet; "favoritar" sem internet fica na fila e é enviado quando a conexão volta.
+- **E2E:** roda com o servidor de desenvolvimento e o service worker bloqueado; o teste abre a
+  música sem internet navegando dentro do app (recarregar a página offline depende do service
+  worker do build de produção, conferido à mão).
+
 ## Resolvidas recentemente
 
 - **13, 17, 27, 30, 31, 41 e 51** — PR "feat(gestao)" (Fase G): "Carregar mais" nas listas;
