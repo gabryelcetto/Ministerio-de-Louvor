@@ -1,0 +1,47 @@
+Copyright (c) 2026 Gabrtel Ramos Cetto (gabryelcetto). Todos os direitos reservados.
+All rights reserved.
+
+LICENÇA PROPRIETÁRIA — MINISTÉRIO DE LOUVOR
+
+Este repositório contém o código-fonte, a documentação, os scripts de banco de dados e demais
+materiais do sistema "Ministério de Louvor" (o "Software"). O Software é propriedade exclusiva do
+titular dos direitos indicado acima e NÃO é software livre nem de código aberto.
+
+1. O QUE É PERMITIDO
+
+   a) Visualizar o código-fonte neste repositório, apenas para fins de consulta e avaliação.
+   b) Fazer fork do repositório dentro do GitHub, como permitem os Termos de Serviço da plataforma,
+      somente para consulta: o fork não concede nenhum direito de uso, de cópia fora do GitHub, de
+      modificação ou de distribuição do Software.
+   c) O uso do Software pelo Ministério de Louvor da igreja para a qual foi desenvolvido, para a sua
+      própria organização interna, mediante autorização expressa e por escrito do titular.
+
+2. O QUE É PROIBIDO, SEM AUTORIZAÇÃO EXPRESSA E POR ESCRITO DO TITULAR
+
+   a) Copiar, reproduzir, clonar para uso próprio ou bifurcar (fork) o Software fora do que prevê o item 1.b, no
+      todo ou em parte;
+   b) Modificar, adaptar, traduzir ou criar obras derivadas;
+   c) Usar, executar, instalar, hospedar ou implantar o Software, em qualquer ambiente;
+   d) Distribuir, sublicenciar, vender, alugar, ceder ou disponibilizar a terceiros;
+   e) Remover ou alterar avisos de direitos autorais ou de propriedade;
+   f) Usar o Software, o código ou o nome do projeto para treinar modelos de aprendizado de máquina
+      ou para fins comerciais.
+
+3. DADOS
+
+   Esta licença não concede qualquer direito sobre dados pessoais ou conteúdos de terceiros tratados
+   pelo sistema (como letras, cifras e informações de integrantes), que permanecem sujeitos à
+   legislação aplicável, em especial à Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e à Lei de
+   Direitos Autorais (Lei nº 9.610/1998).
+
+4. SEM GARANTIA
+
+   O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA", SEM GARANTIAS DE QUALQUER TIPO, EXPRESSAS
+   OU IMPLÍCITAS. EM NENHUMA HIPÓTESE O TITULAR SERÁ RESPONSÁVEL POR DANOS DECORRENTES DO USO.
+
+5. VIOLAÇÃO
+
+   Qualquer uso em desacordo com esta licença é violação de direitos autorais e sujeita o infrator
+   às medidas legais cabíveis.
+
+Para solicitar autorização de uso: entre em contato pelo perfil https://github.com/gabryelcetto
